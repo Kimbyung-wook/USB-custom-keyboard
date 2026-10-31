@@ -1,7 +1,9 @@
-"""Draw the per-board pin maps used in docs/PINMAP.md (docs/images/pinmap_*.svg).
+"""Draw the pin maps and button maps used in docs/PINMAP.md (docs/images/).
 
-The CH552G (SOP-16) is drawn as seen from the top: pins 1-8 down the left
-side, 16-9 down the right side, each with what it is wired to on the board.
+pinmap_*.svg: the CH552G (SOP-16) as seen from the top, pins 1-8 down the
+left side, 16-9 down the right side, each with what it is wired to.
+buttons_*.svg: the keyboard as seen from the top, each key and the knob
+with its GPIO, chip pin and slot (and LED, on boards with one per key).
 
 Run from the repo root:  gui\\.venv\\Scripts\\python tools\\draw_pinmap.py
 """
@@ -140,14 +142,102 @@ def draw(board: str, title: str, led_text: str, chain: list[str] | None) -> str:
             + "".join(parts) + "</svg>\n")
 
 
+KEY_PINS = {"A": 9, "B": 5, "C": 4, "D": 3, "E": 2, "F": 1}  # key -> chip pin
+KEY_W, KEY_H = 150, 112    # key caps in the button map
+
+
+def draw_buttons(board: str, title: str, key_leds: bool) -> str:
+    """The keyboard seen from the top: keys A-C over D-F, the knob right of C."""
+    width, height = 860, 420
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">{escape(title)}</text>',
+        '<rect x="20" y="56" width="820" height="320" rx="16" fill="#fafafa" stroke="#9e9e9e" stroke-width="2"/>',
+    ]
+    led_centers = []
+    for i, key in enumerate("ABCDEF"):
+        pin = KEY_PINS[key]
+        gpio, _, kind = PINS[pin]
+        fill, stroke = COLORS[kind]
+        x = 50 + (i % 3) * (KEY_W + 26)
+        y = 80 + (i // 3) * (KEY_H + 24)
+        cx = x + KEY_W / 2
+        parts.append(f'<rect x="{x}" y="{y}" width="{KEY_W}" height="{KEY_H}" rx="10" fill="{fill}" '
+                     f'stroke="{stroke}" stroke-width="2"/>')
+        parts.append(f'<text x="{cx}" y="{y + 34}" text-anchor="middle" font-size="26" font-weight="bold">{key}</text>')
+        parts.append(f'<text x="{cx}" y="{y + 58}" text-anchor="middle" font-size="14">{gpio} · {pin}번 핀</text>')
+        note = "슬롯 3 · 부트로더 진입" if kind == "boot" else f"슬롯 {i}"
+        parts.append(f'<text x="{cx}" y="{y + 78}" text-anchor="middle" font-size="12" fill="#616161">{note}</text>')
+        if key_leds:
+            led_fill, led_stroke = COLORS["led"]
+            ly = y + KEY_H - 16
+            parts.append(f'<rect x="{cx - 32}" y="{ly - 10}" width="64" height="20" rx="10" fill="{led_fill}" '
+                         f'stroke="{led_stroke}" stroke-width="1.5"/>')
+            parts.append(f'<text x="{cx}" y="{ly + 5}" text-anchor="middle" font-size="12">LED {i}</text>')
+            led_centers.append((cx, ly))
+
+    # the knob, right of key C
+    kx, ky, kr = 650, 136, 48
+    knob_fill, knob_stroke = COLORS["knob"]
+    parts.append(f'<circle cx="{kx}" cy="{ky}" r="{kr}" fill="{knob_fill}" stroke="{knob_stroke}" stroke-width="2"/>')
+    parts.append(f'<circle cx="{kx}" cy="{ky}" r="{kr - 14}" fill="#ffffff" stroke="{knob_stroke}" stroke-width="1"/>')
+    parts.append(f'<text x="{kx}" y="{ky + 5}" text-anchor="middle" font-size="14" font-weight="bold">노브</text>')
+    knob_lines = [
+        ("인코더 A", "P3.0 · 8번 핀"),
+        ("인코더 B", "P3.1 · 7번 핀"),
+        ("누르기", "P3.3 · 10번 핀 · 슬롯 8"),
+        ("회전", "시계 슬롯 6 · 반시계 슬롯 7"),
+    ]
+    for j, (name, value) in enumerate(knob_lines):
+        y = ky + kr + 28 + j * 22
+        parts.append(f'<text x="{kx - 90}" y="{y}" font-size="13" font-weight="bold" fill="{knob_stroke}">{name}</text>')
+        parts.append(f'<text x="{kx - 24}" y="{y}" font-size="13">{escape(value)}</text>')
+
+    led_fill, led_stroke = COLORS["led"]
+    if key_leds:
+        # the chain: pin 11 feeds LED 0 (under A), then B, C, D, E, F
+        sx, sy = 50 + KEY_W / 2 - 32, 80 + KEY_H - 16
+        parts.append(f'<text x="44" y="{height - 18}" font-size="13" fill="{led_stroke}">'
+                     'LED 체인: P3.4 · 11번 핀 → LED 0 → 1 → 2 → 3 → 4 → 5 (GRB)</text>')
+        parts.append(f'<line x1="26" y1="{sy}" x2="{sx}" y2="{sy}" stroke="{led_stroke}" stroke-width="2" '
+                     'marker-end="url(#arrow)"/>')
+        parts.append(f'<text x="58" y="{sy - 14}" text-anchor="middle" font-size="11" fill="{led_stroke}">P3.4</text>')
+        for (x1, y1), (x2, y2) in zip(led_centers, led_centers[1:]):
+            if y1 == y2:
+                parts.append(f'<line x1="{x1 + 32}" y1="{y1}" x2="{x2 - 32}" y2="{y2}" stroke="{led_stroke}" '
+                             'stroke-width="2" marker-end="url(#arrow)"/>')
+            else:   # C (end of the top row) through the gap and round the left edge to D
+                gap_y = 80 + KEY_H + 12
+                parts.append(f'<path d="M {x1} {y1 + 10} V {gap_y} H 36 V {y2} H {x2 - 32}" fill="none" '
+                             f'stroke="{led_stroke}" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow)"/>')
+    else:
+        lx, ly = 650, 316
+        parts.append(f'<circle cx="{lx}" cy="{ly}" r="9" fill="{led_fill}" stroke="{led_stroke}" stroke-width="2"/>')
+        parts.append(f'<text x="{lx + 18}" y="{ly + 5}" font-size="13">LED · P3.4 · 11번 핀</text>')
+        parts.append(f'<text x="44" y="{height - 18}" font-size="13" fill="{led_stroke}">'
+                     'LED 1개(WS2812, GRB): 키보드 전체 상태 표시</text>')
+
+    parts.append(f'<text x="{width - 20}" y="{height - 18}" text-anchor="end" font-size="12" fill="#757575">'
+                 f'{board} · 윗면 · tools/draw_pinmap.py</text>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}" font-family="{FONT}" fill="#212121">'
+            '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+            f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{led_stroke}"/></marker></defs>'
+            + "".join(parts) + "</svg>\n")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
-        "pinmap_mk6k1n.svg": draw("MK6K1N", "MK6K1N 핀 배치 (6키 + 노브, LED 1개)",
+        "pinmap_ch552g.svg": draw("MK6K1N · MK6K1NL", "CH552G 핀맵 (두 보드 공통)",
+                                  "LED 데이터 (WS2812 체인)", None),
+        "pinmap_mk6k1n.svg": draw("MK6K1N", "MK6K1N 핀맵 (6키 + 노브, LED 1개)",
                                   "WS2812 LED 1개 (GRB)", None),
-        "pinmap_mk6k1nl.svg": draw("MK6K1NL", "MK6K1NL 핀 배치 (6키 + 노브, 키마다 LED)",
+        "pinmap_mk6k1nl.svg": draw("MK6K1NL", "MK6K1NL 핀맵 (6키 + 노브, 키마다 LED)",
                                    "LED 체인 데이터 (GRB) →",
                                    [f"LED {i} · 키 {k} 아래" for i, k in enumerate("ABCDEF")]),
+        "buttons_mk6k1n.svg": draw_buttons("MK6K1N", "MK6K1N 버튼 별 맵핑 (윗면)", False),
+        "buttons_mk6k1nl.svg": draw_buttons("MK6K1NL", "MK6K1NL 버튼 별 맵핑 (윗면)", True),
     }
     for name, svg in files.items():
         (OUT / name).write_text(svg, encoding="utf-8")
