@@ -2,7 +2,7 @@
 #define __MK_BOARD_MK6K1N_H__
 
 // MK6K1N: the 6-key + 1-knob CH552G mini keyboard with one LED
-// (docs/PINMAP.md 2). The name must match gui/boards.py.
+// (docs/PINMAP.md 2). The name must match gui/core/boards.py.
 
 #define BOARD_NAME "MK6K1N" // up to 8 ASCII characters
 // One WS2812 is fitted, at a chain position not known: every color is sent

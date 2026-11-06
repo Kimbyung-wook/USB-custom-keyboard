@@ -13,14 +13,16 @@ CH552G 6키 + 노브 1개 USB 매크로 키보드에 저장된 문자열(매크�
 - 기준: **Python 3.12.10** (저장소 루트의 `.python-version`)
 - 저장소 루트에서 실행
 
+- [uv](https://docs.astral.sh/uv/) 필요 (`winget install astral-sh.uv`)
+
 ```powershell
-py -3.12 -m venv gui\.venv
-gui\.venv\Scripts\python -m pip install -r gui\requirements.txt
+uv sync
 ```
 
-- `gui/requirements.txt`: 실행·테스트·exe 빌드 패키지를 쓰던 버전 그대로 고정
+- 루트 `.venv`에 설치. 버전 고정: `pyproject.toml`(직접 쓰는 패키지), `uv.lock`(의존 패키지 포함 전체)
   - 이것 한 번으로 아래의 실행, 테스트, exe 빌드 모두 가능
-  - 아래 표 외의 줄은 함께 설치되는 의존 패키지. 새 PC에서도 같은 버전이 깔리도록 고정함
+  - 명령은 `uv run ...`으로 실행 (`.venv` 활성화 불필요)
+  - 패키지 추가·변경: `uv add <패키지>==<버전>` (테스트용은 `--group dev`) → `uv.lock` 갱신
 
 | 패키지 | 용도 |
 |---|---|
@@ -29,12 +31,12 @@ gui\.venv\Scripts\python -m pip install -r gui\requirements.txt
 | `pytest` 9.1.1 | 테스트 |
 | `pyinstaller` 6.22.3 | exe 빌드 |
 
-### pip로 설치하지 않는 도구
+### uv로 설치하지 않는 도구
 
 | 도구 | 필요한 작업 | 쓰던 버전 |
 |---|---|---|
 | Arduino CLI(또는 Arduino IDE) + CH55xDuino | 펌웨어 빌드(`tools\build_fw.ps1`, [펌웨어 README](../firmware/macro_keyboard/README.md)) | Arduino CLI 1.5.1, CH55xDuino 0.0.26 |
-| gcc (PATH에 있어야 함) | 펌웨어 PC 검사(`firmware\host_test\run.py`) | MinGW GCC 6.3.0 |
+| gcc (PATH에 있어야 함) | 펌웨어 PC 검사(`tests\host\run.py`) | MinGW GCC 6.3.0 |
 
 ## 실행
 
@@ -42,12 +44,12 @@ gui\.venv\Scripts\python -m pip install -r gui\requirements.txt
 
 ```powershell
 # 실제 장치 사용
-gui\.venv\Scripts\python -m gui
+uv run python -m gui
 # 또는
-gui\.venv\Scripts\python gui\main.py
+uv run python gui\main.py
 
 # 모의 장치 사용 (장치 없이 동작 확인)
-gui\.venv\Scripts\python -m gui --mock
+uv run python -m gui --mock
 ```
 
 - `--mock`: 펌웨어를 흉내 내는 모의 장치(`transport.MockDevice`)에 연결
@@ -56,7 +58,7 @@ gui\.venv\Scripts\python -m gui --mock
 - `--mock-board 키x노브[x행]`: 다른 배치의 키보드 화면 보기 (빈 설정으로 시작)
 
 ```bash
-gui\.venv\Scripts\python -m gui --mock-board 12x2
+uv run python -m gui --mock-board 12x2
 ```
 
 ### 키보드 배치 (보드 정보)
@@ -69,20 +71,20 @@ gui\.venv\Scripts\python -m gui --mock-board 12x2
 ## 테스트
 
 ```powershell
-cd gui
-.venv\Scripts\python -m pytest
+uv run pytest
 ```
 
+- 저장소 루트에서 실행. 테스트 위치는 `tests/gui/` (pyproject `[tool.pytest.ini_options]`)
 - UI 테스트는 화면 없이(`QT_QPA_PLATFORM=offscreen`) 실행됨
 - 펌웨어의 저장·문자열 입력·잠금 코드는 PC에서 gcc로 검사 (저장소 루트에서, gcc 필요)
 
 ```powershell
-gui\.venv\Scripts\python firmware\host_test\run.py
+uv run python tests\host\run.py
 ```
 
 ## 실행 파일(exe) 빌드
 
-- 저장소 폴더에서 실행. PyInstaller는 `gui\requirements.txt`로 이미 설치됨
+- 저장소 폴더에서 실행. PyInstaller는 `uv sync`로 이미 설치됨
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
@@ -97,7 +99,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - 표시 위치
   - 창 제목: `v1.6.0`
   - 상태 표시줄 오른쪽: `GUI v1.6.0 · 빌드 2026-10-31 12:44`
-- **버전**: `gui/version.py`의 `VERSION`을 직접 고침
+- **버전**: `gui/core/version.py`의 `VERSION`을 직접 고침
 - **빌드 일자**: `tools/build_gui.ps1`이 빌드 순간의 시각을 `gui/_build_info.py`에 써서 exe에 넣고, 빌드 후 이 파일을 지움
   - 소스에서 바로 실행하면 `개발 실행 (빌드 전)`으로 표시
 - PyInstaller를 직접 실행하면 빌드 일자가 안 들어감 → 꼭 `build_gui.ps1`로 빌드
@@ -117,6 +119,8 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   2. 보드와 용량 (`MK6K1N (키 6 + 노브 1) / 용량 128바이트`)
   3. 펌웨어 버전과 빌드 날짜
 - 연결 방식(HID 경로 등)은 마우스를 올리면 보임
+- 보드 목록: 연결 안 됨이면 목록에서 보드를 골라 해당 배치로 화면을 바꿈. 장치를 인식하면 그 보드에 맞게 자동 전환하고 목록은 잠김
+- 노브 없는 보드(3X3V_RGB)는 잠금 편집기가 꺼짐
 - 버튼: [연결]/[연결 끊기], [새로고침]
 - 실제 장치 모드: 2초마다 장치 확인. 꽂으면 자동 연결, 뽑으면 연결 끊김 표시
 
@@ -255,26 +259,30 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - 화면이 바뀌면 다시 찍음 (화면 없이 동작, 키보드 필요 없음)
 
 ```powershell
-gui\.venv\Scripts\python tools\capture_screens.py
+uv run python tools\capture_screens.py
 ```
 
 ## 파일 구성
 
+- `core/`: 장치 논리. Qt를 쓰지 않음(테스트·도구에서 바로 씀)
+- `ui/`: Qt 창과 위젯. `core/`만 부름
+- 테스트는 저장소 루트의 `tests/gui/` (`uv run pytest`)
+
 | 파일 | 내용 |
 |---|---|
-| `protocol.py` | 패킷 인코딩/디코딩, 상태 코드, CRC-16/CCITT-FALSE, 설정 블롭 |
-| `macro.py` | 매크로 문법 검사기 (오류 위치 포함), 저장 바이트 수 계산 |
-| `transport.py` | `HidTransport`(hidapi) / `MockDevice`(펌웨어 시뮬레이터) |
-| `device.py` | 장치 클라이언트: HELLO / READ / WRITE + COMMIT / TEST / BOOT, 시간 제한, 오류 처리, 프로토콜 v1/v2 |
-| `backup.py` | JSON 백업 읽기/쓰기 |
-| `flasher.py` | 펌웨어 업로드: 업로더 찾기, HEX 읽기(크기, 펌웨어 식별 문자열), 업로더 명령, 업로더 출력 해석 |
-| `boards.py` | 보드 목록: 보드 이름, 배치, 부트로더 진입 설정, 업데이트 모드 안내, 펌웨어 파일 이름 |
-| `chips.py` | 칩 표: 칩 ID별 이름, 플래시 용량, 지원 여부 |
-| `bootloader.py` | 업데이트 모드 칩 검색: WCH 드라이버(`CH375DLL64.dll`)로 Detect/ReadConfig만 보내 파트 번호, 칩 ID, 부트로더 버전을 읽음 |
-| `flash_dialog.py` | [펌웨어 업데이트] 창 (인식된 칩 목록, [장입] 시 QProcess로 업로더 실행) |
-| `widgets.py`, `app.py` | PySide6 UI (장치 그림, 매크로 편집기, 패턴 암호·자동 잠금 편집기) |
-| `version.py` | GUI 버전(`VERSION`)과 빌드 일자 표시. 빌드 일자는 빌드 때 생성되는 `_build_info.py`에서 읽음 |
-| `tests/` | pytest 테스트 |
+| `main.py`, `__main__.py` | 시작점 (`ui/app.py`의 `main`) |
+| `core/protocol.py` | 패킷 인코딩/디코딩, 상태 코드, CRC-16/CCITT-FALSE, 설정 블롭 |
+| `core/macro.py` | 매크로 문법 검사기 (오류 위치 포함), 저장 바이트 수 계산 |
+| `core/transport.py` | `HidTransport`(hidapi) / `MockDevice`(펌웨어 시뮬레이터) |
+| `core/device.py` | 장치 클라이언트: HELLO / READ / WRITE + COMMIT / TEST / BOOT, 시간 제한, 오류 처리, 프로토콜 v1/v2 |
+| `core/backup.py` | JSON 백업 읽기/쓰기 |
+| `core/flasher.py` | 펌웨어 업로드: 업로더 찾기, HEX 읽기(크기, 펌웨어 식별 문자열), 업로더 명령, 업로더 출력 해석 |
+| `core/boards.py` | 보드 목록: 보드 이름, 배치, 부트로더 진입 설정, 업데이트 모드 안내, 펌웨어 파일 이름 |
+| `core/chips.py` | 칩 표: 칩 ID별 이름, 플래시 용량, 지원 여부 |
+| `core/bootloader.py` | 업데이트 모드 칩 검색: WCH 드라이버(`CH375DLL64.dll`)로 Detect/ReadConfig만 보내 파트 번호, 칩 ID, 부트로더 버전을 읽음 |
+| `core/version.py` | GUI 버전(`VERSION`)과 빌드 일자 표시. 빌드 일자는 빌드 때 생성되는 `_build_info.py`(gui/ 바로 아래)에서 읽음 |
+| `ui/flash_dialog.py` | [펌웨어 업데이트] 창 (인식된 칩 목록, [장입] 시 QProcess로 업로더 실행) |
+| `ui/widgets.py`, `ui/app.py` | PySide6 UI (장치 그림, 매크로 편집기, 패턴 암호·자동 잠금 편집기) |
 
 ## 알려진 제한
 

@@ -12,7 +12,8 @@
 
 #define hal_ms() ((uint16_t)millis())
 
-uint8_t hal_switches(void);
+typedef uint8_t hal_sw_t;
+hal_sw_t hal_switches(void);
 uint8_t hal_encoder(void);
 
 extern __code uint8_t hal_palette[][3];
@@ -27,6 +28,7 @@ void hal_leds_all(uint8_t color);
 // The core's DataFlash access
 #define hal_store_read(addr) eeprom_read_byte(addr)
 #define hal_store_write(addr, value) eeprom_write_byte(addr, value)
+#define hal_store_flush() 1
 
 extern __xdata uint8_t keyboardLedStatus; // usb/hid.c, bit 1: Caps Lock
 #define kb_caps_lock() (keyboardLedStatus & 0x02)

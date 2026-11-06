@@ -1,5 +1,6 @@
 # Arduino / CH55xDuino build output (Sketch -> Export Compiled Binary)
 firmware/**/build/
+tests/**/build/
 
 # PyInstaller (GUI exe build from the repo root)
 /build/

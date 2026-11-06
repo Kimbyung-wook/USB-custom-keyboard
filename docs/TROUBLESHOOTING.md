@@ -15,6 +15,8 @@
 | 본 펌웨어에서 LED가 안 켜짐 | [3-4](#3-4-본-펌웨어에서-led가-켜지지-않음-v10-첫-빌드) |
 | 키 C를 누르면 `CCW`/`CW`가 입력됨 (MK6K1NL) | [3-6](#3-6-키-c를-누르면-ccwcw가-입력됨-mk6k1nl-v150-이전-빌드) |
 | MK6K1NL 제조사 펌웨어에서 업데이트 모드 진입 안 됨 | [3-7](#3-7-mk6k1nl-제조사-펌웨어에서-업데이트-모드로-들어가지-않음) |
+| 9키(3X3V_RGB): GUI 업데이트 창에 칩이 안 나타남, `wchisp`가 장치를 못 찾음 | [2-6](#2-6-9키3x3v_rgb-업데이트-모드와-wchisp) |
+| 9키(3X3V_RGB): 1줄 LED가 파랑 외에는 안 켜짐 | [3-8](#3-8-9키3x3v_rgb-1줄-led가-파랑만-켜짐) |
 | LED가 꺼져 있거나(가끔 빨강) 빨강이고, 키를 눌러도 아무것도 입력되지 않음 | 고장 아님. 잠금 상태(꺼짐 + 가끔 빨강) 또는 패턴 입력 중(빨강, 노브 2초 누르기 뒤). [macro_keyboard README의 "잠금"](../firmware/macro_keyboard/README.md#잠금) |
 
 ## 진단 도구
@@ -24,6 +26,8 @@
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
 | `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능 |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
+| `tools/flash.ps1 -Board 3x3v_rgb` | 9키(CH32V203)를 wchisp로 장입 (BOOT 브리지 필요) |
+| `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행) |
 
 - PowerShell 스크립트 실행이 막혀 있으면: `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex ...`
 
@@ -128,7 +132,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 | 조치 | `tools/flash.ps1`을 먼저 실행해 두고 키보드를 꽂음. 부트로더가 나타나는 즉시 업로드 시작 |
 
 ```powershell
-.\tools\flash.ps1 -Hex firmware\test_pinmap\build\CH55xDuino.mcs51.ch552\test_pinmap.ino.hex
+.\tools\flash.ps1 -Hex tests\hw\mk6k1n\test_pinmap\build\CH55xDuino.mcs51.ch552\test_pinmap.ino.hex
 ```
 
 ### 2-3. 다운로드 실패 후 장치가 전혀 인식되지 않음 (복구)
@@ -189,6 +193,21 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 - Zadig로 드라이버를 바꿀 필요 없음
 
 ---
+
+### 2-6. 9키(3X3V_RGB): 업데이트 모드와 wchisp
+
+**증상**
+
+- GUI 펌웨어 업데이트 창에 칩이 안 나타나거나 [업데이트 모드로 전환]이 꺼져 있음
+- `wchisp info`가 장치를 못 찾음
+
+**원인·조치**
+
+- CH32V203은 GUI 창으로 장입 불가(창이 안내만 표시). 펌웨어로 업데이트 모드 진입도 불가(부트로더 점프 시 예외)
+- 진입은 **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 꽂는 방법뿐
+- `wchisp`가 못 찾으면: 브리지 접촉 확인, 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
+- 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 업데이트 모드)
+- ⚠️ 제조사 펌웨어는 읽기 보호: 장입하면 지워지고 되돌릴 수 없음
 
 ## 3. 동작
 
@@ -262,7 +281,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 **진단**
 
-- [test_mk6k1nl](../firmware/test_mk6k1nl/README.md) RAW 모드로 노브 신호 기록
+- [test_mk6k1nl](../tests/hw/mk6k1nl/test_mk6k1nl/README.md) RAW 모드로 노브 신호 기록
 - 노브가 칸 사이에 걸쳐 `AB 10`에서 쉬고 있었음
 - 키 C를 누르는 흔들림에 B 접점이 `10 ↔ 11`을 오감
 - 이전 펌웨어는 `11`에 닿을 때 방향 값이 0이 아니면 한 칸으로 셈 → 한 단계 흔들림이 회전으로 입력됨
@@ -287,3 +306,15 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
    - GUI 펌웨어 업데이트 창에서 **장입할 보드**를 MK6K1NL로 고르고 [장입]
 2. [2-3](#2-3-다운로드-실패-후-장치가-전혀-인식되지-않음-복구)처럼 **12번(D+)–16번(3V3) 사이에 1.5~2kΩ**을 대고 꽂음
 3. 한 번 올리면 진입 핀이 P1.5로 기록됨 → 다음부터는 키 D나 노브를 누른 채 꽂으면 됨
+
+### 3-8. 9키(3X3V_RGB): 1줄 LED가 파랑만 켜짐
+
+**증상**
+
+- 윗줄(키 A~C) LED가 파랑 외의 색(빨강, 초록)에서 꺼져 있음
+
+**원인**
+
+- 1줄의 빨강·초록 핀이 USB D−/D+(PA11/PA12)와 같음 → 펌웨어가 쓰지 않음 (고장 아님)
+- 2·3줄은 정상 색 표시
+

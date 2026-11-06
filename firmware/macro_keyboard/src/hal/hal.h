@@ -6,12 +6,12 @@
 // the names below; each chip family implements them in src/hal/<chip>/,
 // picked by the board file. On CH55x most of them are macros, so the layer
 // costs no code. host_test builds the same functions against
-// firmware/host_test/stub/hal_host.h.
+// tests/host/stub/hal_host.h.
 //
 // Time
 //   uint16_t hal_ms()                  milliseconds since start, wraps at 65536
 // Inputs (from the board file's pins)
-//   uint8_t hal_switches()             bit i = switch i pressed: the keys in
+//   hal_sw_t hal_switches()            (uint8_t, 16 bits on CH32V) bit i = switch i pressed: the keys in
 //                                      slot order, then the knob switch
 //   uint8_t hal_encoder()              knob lines: A << 1 | B, 1 = high
 // LEDs
@@ -21,7 +21,9 @@
 //                                      only with BOARD_KEY_LEDS
 //   hal_palette[][3]                   R, G, B per color, defined by led.c
 // Config storage (BLOB_CAPACITY bytes that survive a power cycle)
-//   uint8_t hal_store_read(addr), hal_store_write(addr, value)
+//   uint8_t hal_store_read(addr), hal_store_write(addr, value)   addr: blob_pos_t
+//   uint8_t hal_store_flush()          make the writes permanent; 1 = ok (a
+//                                      no-op where writes go straight to flash)
 // HID keyboard (interface 0)
 //   uint8_t kb_ready()                 configured by a host
 //   uint8_t kb_busy()                  last report not yet collected
@@ -43,9 +45,11 @@
 #include "../config.h"
 
 #if defined(HAL_HOST)
-#include "hal_host.h" // firmware/host_test/stub
+#include "hal_host.h" // tests/host/stub
 #elif BOARD_HAL_CH55X
 #include "ch552/hal_ch552.h"
+#elif BOARD_HAL_CH32V20X
+#include "ch32v203/hal_ch32v203.h"
 #else
 #error no HAL for this board (src/hal)
 #endif

@@ -6,6 +6,7 @@
 |---|---|
 | 대상 버전 | 펌웨어 **v1.6.0**, 설정 프로그램 **GUI 1.6.0** |
 | 키보드 | **MK6K1N**(6키 + 노브, LED 1개), **MK6K1NL**(6키 + 노브, 키마다 LED). 사용법 같음, LED 표시만 조금 다름([핀 배치](PINMAP.md)) |
+| 9키 키보드 | **3X3V_RGB**(9키, 노브 없음, CH32V203): 시험 단계. 다른 점은 [10장](#10-9키-키보드-3x3v_rgb) |
 | 펌웨어 수정·빌드 | 이 문서가 아니라 [firmware/macro_keyboard/README.md](../firmware/macro_keyboard/README.md) 참고 |
 
 ## 목차
@@ -19,6 +20,7 @@
 7. [문제가 생겼을 때](#7-문제가-생겼을-때)
 8. [펌웨어 업데이트](#8-펌웨어-업데이트)
 9. [사양](#9-사양)
+10. [9키 키보드 (3X3V_RGB)](#10-9키-키보드-3x3v_rgb)
 
 ---
 
@@ -186,7 +188,7 @@
 ### 실행
 
 - 배포된 **`MacroKeyboardConfig.exe`** 실행. Python 설치 필요 없음
-- 저장소에서 바로 실행: `gui\.venv\Scripts\python -m gui` (설치 방법은 [gui/README.md](../gui/README.md))
+- 저장소에서 바로 실행: `uv run python -m gui` (설치 방법은 [gui/README.md](../gui/README.md))
 - 키보드가 꽂혀 있으면 자동 연결. 실행 후에 꽂아도 2초 안에 연결됨
 
 ### 화면 구성
@@ -417,3 +419,45 @@
 | 연결 | USB 하나로 키 입력, 설정, 펌웨어 업데이트 |
 | PC 프로그램 | Windows, `MacroKeyboardConfig.exe` |
 | 칩 | CH552G |
+
+---
+
+## 10. 9키 키보드 (3X3V_RGB)
+
+- 상태: 펌웨어 시험 단계 (진행: [PORT_CH32V203.md](PORT_CH32V203.md), 보드: [BOARD_3X3V_RGB.md](BOARD_3X3V_RGB.md))
+- 6키 키보드와 같은 GUI·문자열 문법 사용. 다른 점만 정리
+
+```
+ ┌─────────────────┐
+ │  [A]  [B]  [C]  │   1줄 LED: 파랑만
+ │  [D]  [E]  [F]  │   2줄 LED
+ │  [G]  [H]  [I]  │   3줄 LED
+ └──────[USB]──────┘
+```
+
+| 항목 | 6키(MK6K1N) | 9키(3X3V_RGB) |
+|---|---|---|
+| 슬롯 | 키 6 + 노브 3동작 = 9개 | 키 A~I = 9개 |
+| 패턴 암호·자동 잠금 | 있음 | **없음** (노브가 없어 입력 시작 불가). GUI 잠금 편집기 꺼짐 |
+| LED | 1개 또는 키마다 | 줄(키 3개)마다 같은 색. **1줄은 파랑만** (빨강·초록 핀이 USB 핀) |
+| 저장 용량 | 128바이트 (합계 최대 102자) | **4096바이트** (합계 최대 **4070자**, 플래시 끝 4 KB) |
+| 펌웨어 업데이트 | GUI 업데이트 창 | **GUI 창으로 불가**. BOOT 브리지 + `tools\flash.ps1 -Board 3x3v_rgb` |
+
+### LED
+
+- 2·3줄은 1장 표와 같은 색
+- 1줄은 색의 파랑 성분만 보임: 파랑·흰색·보라 → 파랑, 빨강·초록 → 꺼짐
+
+### 펌웨어 올리기
+
+1. 빌드: `powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board 3x3v_rgb`
+2. 키보드 뒷면을 열고 **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 USB 연결
+3. `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Board 3x3v_rgb`
+   - `wchisp info` 결과를 보여 준 뒤 `yes`를 입력해야 장입
+   - ⚠️ 제조사 펌웨어가 든 키보드는 장입 때 **제조사 펌웨어가 지워짐**(되돌릴 수 없음)
+4. 브리지를 떼고 USB를 다시 연결 (브리지가 있으면 매번 업데이트 모드로 들어감)
+5. 점검: `uv run python tools\check_device.py`
+   - 설정 저장 확인: `--write` → USB 다시 연결 → `--verify` → `--restore <백업 파일>`
+
+- 저장된 설정이 지워질 수 있으므로 올리기 전에 GUI로 백업
+

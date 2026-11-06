@@ -10,7 +10,7 @@
 |---|---|
 | USB 구성 | 인터페이스 0: HID 키보드, 인터페이스 1: 설정용 Vendor HID (64바이트) |
 | 슬롯 | 키 A~F, 노브 시계 방향/반시계 방향/누르기 (9개) |
-| 저장 | DataFlash 128바이트. 헤더와 슬롯 길이 정보 26바이트를 빼면 **9개 슬롯 합계 102자** (패턴 암호를 쓰면 `2 + 단계 수`바이트만큼 줄어듦) |
+| 저장 | DataFlash 128바이트. 헤더와 슬롯 길이 정보 26바이트를 빼면 **9개 슬롯 합계 102자** (패턴 암호를 쓰면 `2 + 단계 수`바이트만큼 줄어듦). CH32V203(8·9키)은 플래시 끝 4 KB: 9키 합계 4070자, 8키 4072자 |
 | 매크로 | `{ENTER}` `{TAB}` `{UP}` `{F5}` 등 키 이름, `{CTRL+C}` 같은 조합키, `{DELAY:n}`, `{{` `}}` |
 | Caps Lock | 켜져 있어도 영문 대소문자가 쓴 그대로 입력되도록 보정 |
 | 연속 입력 | 출력 중에 누른 키는 최대 8개까지 순서대로 대기 |
@@ -69,6 +69,9 @@
   - 펌웨어를 새로 구워 DataFlash를 읽는 것은 못 막음 → 비밀번호 같은 민감한 문자열은 저장하지 말 것
 
 ## 빌드
+
+- **CH32V203 보드(3X3V_RGB)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
+  (경로·주의점은 [PORT_CH32V203](../../docs/PORT_CH32V203.md), [test_ch32v203](../test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요
@@ -151,7 +154,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - 보드 정보 전달:
   - HELLO 바이트 17~35([docs/PROTOCOL.md](../../docs/PROTOCOL.md))
   - hex 안 식별 문자열 `MKFW1:<보드>:<칩>:<버전>`(예: `MKFW1:MK6K1N:CH552:1.3.0`) → GUI가 올리기 전에 보드와 칩 확인
-- 보드 이름은 GUI 보드 목록 `gui/boards.py`와 같아야 함
+- 보드 이름은 GUI 보드 목록 `gui/core/boards.py`와 같아야 함
 
 ## 업로드
 
@@ -181,7 +184,7 @@ powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex firmware\macro_key
 
 ### 1. 연결 확인
 
-1. GUI 실행: `gui\.venv\Scripts\python -m gui`
+1. GUI 실행: `uv run python -m gui`
 2. 상단에 `● 연결됨 - …`, `MK6K1N (키 6 + 노브 1) / 용량 128바이트`, `펌웨어 v1.6.0 (빌드 …)` 표시되면 설정 통신 정상
    - 빌드 날짜가 방금 빌드한 시각인지 확인(새 펌웨어가 올라갔다는 표시)
 3. 처음에는 "설정 없음"으로 빈 슬롯 9개 표시
@@ -253,16 +256,19 @@ powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex firmware\macro_key
 ## 코드 구조
 
 - 기능 코드와 하드웨어를 나눔(2026-10-31)
-- 기능 코드(`src/*.c`)는 하드웨어를 **`src/hal/hal.h`의 이름으로만** 씀
+- 기능 코드(`src/core/*.c`)는 하드웨어를 **`src/hal/hal.h`의 이름으로만** 씀
   - 시간, 스위치, 노브 선, LED, 설정 저장, HID 키보드, 설정 통신, 부트로더
 - 칩별 구현은 `src/hal/<칩>/`. 보드 파일의 `BOARD_HAL_CH55X`를 보고 `hal.h`가 고름
 - CH55x에서는 대부분 매크로라 HAL 계층 자체는 코드가 거의 늘지 않음
+- 시작 순서와 반복문은 `src/core/app.c` 하나. 칩별 시작점(CH552 `macro_keyboard.ino`, CH32V203 `src/hal/ch32v203/main.c`)은 `app_setup()`/`app_loop()`만 부름
+- CH32V203 전용 파일은 `#ifdef __riscv`로 감쌈(Arduino 빌드가 `src/` 아래 .c를 모두 컴파일하므로)
 
 ```mermaid
 flowchart TB
-    ino["macro_keyboard.ino<br/>setup / loop: 모듈을 이어 붙이기만 함"]
-    subgraph APP["기능 (src/*.c, 칩과 상관없음)"]
+    ino["macro_keyboard.ino<br/>setup / loop: app.c를 부르기만 함"]
+    subgraph APP["기능 (src/core/*.c, 칩과 상관없음)"]
         direction LR
+        app["app.c<br/>시작 순서, 반복문"]
         input["input.c<br/>키·노브 판정"]
         led["led.c<br/>LED 표시"]
         lock["lock.c<br/>잠금"]
@@ -277,7 +283,7 @@ flowchart TB
         usb["usb/<br/>HID 키보드, Vendor HID"]
         main["main_min.c"]
     end
-    host["host_test/stub/hal_host.h<br/>PC 검사용"]
+    host["tests/host/stub/hal_host.h<br/>PC 검사용"]
     boards["src/boards/*.h<br/>보드 파일 (핀, LED, HAL 선택)"]
     ino --> APP
     APP --> hal
@@ -288,25 +294,26 @@ flowchart TB
 
 | 파일 | 내용 |
 |---|---|
-| `macro_keyboard.ino` | `setup()`과 `loop()`: 모듈을 순서대로 부르기만 함 |
+| `macro_keyboard.ino` | CH552 시작점: `setup()`/`loop()`에서 `app_setup()`/`app_loop()`만 부름 |
+| `src/core/app.c/.h` | 시작 순서(HAL, 저장, 잠금, 입력, USB)와 반복문(통신, 입력, 잠금, 문자열, LED), BOOT·저장 알림 처리 |
 | `src/config.h` | 버전, 빌드 날짜, USB ID, 보드 파일 고르기, 슬롯 번호, 용량, 잠금 설정값 |
 | `src/boards/ch552_6k1n.h` | 6키 + 노브 CH552G 기판: HAL 선택, 칩, 키/노브/행 수, 핀 배치, 스위치 비트 표, 핀 배치 검사 (MK6K1N, MK6K1NL 공통) |
 | `src/boards/mk6k1n.h`, `mk6k1nl.h` | 보드 이름과 LED (LED 1개를 8자리로 / 키마다 1개) |
-| `src/input.c/.h` | 스위치 디바운스(20ms), 노브 판정(한 칸 중 2단계 이상), 노브 길게 누르기, 입력을 잠금/문자열 입력으로 보내기 |
-| `src/led.c/.h` | LED 표시 정책(색, 깜빡임, 키별 초록/꺼짐), 색 번호 `COLOR_*`(`led.h`)와 색 표 `hal_palette` |
-| `src/lock.c/.h` | 잠금 상태, 패턴 입력 판정, 틀린 횟수, 자동 잠금 시간 |
-| `src/protocol.c/.h` | Vendor HID 명령 처리 (HELLO/READ/WRITE/COMMIT/TEST/BOOT), HELLO 보드 정보, 펌웨어 식별 문자열 |
-| `src/storage.c/.h` | 설정 블롭 저장, CRC 검사, 슬롯 찾기 (문자열, 패턴 암호, 설정 슬롯) |
-| `src/macro.c/.h` | 매크로 해석과 비동기 출력 (키 누름/뗌, DELAY) |
+| `src/core/input.c/.h` | 스위치 디바운스(20ms), 노브 판정(한 칸 중 2단계 이상), 노브 길게 누르기, 입력을 잠금/문자열 입력으로 보내기 |
+| `src/core/led.c/.h` | LED 표시 정책(색, 깜빡임, 키별 초록/꺼짐), 색 번호 `COLOR_*`(`led.h`)와 색 표 `hal_palette` |
+| `src/core/lock.c/.h` | 잠금 상태, 패턴 입력 판정, 틀린 횟수, 자동 잠금 시간 |
+| `src/core/protocol.c/.h` | Vendor HID 명령 처리 (HELLO/READ/WRITE/COMMIT/TEST/BOOT), HELLO 보드 정보, 펌웨어 식별 문자열 |
+| `src/core/storage.c/.h` | 설정 블롭 저장, CRC 검사, 슬롯 찾기 (문자열, 패턴 암호, 설정 슬롯) |
+| `src/core/macro.c/.h` | 매크로 해석과 비동기 출력 (키 누름/뗌, DELAY) |
 | `src/hal/hal.h` | **추상 하드웨어**: 기능 코드가 쓰는 이름 목록과 설명, 칩 구현 고르기 |
 | `src/hal/ch552/hal_ch552.c/.h` | CH55x 구현: 핀 설정, 스위치·노브 읽기(포트 직접), WS2812 LED, DataFlash(코어 `eeprom_*` 매크로), 칩 고유 ID, 부트로더 |
 | `src/hal/ch552/usb/` | USB 디스크립터, 요청 처리, 엔드포인트 (CH55xDuino qmkCompatibleKeyboard 예제 기반, LGPL-2.1) |
 | `src/hal/ch552/main_min.c` | 코어의 `main.c` 대신 쓰는 작은 `main()`과 인터럽트 표(USB, Timer0) |
 
-### PC 검사 (host_test)
+### PC 검사 (tests/host)
 
-- `firmware/host_test/run.py`로 기능 코드(`storage.c`, `macro.c`, `lock.c`, `input.c`, `led.c`)를 PC(gcc)에서 검사함
-- 하드웨어 대신 `host_test/stub/hal_host.h` 사용
+- `tests/host/run.py`로 기능 코드(`src/core`의 `storage.c`, `macro.c`, `lock.c`, `input.c`, `led.c`)를 PC(gcc)에서 검사함
+- 하드웨어 대신 `tests/host/stub/hal_host.h` 사용
 - 확인 항목:
   - GUI 인코더로 만든 블롭 저장
   - 각 슬롯이 보내는 HID 키 코드
@@ -314,5 +321,5 @@ flowchart TB
   - 가짜 스위치·노브 선을 넣었을 때의 입력과 LED 표시(두 보드 모두)
 
 ```powershell
-gui\.venv\Scripts\python firmware\host_test\run.py
+uv run python tests\host\run.py
 ```

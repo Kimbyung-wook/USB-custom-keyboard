@@ -1,0 +1,33 @@
+# Python environment for the GUI, tests and tools (managed with uv).
+# Setup from the repo root:  uv sync     (creates .venv, versions from uv.lock)
+# Run:                       uv run python -m gui
+#
+# Not installed by uv, needed only for the steps named:
+#   - CH552 firmware build: Arduino CLI 1.5.1 (or Arduino IDE) + CH55xDuino 0.0.26
+#   - CH32V203 firmware build: xPack riscv-none-elf-gcc, mingw32-make, WCH EVT SDK
+#   - firmware host test: gcc on PATH (tests\host\run.py)
+
+[project]
+name = "macro-keyboard"
+version = "1.4.0"
+description = "Macro keyboard config GUI, tests and tools"
+requires-python = "==3.12.*"
+dependencies = [
+    "PySide6==6.12.0",   # UI
+    "hidapi==0.15.0",    # USB HID (module "hid")
+]
+
+[dependency-groups]
+# Tests (tests\gui, tests\host)
+dev = ["pytest==9.1.1"]
+# exe build (tools\build_gui.ps1)
+build = ["pyinstaller==6.22.3"]
+
+[tool.uv]
+package = false                     # scripts only, nothing to install as a package
+default-groups = ["dev", "build"]   # uv sync installs everything
+
+[tool.pytest.ini_options]
+# uv run pytest   (from the repo root)
+testpaths = ["tests/gui"]
+pythonpath = ["."]

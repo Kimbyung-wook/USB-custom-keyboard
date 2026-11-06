@@ -3,7 +3,7 @@
 Runs the real windows off screen against the mock keyboard (no keyboard or
 display needed), with the sample config, a lock pattern and auto-lock.
 
-Run from the repo root:  gui\\.venv\\Scripts\\python tools\\capture_screens.py
+Run from the repo root:  uv run python tools\\capture_screens.py
 """
 from __future__ import annotations
 
@@ -23,11 +23,11 @@ from PySide6.QtCore import QRect  # noqa: E402
 from PySide6.QtGui import QFont  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from gui import protocol as p  # noqa: E402
-from gui.app import MOCK_FEATURES, SAMPLE_SLOTS, MainWindow, make_mock_connector  # noqa: E402
-from gui.bootloader import ChipInfo  # noqa: E402
-from gui.flash_dialog import FirmwareDialog  # noqa: E402
-from gui.transport import MockDevice  # noqa: E402
+from gui.core import protocol as p  # noqa: E402
+from gui.ui.app import MOCK_FEATURES, SAMPLE_SLOTS, MainWindow, make_mock_connector  # noqa: E402
+from gui.core.bootloader import ChipInfo  # noqa: E402
+from gui.ui.flash_dialog import FirmwareDialog  # noqa: E402
+from gui.core.transport import MockDevice  # noqa: E402
 
 WIDTH = 720
 # Fits 128 bytes together with the lock pattern and auto-lock (SAMPLE_SLOTS does not)

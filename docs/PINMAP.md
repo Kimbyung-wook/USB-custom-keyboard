@@ -5,8 +5,8 @@
 
 | 보드 | 생김새 | LED | 확인한 테스트 펌웨어 | 보드 파일 |
 |---|---|---|---|---|
-| **MK6K1N** | 6키 + 노브 1개 | 눈에 보이는 LED 1개 | [test_pinmap](../firmware/test_pinmap/README.md) (2026-10-25) | `src/boards/mk6k1n.h` |
-| **MK6K1NL** | 6키 + 노브 1개 | **키마다 1개**(6개) | [test_mk6k1nl](../firmware/test_mk6k1nl/README.md) (2026-10-31) | `src/boards/mk6k1nl.h` |
+| **MK6K1N** | 6키 + 노브 1개 | 눈에 보이는 LED 1개 | [test_pinmap](../tests/hw/mk6k1n/test_pinmap/README.md) (2026-10-25) | `src/boards/mk6k1n.h` |
+| **MK6K1NL** | 6키 + 노브 1개 | **키마다 1개**(6개) | [test_mk6k1nl](../tests/hw/mk6k1nl/test_mk6k1nl/README.md) (2026-10-31) | `src/boards/mk6k1nl.h` |
 
 - 공통 핀은 기판 파일 `src/boards/ch552_6k1n.h`에 있고, 두 보드 파일이 이를 include함
 - 표기:
@@ -113,7 +113,7 @@ flowchart LR
 - 핀이나 연결이 바뀌면 `tools/draw_pinmap.py`의 `PINS`(칩 핀)와 `KEY_PINS`(키 → 칩 핀)를 고치고 다시 그림
 
 ```powershell
-gui\.venv\Scripts\python tools\draw_pinmap.py
+uv run python tools\draw_pinmap.py
 ```
 
 ## 5. 새 키보드를 받으면
@@ -121,9 +121,10 @@ gui\.venv\Scripts\python tools\draw_pinmap.py
 1. 칩 확인: WCHISPTool 칩 목록, 또는 D+ 풀업으로 업데이트 모드에 넣고 업로더 출력의 `Found Device`
    - **다운로드는 하지 않음**
 2. 테스트 펌웨어를 올려 키 핀, 노브 신호(RAW 모드), LED 체인 순서와 색 순서 확인
-   - MK6K1N 계열: [test_pinmap](../firmware/test_pinmap/README.md)
-   - LED가 여러 개: [test_mk6k1nl](../firmware/test_mk6k1nl/README.md)
+   - MK6K1N 계열: [test_pinmap](../tests/hw/mk6k1n/test_pinmap/README.md)
+   - LED가 여러 개: [test_mk6k1nl](../tests/hw/mk6k1nl/test_mk6k1nl/README.md)
+   - 핀을 전혀 모를 때(8키 2×4, 9키 등): [test_ch32v203](../tests/hw/ch32v203/test_ch32v203/README.md). GPIO 전부 감시, LED 핀 탐색
 3. 결과가 기존 보드와 다르면 추가함([BOARD_INFO 6~7절](BOARD_INFO.md))
    - 보드 파일 `src/boards/<보드>.h` (기판이 다르면 `<칩>_<배치>.h` 공통 파일도)
-   - GUI 보드 목록 `gui/boards.py`
+   - GUI 보드 목록 `gui/core/boards.py`
    - 이 문서에 표와 다이어그램

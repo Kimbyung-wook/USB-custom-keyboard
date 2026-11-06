@@ -5,7 +5,7 @@ left side, 16-9 down the right side, each with what it is wired to.
 buttons_*.svg: the keyboard as seen from the top, each key and the knob
 with its GPIO, chip pin and slot (and LED, on boards with one per key).
 
-Run from the repo root:  gui\\.venv\\Scripts\\python tools\\draw_pinmap.py
+Run from the repo root:  uv run python tools\\draw_pinmap.py
 """
 from __future__ import annotations
 

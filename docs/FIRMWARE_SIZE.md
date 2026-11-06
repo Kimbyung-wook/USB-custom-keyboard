@@ -48,7 +48,7 @@
 
 ## 현재 크기 내역 (v1.2.0 측정값)
 
-- 분석 당시 코드 기준. 이후 `macro_keyboard.ino`의 키·노브·LED 코드는 `src/input.c`, `src/led.c`, `src/hal/ch552/hal_ch552.c`로 나뉘었음
+- 분석 당시 코드 기준. 이후 `macro_keyboard.ino`의 키·노브·LED 코드는 `src/core/input.c`, `src/core/led.c`, `src/hal/ch552/hal_ch552.c`로 나뉘었음
 
 ### 모듈별
 
@@ -84,16 +84,16 @@
 | 함수 (당시) | 현재 위치 | 바이트 |
 |---|---|---:|
 | `USB_EP0_SETUP` | `src/hal/ch552/usb/USBhandler.c:33` | 1,032 |
-| `protocol_poll` | `src/protocol.c:30` | 1,006 |
-| `parseBraced` | `src/macro.c:180` | 589 |
-| `parseBlob` | `parseStage`로 바뀜, `src/storage.c:40` | 534 |
-| `storage_commit` | `src/storage.c:163` | 420 |
-| `macro_task` | `src/macro.c:294` | 354 |
-| `nextToken` | `src/macro.c:249` | 324 |
-| `updateLed` | `led_task`로 바뀜, `src/led.c:99` | 249 |
-| `scanKeys` | `scanSwitches` `src/input.c:68` + 포트 읽기 `hal_switches` `src/hal/ch552/hal_ch552.c:31` | 244 |
-| `lock_input` | `src/lock.c:120` | 231 |
-| `showColor` | `src/led.c:63`(키 LED 보드), `:70`(그 외) + 프레임 `hal_leds` `src/hal/ch552/hal_ch552.c:53` | 223 |
+| `protocol_poll` | `src/core/protocol.c:30` | 1,006 |
+| `parseBraced` | `src/core/macro.c:180` | 589 |
+| `parseBlob` | `parseStage`로 바뀜, `src/core/storage.c:40` | 534 |
+| `storage_commit` | `src/core/storage.c:163` | 420 |
+| `macro_task` | `src/core/macro.c:294` | 354 |
+| `nextToken` | `src/core/macro.c:249` | 324 |
+| `updateLed` | `led_task`로 바뀜, `src/core/led.c:99` | 249 |
+| `scanKeys` | `scanSwitches` `src/core/input.c:68` + 포트 읽기 `hal_switches` `src/hal/ch552/hal_ch552.c:31` | 244 |
+| `lock_input` | `src/core/lock.c:120` | 231 |
+| `showColor` | `src/core/led.c:63`(키 LED 보드), `:70`(그 외) + 프레임 `hal_leds` `src/hal/ch552/hal_ch552.c:53` | 223 |
 | `USBInterrupt` | `src/hal/ch552/usb/USBhandler.c:349` | 216 |
 | `_modulong` (라이브러리) | 1단계 뒤 빠짐 | 194 |
 | `pinMode` (코어) | 3단계 뒤 빠짐 (`wiring_digital.c`) | 183 |
@@ -167,7 +167,7 @@
   - CH55xDuino의 `pinModeFast`/`digitalReadFast` 매크로(`wiring_digital_fast.h`)를 써도 됨
 - **확인 방법**
   - 장치: 키 6개, 노브 누름, 노브 양방향 회전, LED 색, "노브를 누른 채 연결하면 부트로더"를 하나씩 확인
-  - `firmware/test_pinmap`으로 핀 대응 재확인
+  - `tests/hw/mk6k1n/test_pinmap`으로 핀 대응 재확인
 
 ### 3. 나눗셈·곱셈·범용 포인터 없애기 (−468바이트)
 
@@ -176,18 +176,18 @@
 
 | 당시 코드 | 바꿀 것 | 현재 위치 | 측정 절감 |
 |---|---|---|---:|
-| `% QUEUE_SIZE` (부호 있는 int 나머지) | `& (QUEUE_SIZE - 1)` (QUEUE_SIZE는 8) | `src/macro.c:287`, `:308` | −70 |
-| `tokDelay * 10` | `(tokDelay << 3) + (tokDelay << 1)` | `src/macro.c:193` | −154 (아래와 합계) |
+| `% QUEUE_SIZE` (부호 있는 int 나머지) | `& (QUEUE_SIZE - 1)` (QUEUE_SIZE는 8) | `src/core/macro.c:287`, `:308` | −70 |
+| `tokDelay * 10` | `(tokDelay << 3) + (tokDelay << 1)` | `src/core/macro.c:193` | −154 (아래와 합계) |
 | `set_pixel_for_GRB_LED(ledData, i, ...)` (안에서 `i * 3`) | 포인터를 하나씩 올리며 G, R, B 저장 | `src/hal/ch552/hal_ch552.c:53-64`(키 LED 보드), `:66-74`(그 외) | (위와 합계) |
-| `const char *name` (범용 포인터) | `__code const char *name` | `src/macro.c:123-124` (`nameEquals`) | −68 |
-| `millis() % LOCKED_BLINK_PERIOD` (32비트 나머지) | 16비트 `blinkAt`: `now - blinkAt >= 3000`이면 새 주기, `now - blinkAt < 100`이면 빨강 | `src/led.c:122-129` | −176 |
+| `const char *name` (범용 포인터) | `__code const char *name` | `src/core/macro.c:123-124` (`nameEquals`) | −68 |
+| `millis() % LOCKED_BLINK_PERIOD` (32비트 나머지) | 16비트 `blinkAt`: `now - blinkAt >= 3000`이면 새 주기, `now - blinkAt < 100`이면 빨강 | `src/core/led.c:122-129` | −176 |
 
 - `_mulint`, `_modulong`, `_gptrget`이 빠짐
 - `_modsint`/`_moduint`는 시리얼 인터럽트도 쓰고 있어 **1번과 함께 해야** 빠짐 (함께 하면 237바이트 더 줄어듦)
 - **위험**: 낮음
   - 깜빡임은 여전히 3초마다 0.1초 (시작 위상만 달라짐)
   - 큐 크기를 2의 거듭제곱이 아닌 값으로 바꾸면 `&`가 틀림 → `QUEUE_SIZE` 옆에 주석이나 `#if` 검사
-  - 현재: `src/macro.c:83-86`에 주석과 `#error` 검사 있음
+  - 현재: `src/core/macro.c:83-86`에 주석과 `#error` 검사 있음
 - **확인 방법**
   - `host_test` (매크로 문법, `{DELAY:50}` 길이 검사 포함)
   - 장치: 잠금 상태 LED 깜빡임
@@ -195,7 +195,7 @@
 
 ### 4. 설정 통신 버퍼를 고정 주소로 (−394바이트)
 
-- **어디**: 당시 `src/protocol.c:14-25`
+- **어디**: 당시 `src/core/protocol.c:14-25`
   - `req`/`res` 포인터가 지역 변수 → 레지스터에 담긴 포인터에 매번 오프셋을 더해서 씀 (`res[4] = ...` 한 줄에 약 11바이트)
 - **무엇을**: 두 버퍼는 항상 `Ep2Buffer`(OUT)와 `Ep2Buffer + 64`(IN) → 고정 주소 배열로 선언해서 씀
   ```c
@@ -209,31 +209,31 @@
   - 위 선언은 `hid.h`에 두는 편이 깔끔하다고 제안함
 - **현재 위치**: 적용됨 (1단계)
   - 선언은 `hid.h` 대신 `src/hal/ch552/hal_ch552.h:36-40` (`HAL_REQ`/`HAL_RES`), 정의는 `src/hal/ch552/usb/USBhandler.c:15-16`
-  - `src/protocol.c:11-12`에서 `#define req HAL_REQ`, `#define res HAL_RES`
+  - `src/core/protocol.c:11-12`에서 `#define req HAL_REQ`, `#define res HAL_RES`
   - `vendor_request()`/`vendor_response()`는 코드에 없음 (삭제됨)
 - **위험**: 낮음. 버퍼 주소는 이미 `USBconstant.h`의 `EP2_ADDR`로 고정됨
 - **확인 방법**: GUI로 HELLO(버전·빌드 날짜 표시), READ, WRITE/COMMIT(저장), TEST, BOOT를 한 번씩. 같은 seq 값이 돌아오는지
 - **더 줄이기 (추정 −50~−100, 미적용)**: HELLO 응답 14바이트 중 `lock_flags()`를 뺀 나머지는 상수 → `__code` 표에서 반복문으로 복사
-  - 현재 HELLO 처리: `src/protocol.c:53-74`. 응답이 보드 정보(`boardInfo`, 이미 `__code` 표 복사)와 칩 UID까지 늘어났고, 앞부분 `res[3]`~`res[16]`은 여전히 한 바이트씩 씀
+  - 현재 HELLO 처리: `src/core/protocol.c:53-74`. 응답이 보드 정보(`boardInfo`, 이미 `__code` 표 복사)와 칩 UID까지 늘어났고, 앞부분 `res[3]`~`res[16]`은 여전히 한 바이트씩 씀
 
 ### 5. 자주 쓰는 변수를 내부 RAM에 (−347바이트, 스케치 변수까지 −384)
 
 - **어디 (당시 → 현재)**: 적용됨 (2단계)
-  - `src/macro.c:88-105` → `src/macro.c:88-112` (`queue`, `queueHead`, `queueCount`, `active`, `text`, `textLen`, `pos`, `tokMods`, `tokKey`, `tokDelay` 등, 모두 `__data`)
-  - `src/lock.c:9-14` → `src/lock.c:9-19` (`state`, `entered`, `enteredLen` 등, 모두 `__data`)
-  - `macro_keyboard.ino`의 LED·노브 시간 변수 → `src/led.c:27-44`, `src/input.c:28-35` (모두 `__idata`)
+  - `src/core/macro.c:88-105` → `src/core/macro.c:88-112` (`queue`, `queueHead`, `queueCount`, `active`, `text`, `textLen`, `pos`, `tokMods`, `tokKey`, `tokDelay` 등, 모두 `__data`)
+  - `src/core/lock.c:9-14` → `src/core/lock.c:9-19` (`state`, `entered`, `enteredLen` 등, 모두 `__data`)
+  - `macro_keyboard.ino`의 LED·노브 시간 변수 → `src/core/led.c:27-44`, `src/core/input.c:28-35` (모두 `__idata`)
 - **무엇을**
   - `macro.c`의 `static __xdata` → `static __data`, `static __xdata uint8_t *text;` → `static __xdata uint8_t *__data text;` (가리키는 곳은 xdata, 포인터 자체는 내부 RAM): **−249**
   - `lock.c`의 `static __xdata` → `static __data`: **−98**
   - 스케치의 `ledColor`, `savedAt`, `pressAt`, `knobDownAt` 등 → `__data` 자리가 모자라 `__idata`로: **−37**
     - `__data`로 하면 −75지만, 위 두 개와 같이 하면 내부 RAM이 넘침
-  - 후보지만 자리가 없으면 그대로 둠: `storage.c`의 `slotOffset`/`slotLength`(`src/storage.c:17-18`), `hid.c`의 바쁨 표시(`UpPoint1_Busy`, `src/hal/ch552/usb/hid.c:22`) — 현재도 `__xdata`
+  - 후보지만 자리가 없으면 그대로 둠: `storage.c`의 `slotOffset`/`slotLength`(`src/core/storage.c:17-18`), `hid.c`의 바쁨 표시(`UpPoint1_Busy`, `src/hal/ch552/usb/hid.c:22`) — 현재도 `__xdata`
 - **위험**: 낮음. 다만 내부 RAM 여유가 줄어듦
   - 시험 빌드(1~9 모두 적용)에서 스택에 쓸 수 있는 자리: 175바이트 → 121바이트
   - 이 펌웨어는 재귀나 큰 지역 배열이 없어 충분함
   - 앞으로 `__data` 변수를 늘리다 링크 오류(`area DSEG`)가 나면 `__idata`로 옮김
   - `host_test` 스텁에 `#define __idata` 필요: 당시 `stub/Arduino.h`에는 `__xdata`, `__data`, `__code`, `__at`만 있었음
-    - 현재 스텁은 `firmware/host_test/stub/hal_host.h`, `__idata`도 있음(`:12`)
+    - 현재 스텁은 `tests/host/stub/hal_host.h`, `__idata`도 있음(`:12`)
 - **확인 방법**
   - 빌드 후 `.mem` 파일의 "Stack starts at ... with N bytes available"
   - `host_test`
@@ -272,16 +272,16 @@
 ### 7. 저장 코드 정리 (−142바이트, 고정 배열 방식까지 −248바이트)
 
 - **어디 (당시 → 현재)**: 적용됨 (5단계)
-  - `crc16_ccitt` → `src/storage.c:20`
-  - `parseBlob` → `parseStage` `src/storage.c:40`
-  - `loadSlots` → `loadStage` `src/storage.c:97` (부팅 때 읽기는 `storage_init` `:113-119`)
-  - `storage_commit` → `src/storage.c:163-199`
+  - `crc16_ccitt` → `src/core/storage.c:20`
+  - `parseBlob` → `parseStage` `src/core/storage.c:40`
+  - `loadSlots` → `loadStage` `src/core/storage.c:97` (부팅 때 읽기는 `storage_init` `:113-119`)
+  - `storage_commit` → `src/core/storage.c:163-199`
 - **무엇을 (1단계, −142)**
   - 포인터 인자를 `__data` 지역 포인터로 옮겨 쓰기 (`__xdata uint8_t *__data p = 인자;`)
   - 블롭이 최대 128바이트 → `pos`, `len`, `payloadLen`을 8비트로
     - 길이의 위 바이트가 0이 아니면 바로 실패 처리 (원래도 결국 실패하던 경우라 결과는 같음)
   - `storage_commit`의 "쓰기 반복문"과 "확인 반복문"을 하나로: 먼저 `stage[totalLen..127]`을 0xFF로 채우고, 다른 바이트만 쓰고 바로 확인
-    - 현재: `src/storage.c:183-195`
+    - 현재: `src/core/storage.c:183-195`
 - **무엇을 (2단계, 추가 −106)**
   - `parseBlob`이 포인터 대신 항상 고정 배열 `stage[]`를 읽게 함
   - 부팅 때도 DataFlash를 `stage[]`로 읽어 검사한 뒤 `blob[]`에 복사
@@ -299,13 +299,13 @@
 ### 8. `millis()`를 한 번만 읽기 + 색 표 (−114바이트)
 
 - **어디 (당시 → 현재)**: 적용됨 (5단계)
-  - `showColor`, `updateLed` → `src/led.c:63`/`:70`, `led_task` `src/led.c:99`
-  - `scanKeys` → `scanSwitches` `src/input.c:68`
+  - `showColor`, `updateLed` → `src/core/led.c:63`/`:70`, `led_task` `src/core/led.c:99`
+  - `scanKeys` → `scanSwitches` `src/core/input.c:68`
 - **무엇을**
   - `loop()` 처음에 `now16 = (uint16_t)millis();`를 한 번 저장(`__data`)하고, LED·키 검사는 이 값을 씀
-    - 현재: 변수 `src/input.c:11`, 저장 `macro_keyboard.ino:66` (`now16 = hal_ms();`, `setup()`은 `:59`), `hal_ms()`는 `src/hal/ch552/hal_ch552.h:13`
+    - 현재: 변수 `src/core/input.c:11`, 저장 `macro_keyboard.ino:66` (`now16 = hal_ms();`, `setup()`은 `:59`), `hal_ms()`는 `src/hal/ch552/hal_ch552.h:13`
   - `showColor`의 if-else 6개 → `__code uint8_t colorRGB[6][3]` 표
-    - 현재: `hal_palette` `src/led.c:18-25`
+    - 현재: `hal_palette` `src/core/led.c:18-25`
 - **주의**: `scanKeys` 안에서 `uint16_t now = now16;`처럼 지역 변수로 받으면 large 모델 때문에 오히려 커짐 (측정: −6바이트에 그침). 전역 `now16`을 직접 써야 −114
 - **위험**: 낮음. 한 번의 `loop()` 동안 시간이 고정될 뿐
 - **확인 방법**: LED 색 전환(파랑/초록/흰색/보라/빨강), 디바운스, 3초 길게 누르기
@@ -315,7 +315,7 @@
 - **0 초기값 지우기 (−17)**: 적용됨 (1단계)
   - 대상 예: `uint8_t ledColor = COLOR_OFF;`, `static __xdata uint8_t queueHead = 0;`, `volatile __xdata uint8_t UpPoint1_Busy = 0;`
   - 이유: 전역 변수는 시작할 때 어차피 0으로 지워지는데, 초기값을 쓰면 그 값을 플래시에 따로 저장하고 복사함
-  - 현재: `src/led.c:27`, `src/macro.c:89`, `src/hal/ch552/usb/hid.c:22` 모두 초기값 없음
+  - 현재: `src/core/led.c:27`, `src/core/macro.c:89`, `src/hal/ch552/usb/hid.c:22` 모두 초기값 없음
 - **`--noinduction` (원래 코드에서 −26, 1~8 적용 후 −38)**: 미적용 (`tools/build_fw.ps1:58-59`의 `$flags`에 없음)
   - `tools/build_fw.ps1`의 `$flags`에 추가
   - 반복문 안의 곱셈을 덧셈으로 바꾸는 최적화를 끔 (이 코드에서는 그 최적화가 xdata 변수를 늘려 오히려 손해)
@@ -346,10 +346,10 @@
 
 - 모두 미적용
 - **F1~F12 이름을 규칙으로 (−40~−60)**
-  - `keyNames`(`src/macro.c:68`)는 한 항목이 7바이트(이름 6 + 코드 1), F1~F12가 12개(84바이트)
+  - `keyNames`(`src/core/macro.c:68`)는 한 항목이 7바이트(이름 6 + 코드 1), F1~F12가 12개(84바이트)
   - "F" 뒤 숫자 n(1~12)이면 코드 `0x3A + n - 1`로 계산 → 표가 줄고 코드가 30~40바이트 늘어 차이만큼 줄어듦
 - **`asciiMap`의 글자·숫자를 규칙으로 (−30~−50)**
-  - `asciiMap`: `src/macro.c:15`
+  - `asciiMap`: `src/core/macro.c:15`
   - `a`~`z` → `0x04 + (c - 'a')`, `A`~`Z`는 같은 값 + Shift, `1`~`9` → `0x1E + (c - '1')`, `0` → `0x27`
   - 나머지 기호 33개만 표로 남김
 - **같은 USB 문자열 같이 쓰기 (−14)**
@@ -357,11 +357,11 @@
   - 문자열 번호 1과 3에 같은 배열을 돌려주면 됨 (선택 위치: `src/hal/ch552/usb/USBhandler.c:87-95`)
   - 시리얼 문자열 내용은 그대로 → Windows가 장치를 새로 인식하지 않음
 - **`lock_input` 정리 (−30~−60)**
-  - `lock_input`: `src/lock.c:120`
+  - `lock_input`: `src/core/lock.c:120`
   - 5번을 하면 이미 231 → 177바이트
-  - 비교 반복문을 `storage_lock_steps()` 포인터(`src/lock.c:122`) 대신 `blob[]` 고정 배열과 오프셋으로 읽으면 조금 더 줄어듦
+  - 비교 반복문을 `storage_lock_steps()` 포인터(`src/core/lock.c:122`) 대신 `blob[]` 고정 배열과 오프셋으로 읽으면 조금 더 줄어듦
 - **디바운스 시간을 8비트로 (−20~−40, RAM −7)**
-  - 당시 `scanKeys`, 현재 `scanSwitches`의 `keyChangedAt` (`src/input.c:21`, 비교 `:79`, 지금은 `uint16_t`)
+  - 당시 `scanKeys`, 현재 `scanSwitches`의 `keyChangedAt` (`src/core/input.c:21`, 비교 `:79`, 지금은 `uint16_t`)
   - 20 ms 비교에는 8비트 시간으로 충분 (255 ms 넘게 루프가 멈추면 최대 20 ms 늦어질 뿐)
 
 ## 권하지 않는 것
@@ -378,7 +378,7 @@
 - 원칙: 위험이 낮고 확인이 쉬운 것부터, 한 번에 하나씩 고치고 매번 빌드 크기와 시험 결과를 기록함
 
 1. **3번(계산 라이브러리) + 4번(통신 버퍼) + 9번(0 초기값)**: 코드 몇 줄, `host_test`로 대부분 확인. 약 −880
-2. **5번(내부 RAM 변수)**: 스텁에 `__idata` 추가 (당시 `stub/Arduino.h`, 현재 `firmware/host_test/stub/hal_host.h`에 이미 있음). 약 −350
+2. **5번(내부 RAM 변수)**: 스텁에 `__idata` 추가 (당시 `stub/Arduino.h`, 현재 `tests/host/stub/hal_host.h`에 이미 있음). 약 −350
 3. **2번(포트 직접)**: 장치에서 키·노브·LED를 한 번 확인. 약 −660
 4. **1번(작은 `main`)**: 장치에서 전체 기능 확인. 약 −860 (3번과 함께라 실제로는 약 −1,100)
 5. **8번, 7번(저장 코드)**: `host_test` + 저장/읽기 확인. 약 −360
@@ -388,7 +388,7 @@
 각 단계 뒤 확인할 것:
 
 - **빌드**: `tools/build_fw.ps1` 출력의 프로그램 크기. `--build-path`로 빌드했다면 `.mem` 파일의 ROM 크기와 남은 스택 크기
-- **호스트 시험**: `gui\.venv\Scripts\python firmware\host_test\run.py` ("all passed")
+- **호스트 시험**: `uv run python tests\host\run.py` ("all passed")
 - **장치**: README의 확인 절차 (6개 키 입력, 노브 회전·누름, 저장 시 흰색, 잠금/해제/재잠금, BOOT, 노브 누른 채 연결)
 
 ## 진행 기록
@@ -406,7 +406,7 @@
   - `src/main_min.c` → 현재 `src/hal/ch552/main_min.c`
   - 3단계의 `#error` 검사 → 현재 `src/boards/ch552_6k1n.h:43-50`
 - 1단계 뒤 `_mulint`, `_modulong`, `_gptrget`은 빠짐. `_modsint`/`_moduint`는 코어 시리얼 인터럽트가 쓰고 있어 1번(작은 `main`) 때 빠짐
-- 잠금 상태의 빨간 깜빡임은 16비트 `blinkAt`으로 잼 (`src/led.c:122-129`)
+- 잠금 상태의 빨간 깜빡임은 16비트 `blinkAt`으로 잼 (`src/core/led.c:122-129`)
   - 주기가 지나면 그때부터 새 주기를 시작 → 오래 열려 있다가 잠겨도 몰아서 깜빡이지 않음
 - 현재(1.6.0) 크기는 MK6K1N 8,694바이트, MK6K1NL 8,915바이트
 

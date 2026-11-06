@@ -1,6 +1,8 @@
 #ifndef __MK_CONFIG_H__
 #define __MK_CONFIG_H__
 
+#include <stdint.h>
+
 // Firmware version reported by HELLO and the USB device descriptor
 #define FW_MAJOR 1
 #define FW_MINOR 6
@@ -44,18 +46,22 @@
 #include "boards/mk6k1n.h"
 #elif defined(BOARD_MK6K1NL)
 #include "boards/mk6k1nl.h"
+#elif defined(BOARD_3X3V_RGB)
+#include "boards/3x3v_rgb.h"
 #else
 #include "boards/mk6k1n.h"
 #endif
 
-// Slots (docs/BOARD_INFO.md 1): keys, then CW, CCW, PRESS of the knob
-#if BOARD_KNOBS != 1
-#error the sketch reads exactly one knob
+// Slots (docs/BOARD_INFO.md 1): keys, then CW, CCW, PRESS of the knob (if any)
+#if BOARD_KNOBS > 1
+#error the sketch reads at most one knob
 #endif
 #define SLOT_COUNT (BOARD_KEYS + 3 * BOARD_KNOBS)
+#if BOARD_KNOBS
 #define SLOT_KNOB_CW BOARD_KEYS
 #define SLOT_KNOB_CCW (BOARD_KEYS + 1)
 #define SLOT_KNOB_PRESS (BOARD_KEYS + 2)
+#endif
 #if SLOT_COUNT > 63
 #error too many slots (docs/BOARD_INFO.md 1)
 #endif
@@ -76,8 +82,25 @@
 // after that long without input (0 or no settings slot = never).
 #define SLOT_SETTINGS (SLOT_LOCK + 1)
 
-// Config blob lives in the 128-byte DataFlash
+// Config blob size (HELLO bytes 7-8), per chip:
+// - CH552: the 128-byte DataFlash
+// - CH32V203C8 (flash 64 KB, RAM 20 KB): the last 4 KB of code flash
+//   (16 pages of 256 B at 0x0800F000). RAM holds 3 copies (storage blob/stage,
+//   HAL shadow) = 12 KB. Makefile.ch32v203 passes the same STORE_SIZE.
+#ifndef BLOB_CAPACITY
+#if BOARD_HAL_CH32V20X
+#define BLOB_CAPACITY 4096
+#else
 #define BLOB_CAPACITY 128
+#endif
+#endif
 #define BLOB_HEADER_SIZE 8
+
+// Position/length inside the blob: 8-bit keeps the CH552 code short
+#if BLOB_CAPACITY > 255
+typedef uint16_t blob_pos_t;
+#else
+typedef uint8_t blob_pos_t;
+#endif
 
 #endif

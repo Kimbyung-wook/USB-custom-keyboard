@@ -6,15 +6,14 @@
   Writes gui\_build_info.py with the current time as the build date, runs
   PyInstaller so the file is bundled into the exe, then deletes it again so
   running from source keeps showing "개발 실행". The version itself is
-  VERSION in gui\version.py.
+  VERSION in gui\core\version.py.
 
   The firmware uploader (CH55xDuino's vnproch55x.exe with its DLLs, LGPL-2.1;
   CH375DLL.dll is WCH's driver DLL) is bundled from the newest installed
   MCS51Tools, so [펌웨어 업데이트] works on a PC without Arduino.
 
-  Needs the GUI venv (gui\.venv) set up from gui\requirements.txt, which
-  includes PyInstaller:
-    gui\.venv\Scripts\python -m pip install -r gui\requirements.txt
+  Needs the uv environment (.venv in the repo root), which includes PyInstaller:
+    uv sync
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
@@ -27,9 +26,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path $PSScriptRoot -Parent
-$python = Join-Path $root 'gui\.venv\Scripts\python.exe'
+$python = Join-Path $root '.venv\Scripts\python.exe'
 $buildInfo = Join-Path $root 'gui\_build_info.py'
-if (-not (Test-Path $python)) { throw "GUI venv not found: $python" }
+if (-not (Test-Path $python)) { throw "venv not found: $python (run uv sync in the repo root)" }
 
 $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm'
 @(
@@ -39,7 +38,7 @@ $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm'
 
 $mode = if ($OneDir) { '--onedir' } else { '--onefile' }
 
-# Uploader for [펌웨어 업데이트], found by gui/flasher.py under uploader\
+# Uploader for [펌웨어 업데이트], found by gui/core/flasher.py under uploader\
 $toolsRoot = Join-Path $env:LOCALAPPDATA 'Arduino15\packages\CH55xDuino\tools\MCS51Tools'
 $toolDir = Get-ChildItem $toolsRoot -Directory -ErrorAction SilentlyContinue |
     Sort-Object Name -Descending | Select-Object -First 1
@@ -54,7 +53,7 @@ $binaries = foreach ($f in $uploaderFiles) {
 
 Push-Location $root
 try {
-    & $python -m PyInstaller --noconfirm $mode --windowed --name MacroKeyboardConfig `
+    & $python -m PyInstaller --noconfirm $mode --windowed --name MacroKeyboardConfig --specpath build `
         --paths . --hidden-import gui._build_info @binaries gui\main.py
     $code = $LASTEXITCODE
 } finally {
