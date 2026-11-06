@@ -72,7 +72,7 @@
 #define LOCK_MIN_STEPS 2          // 4 before 1.6.0
 #define LOCK_MAX_STEPS 8
 #define LOCK_MAX_FAILS 5          // then inputs are ignored until replugged
-#define LOCK_HOLD_MS 2000          // knob hold that starts a pattern entry (3000 before 1.3.1)
+#define LOCK_HOLD_MS 2000          // knob (or key, no knob) hold that starts a pattern entry (3000 before 1.3.1)
 // A pause this long cancels a pattern entry (unlock / re-lock)
 #define LOCK_UNLOCK_TIMEOUT_MS 10000
 #define LOCK_RELOCK_TIMEOUT_MS 10000

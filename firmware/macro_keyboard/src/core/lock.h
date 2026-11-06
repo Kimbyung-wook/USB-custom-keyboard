@@ -5,7 +5,8 @@
 
 // Input lock: with a stored lock pattern the keyboard starts locked, types
 // nothing and refuses READ/TEST/BOOT (docs/PROTOCOL.md "패턴 암호").
-// Holding the knob for LOCK_HOLD_MS starts a pattern entry: on a locked
+// Holding the knob (any key on a board without a knob) for LOCK_HOLD_MS
+// starts a pattern entry: on a locked
 // keyboard the pattern unlocks it, on an open one the same pattern locks it
 // again; five wrong re-lock tries lock it too. Outside an entry a locked
 // keyboard ignores every input. With auto-lock minutes stored, an open

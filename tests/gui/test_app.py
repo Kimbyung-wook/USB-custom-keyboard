@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 from gui.core import protocol as p  # noqa: E402
 from gui.ui.app import MainWindow, SAMPLE_SLOTS, make_mock_connector  # noqa: E402
 from gui.core.transport import MockDevice  # noqa: E402
+from gui.ui.widgets import DeviceView  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -373,4 +374,33 @@ def test_board_without_lock_feature_disables_lock_editor(qapp):
     assert w.connect_device()
     assert w.board.knobs == 0 and len(w.slots) == 9
     assert not w.lock_editor.isEnabled()
+    assert w.lock_editor.isHidden()          # no knob, no pattern: section not shown
+    # keys keep the 6-key picture's size on every board
+    assert {(b.width(), b.height()) for b in w.device_view.buttons} == {DeviceView.KEY}
+    w.close()
+
+
+def test_knobless_board_has_lock_editor(qapp):
+    from gui.core import boards
+    mock = MockDevice(board=boards.find("3X3V_RGB").layout)
+    w = MainWindow(make_mock_connector(mock), auto_reconnect=False)
+    assert w.connect_device()
+    assert w.lock_editor.isEnabled() and not w.lock_editor.isHidden()
+    assert len(w.lock_editor.input_buttons) == 9  # keys only, no knob steps
+    assert "아무 키 2초" in w.lock_editor.help_text()
+    assert "노브" not in w.lock_editor.help_text()
+    assert p.lock_error([3, 6], w.board) is None
+    w.close()
+
+
+def test_key_picture_not_squeezed(qapp):
+    mock = MockDevice(board=p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
+                                    features=p.BOARD_FEATURE_RGB_LED))
+    w = MainWindow(make_mock_connector(mock), auto_reconnect=False)
+    w.show()
+    assert w.connect_device()
+    w.resize(720, 100)                       # clamped to the minimum height
+    qapp.processEvents()
+    dv = w.device_view
+    assert dv.height() >= dv.minimumSizeHint().height()
     w.close()

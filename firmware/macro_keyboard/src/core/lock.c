@@ -122,7 +122,7 @@ void lock_input(__data uint8_t slot) {
   __xdata uint8_t *steps = storage_lock_steps();
   __data uint8_t match = 1;
 
-  // Outside a pattern entry (started by holding the knob) inputs are ignored
+  // Outside a pattern entry (started by a knob or key hold) inputs are ignored
   if (!lock_entering()) {
     return;
   }

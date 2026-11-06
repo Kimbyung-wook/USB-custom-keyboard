@@ -198,4 +198,4 @@ def test_lock_error_on_board_without_lock_feature():
     board = p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
                     features=p.BOARD_FEATURE_RGB_LED)
     assert p.lock_error([], board) is None
-    assert "노브" in p.lock_error([0, 1], board)
+    assert "쓸 수 없습니다" in p.lock_error([0, 1], board)

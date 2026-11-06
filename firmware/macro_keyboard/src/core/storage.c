@@ -94,7 +94,7 @@ static uint8_t parseStage(__data blob_pos_t totalLen, __data uint8_t fill) {
         return 0;
       }
 #if !(BOARD_FEATURES & BOARD_FEATURE_LOCK)
-      // No knob to start a pattern entry: a stored lock could never be opened
+      // A board without pattern entry: a stored lock could never be opened
       if (len != 0) {
         return 0;
       }

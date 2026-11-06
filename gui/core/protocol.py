@@ -141,6 +141,11 @@ class Board:
         knobs = f" + 노브 {self.knobs}" if self.knobs else ""
         return f"키 {self.keys}{knobs}"
 
+    @property
+    def hold_name(self) -> str:
+        """What to hold for 2 s to start a pattern entry (firmware input.c)."""
+        return "노브" if self.knobs else "아무 키"
+
 
 # The keyboard of this project; also assumed for firmware without board info
 DEFAULT_BOARD = Board()
@@ -159,7 +164,7 @@ def lock_error(lock: list[int], board: Board = DEFAULT_BOARD) -> str | None:
     if not lock:
         return None
     if not board.features & BOARD_FEATURE_LOCK:
-        return "이 보드는 노브가 없어 패턴 암호를 쓸 수 없습니다. 암호를 지우세요"
+        return "이 보드(펌웨어)는 패턴 암호를 쓸 수 없습니다. 암호를 지우세요"
     if any(not 0 <= s < board.slot_count for s in lock):
         return "패턴 암호에 알 수 없는 입력이 있습니다"
     if not LOCK_MIN_STEPS <= len(lock) <= LOCK_MAX_STEPS:
@@ -199,7 +204,7 @@ STATUS_MESSAGES_KO = {
     Status.TOO_BIG: "저장 용량을 초과했습니다",
     Status.FLASH_ERR: "장치의 Flash 지우기/쓰기에 실패했습니다",
     Status.BUSY: "장치가 문자열을 출력하는 중입니다. 잠시 후 다시 시도하세요",
-    Status.LOCKED: "장치가 잠겨 있습니다. 키보드에서 노브를 2초 누른 뒤 패턴 암호를 입력하세요",
+    Status.LOCKED: "장치가 잠겨 있습니다. 키보드에서 노브(노브 없는 보드는 아무 키)를 2초 누른 뒤 패턴 암호를 입력하세요",
 }
 
 

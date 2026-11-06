@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QButtonGroup, QFrame, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMenu,
-    QPlainTextEdit, QPushButton, QSizePolicy, QSpinBox, QTextEdit, QToolButton,
+    QMessageBox, QPlainTextEdit, QPushButton, QSizePolicy, QSpinBox, QTextEdit, QToolButton,
     QVBoxLayout, QWidget,
 )
 
@@ -23,6 +23,54 @@ SYNTAX_HELP = (
 )
 
 
+def help_button(parent: QWidget, title: str, text) -> QPushButton:
+    """A large "? 사용법" button that shows text() (rich text) in a dialog."""
+    btn = QPushButton("? 사용법")
+    font = btn.font()
+    font.setBold(True)
+    font.setPointSize(font.pointSize() + 1)
+    btn.setFont(font)
+    btn.setMinimumSize(100, 32)
+
+    def show() -> None:
+        box = QMessageBox(QMessageBox.Information, title, text(), QMessageBox.Ok, parent)
+        box.setTextFormat(Qt.RichText)
+        box.exec()
+
+    btn.clicked.connect(show)
+    return btn
+
+
+class WrapLabel(QLabel):
+    """Word-wrapped label that turns its wrapped height into a minimum height.
+
+    Qt box layouts treat height-for-width children as a hard demand and, when
+    QMainWindow (which ignores height-for-width) is shorter, squeeze every
+    sibling, clipping the key picture. A plain minimum height instead grows
+    the window's minimum size and leaves the squeezing to stretchy widgets."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None):
+        super().__init__(text, parent)
+        self.setWordWrap(True)
+
+    def hasHeightForWidth(self) -> bool:
+        return False
+
+    def _fit(self) -> None:
+        if self.width() > 0:
+            h = self.heightForWidth(self.width())
+            if h > 0 and h != self.minimumHeight():
+                self.setFixedHeight(h)    # spare height goes to stretchy widgets, not blank lines
+
+    def setText(self, text: str) -> None:
+        super().setText(text)
+        self._fit()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._fit()
+
+
 def _preview(text: str, limit: int = 12) -> str:
     one_line = text.replace("\n", "⏎")
     return one_line if len(one_line) <= limit else one_line[:limit - 1] + "…"
@@ -33,6 +81,10 @@ class DeviceView(QFrame):
     clicking selects a slot. Rebuilt by set_board for another keyboard."""
 
     slotSelected = Signal(int)
+    KEY = (150, 64)          # width, height of a key button
+    SMALL_KEY = (110, 52)    # more than 9 keys
+    KNOB_KEY_WIDTH = 104     # knob action buttons (as tall as the keys)
+    KNOB_SHORT = ("시계", "반시계", "누르기")   # button text; tooltips say it in full
 
     def __init__(self, parent: QWidget | None = None, board: p.Board = p.DEFAULT_BOARD):
         super().__init__(parent)
@@ -61,29 +113,36 @@ class DeviceView(QFrame):
         row = QHBoxLayout(self._body)
         row.setContentsMargins(0, 0, 0, 0)
 
+        # Keys keep one size on every board (the 6-key picture's), so 8/9-key
+        # boards look the same; only boards with many keys get smaller ones
         keys = QGridLayout()
         keys.setSpacing(8)
-        small = board.keys > 9
+        size = self.SMALL_KEY if board.keys > 9 else self.KEY
         for slot in range(board.keys):
             btn = self._make_button(slot)
-            btn.setMinimumSize(*((72, 56) if small else (96, 72)))
+            btn.setFixedSize(*size)
             keys.addWidget(btn, slot // board.cols, slot % board.cols)
-        row.addLayout(keys, 3)
+        row.addLayout(keys)
+        row.addStretch(1)
 
+        # Each knob in a 2x2 grid: counter-clockwise top left, clockwise top
+        # right, the knob bottom left, press bottom right. Rows of key height,
+        # so it lines up with the key rows.
+        h = size[1]
         for n in range(board.knobs):
-            knob_box = QVBoxLayout()
+            knob_box = QGridLayout()
+            knob_box.setSpacing(8)
             knob = QLabel("노브" if board.knobs == 1 else f"노브 {n + 1}")
             knob.setAlignment(Qt.AlignCenter)
-            knob.setFixedSize(72, 72)
-            knob.setStyleSheet("border: 3px solid palette(mid); border-radius: 36px; font-weight: bold;")
-            knob_box.addWidget(knob, 0, Qt.AlignHCenter)
-            for action in range(3):
+            knob.setFixedSize(h, h)
+            knob.setStyleSheet(f"border: 3px solid palette(mid); border-radius: {h // 2}px; font-weight: bold;")
+            knob_box.addWidget(knob, 1, 0, Qt.AlignCenter)
+            for action, (r, c) in zip(range(3), ((0, 1), (0, 0), (1, 1))):  # CW, CCW, PRESS
                 btn = self._make_button(board.knob_slot(n, action))
-                btn.setMinimumWidth(150)
-                knob_box.addWidget(btn)
-            knob_box.addStretch(1)
+                btn.setFixedSize(self.KNOB_KEY_WIDTH, h)
+                knob_box.addWidget(btn, r, c)
             row.addSpacing(16)
-            row.addLayout(knob_box, 1)
+            row.addLayout(knob_box)
 
         self._layout.addWidget(self._body)
         self.buttons[0].setChecked(True)
@@ -104,7 +163,7 @@ class DeviceView(QFrame):
         if knob is None:
             name = self.board.key_name(slot)
         else:
-            name = f"{p.KNOB_SYMBOLS[knob[1]]} {p.KNOB_ACTIONS_KO[knob[1]]}"
+            name = f"{p.KNOB_SYMBOLS[knob[1]]} {self.KNOB_SHORT[knob[1]]}"
         mark = " *" if modified else ""
         preview = _preview(text) if text else "(비어 있음)"
         length = macro.stored_length(text)  # bytes it takes in the device, macro text included
@@ -118,8 +177,9 @@ class DeviceView(QFrame):
         btn.setStyleSheet("color: #c62828;" if has_error else "")
 
 
-class MacroEditor(QWidget):
-    """Multi-line editor with live validation, highlighting and insert helpers."""
+class MacroEditor(QGroupBox):
+    """Multi-line editor with live validation, highlighting and insert helpers.
+    The box title names the slot being edited."""
 
     textEdited = Signal(str)
 
@@ -128,9 +188,7 @@ class MacroEditor(QWidget):
               "{CTRL+SHIFT+ESC}", "{ALT+TAB}", "{ALT+F4}", "{WIN+R}", "{WIN+D}", "{WIN+E}"]
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.title = QLabel()
-        self.title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        super().__init__("키 편집", parent)
 
         self.edit = QPlainTextEdit()
         self.edit.setTabChangesFocus(True)
@@ -151,22 +209,16 @@ class MacroEditor(QWidget):
         tools.addWidget(self._menu_button("조합키 ▾", self.COMBOS))
         tools.addWidget(self._menu_button("특수 키 ▾", [f"{{{k}}}" for k in macro.KEY_NAMES]))
         tools.addStretch(1)
+        self.help_btn = help_button(self, "매크로 문법", lambda: SYNTAX_HELP)
+        tools.addWidget(self.help_btn)
 
-        self.status = QLabel()
-        self.status.setWordWrap(True)
+        self.status = WrapLabel()
         self.status.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
-        help_label = QLabel(SYNTAX_HELP)
-        help_label.setWordWrap(True)
-        help_label.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
-
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self.title)
         lay.addLayout(tools)
         lay.addWidget(self.edit, 1)
         lay.addWidget(self.status)
-        lay.addWidget(help_label)
 
         self.errors: list[macro.MacroError] = []
         self._loading = False
@@ -183,7 +235,7 @@ class MacroEditor(QWidget):
         return b
 
     def set_slot(self, slot: int, text: str) -> None:
-        self.title.setText(f"{self.board.slot_label(slot)} 편집")
+        self.setTitle(f"{self.board.slot_label(slot)} 편집")
         self._loading = True
         try:
             self.edit.setPlainText(text)
@@ -239,15 +291,22 @@ class MacroEditor(QWidget):
             self.status.setText("\n".join(lines))
 
 
-# (topic, explanation) rows of the help under the pattern buttons
-LOCK_HELP = (
-    ("꽂으면", "잠김 (LED 꺼짐, 가끔 빨강 깜빡) · 키를 눌러도 반응 없음 · GUI 읽기·테스트 입력 안 됨"),
-    ("풀기", "노브 2초 → 빨강 켜짐 → 패턴 입력 → 파랑"),
-    ("다시 잠그기", "풀린 상태에서 노브 2초 → 같은 패턴 (5번 틀려도 잠김)"),
-    ("자동 잠금", "풀린 뒤 정한 시간 동안 입력이 없으면 잠김 (0분 = 안 함)"),
-    ("5번 틀리면", "빨강이 계속 깜빡이고 입력을 막음 → 다시 꽂기"),
-    ("비워 두면", "잠금을 쓰지 않음"),
-)
+def lock_help(board: p.Board) -> tuple[tuple[str, str], ...]:
+    """(topic, explanation) rows of the help under the pattern buttons."""
+    hold = board.hold_name
+    rows = [
+        ("꽂으면", "잠김 (LED 꺼짐, 가끔 빨강 깜빡) · 키를 눌러도 반응 없음 · GUI 읽기·테스트 입력 안 됨"),
+        ("풀기", f"{hold} 2초 → 빨강 켜짐 → 패턴 입력 → 파랑"),
+        ("다시 잠그기", f"풀린 상태에서 {hold} 2초 → 같은 패턴 (5번 틀려도 잠김)"),
+    ]
+    if not board.knobs:
+        rows.append(("키 입력", "암호가 있으면 키를 뗄 때 입력됨 (2초 누르면 입력 없이 패턴 입력 시작)"))
+    rows += [
+        ("자동 잠금", "풀린 뒤 정한 시간 동안 입력이 없으면 잠김 (0분 = 안 함)"),
+        ("5번 틀리면", "빨강이 계속 깜빡이고 입력을 막음 → 다시 꽂기"),
+        ("비워 두면", "잠금을 쓰지 않음"),
+    ]
+    return tuple(rows)
 
 
 def help_table(rows: tuple[tuple[str, str], ...]) -> str:
@@ -298,11 +357,10 @@ class LockPatternEditor(QGroupBox):
         top.addWidget(self.display)
         top.addStretch(1)
         top.addWidget(self.status)
-
-        help_label = QLabel(help_table(LOCK_HELP))
-        help_label.setTextFormat(Qt.RichText)
-        help_label.setWordWrap(True)
-        help_label.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
+        # How to use it, in a dialog instead of under the buttons (keeps the window short)
+        self.help_btn = help_button(self, "패턴 암호 사용법", self.help_text)
+        top.addSpacing(8)
+        top.addWidget(self.help_btn)
 
         self.autolock_spin = QSpinBox()
         self.autolock_spin.setRange(0, p.AUTOLOCK_MAX_MINUTES)
@@ -310,8 +368,7 @@ class LockPatternEditor(QGroupBox):
         self.autolock_spin.setSpecialValueText("0분 (끔)")
         self.autolock_spin.setToolTip(AUTOLOCK_HELP)
         self.autolock_spin.valueChanged.connect(self.autolockChanged.emit)
-        self.autolock_note = QLabel()
-        self.autolock_note.setWordWrap(True)
+        self.autolock_note = WrapLabel()
         self.autolock_note.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
         autolock = QHBoxLayout()
         autolock.addWidget(QLabel("자동 잠금:"))
@@ -322,8 +379,10 @@ class LockPatternEditor(QGroupBox):
         lay.addLayout(top)
         lay.addLayout(inputs)
         lay.addLayout(autolock)
-        lay.addWidget(help_label)
         self._refresh()
+
+    def help_text(self) -> str:
+        return help_table(lock_help(self.board))
 
     def _make_inputs(self) -> None:
         for slot in range(self.board.slot_count):

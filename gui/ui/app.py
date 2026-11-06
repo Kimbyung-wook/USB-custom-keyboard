@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QVBoxLayout, QWidget,
+    QMessageBox, QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from ..core import backup, boards, macro
@@ -19,9 +19,9 @@ from ..core.device import DeviceClient, DeviceError, DeviceStatusError, NotConne
 from ..core.transport import HidTransport, MockDevice, Transport, TransportError
 from ..core.version import VERSION, version_text
 from .flash_dialog import FirmwareDialog
-from .widgets import DeviceView, LockPatternEditor, MacroEditor
+from .widgets import DeviceView, LockPatternEditor, MacroEditor, WrapLabel
 
-APP_TITLE = "매크로 키보드 설정 (6키 + 노브)"
+APP_TITLE = "매크로 키보드 설정"
 DEFAULT_CAPACITY = 128  # firmware v1.0 stores the blob in the 128-byte DataFlash
 POLL_INTERVAL_MS = 2000
 TEST_COUNTDOWN_S = 3
@@ -38,7 +38,8 @@ class MainWindow(QMainWindow):
     def __init__(self, connect_fn: Callable[[], Transport], *, auto_reconnect: bool = True,
                  mock_label: str = ""):
         super().__init__()
-        self.setWindowTitle(f"{APP_TITLE} v{VERSION}" + (f" — {mock_label}" if mock_label else ""))
+        self._mock_label = mock_label
+        self.setWindowTitle(f"{APP_TITLE} v{VERSION}")
         self.resize(900, 780)
 
         self._connect_fn = connect_fn
@@ -77,9 +78,8 @@ class MainWindow(QMainWindow):
 
         # Connection bar
         conn = QHBoxLayout()
-        self.conn_label = QLabel()
+        self.conn_label = WrapLabel()
         self.conn_label.setTextFormat(Qt.RichText)
-        self.conn_label.setWordWrap(True)
         self.connect_btn = QPushButton("연결")
         self.connect_btn.clicked.connect(self.toggle_connection)
         self.refresh_btn = QPushButton("새로고침")
@@ -91,9 +91,10 @@ class MainWindow(QMainWindow):
         # Board list: picks the picture while no keyboard is connected; a
         # connected keyboard sets it by itself (HELLO board info)
         self.board_combo = QComboBox()
-        self.board_combo.setToolTip("연결 전에 보드를 골라 화면 구성을 미리 볼 수 있습니다. 연결되면 자동으로 맞춰집니다")
+        self.board_combo.setToolTip(BOARD_COMBO_HINT)
+        # Short names keep the status text beside it wide; the description is the item tooltip
         for spec in boards.BOARDS:
-            self.board_combo.addItem(f"{spec.name} - {spec.description}", spec.name)
+            self._add_board_item(spec.name, spec.description)
         self.board_combo.activated.connect(self._on_board_picked)
         conn.addWidget(self.conn_label, 1)
         conn.addWidget(self.board_combo)
@@ -108,6 +109,8 @@ class MainWindow(QMainWindow):
         self.device_view = DeviceView()
         self.device_view.slotSelected.connect(self.select_slot)
         dev_lay.addWidget(self.device_view)
+        # Keep the key picture at full height; the macro editor takes the spare space
+        dev_box.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         root.addWidget(dev_box)
 
         # Lock pattern
@@ -247,7 +250,8 @@ class MainWindow(QMainWindow):
             if info.blocked:
                 state, color = "🔒 잠김 - 5번 틀려서 입력을 막았습니다. 키보드를 다시 꽂으세요", "#c62828"
             elif info.locked:
-                state, color = "🔒 잠김 - 키보드에서 노브를 2초 누른 뒤 패턴 암호를 입력하세요", "#e65100"
+                state, color = (f"🔒 잠김 - 키보드에서 {info.board.hold_name}를 2초 누른 뒤 "
+                                "패턴 암호를 입력하세요", "#e65100")
             elif info.lock_flags & p.LOCK_FLAG_SET:
                 state, color = "● 연결됨 - 잠금 풀림", "#2e7d32"
             else:
@@ -273,13 +277,18 @@ class MainWindow(QMainWindow):
         if spec:
             self.set_board(spec.layout)
 
+    def _add_board_item(self, name: str, description: str) -> None:
+        self.board_combo.addItem(name, name)
+        self.board_combo.setItemData(self.board_combo.count() - 1, description, Qt.ToolTipRole)
+
     def _sync_board_combo(self) -> None:
         """Show the current board in the list (a board we do not list is added)."""
         i = self.board_combo.findData(self.board.name)
         if i < 0:
-            self.board_combo.addItem(f"{self.board.name} - {self.board.summary}", self.board.name)
+            self._add_board_item(self.board.name, self.board.summary)
             i = self.board_combo.count() - 1
         self.board_combo.setCurrentIndex(i)
+        self.board_combo.setToolTip(f"{self.board_combo.itemData(i, Qt.ToolTipRole) or ''}\n{BOARD_COMBO_HINT}")
         self.board_combo.setEnabled(not self.connected)
 
     def _refresh_buttons(self) -> None:
@@ -295,18 +304,23 @@ class MainWindow(QMainWindow):
         for w in (self.device_view, self.editor, self.export_btn, self.import_btn):
             w.setEnabled(on)
         supported = not on or self.client.info.supports_lock
-        # A board without a knob cannot start the pattern entry, so a pattern would lock it for good
+        # A board whose firmware has no lock would refuse a pattern (storage.c)
         board_lock = bool(self.board.features & p.BOARD_FEATURE_LOCK)
+        # Hidden on boards that cannot lock, unless a stored pattern must be cleared
+        self.lock_editor.setVisible(board_lock or bool(self.lock))
         self.lock_editor.setEnabled(on and ((supported and board_lock) or bool(self.lock)))  # still lets a pattern be cleared
         self.lock_editor.setToolTip(
             "" if supported and board_lock else
-            "이 보드는 노브가 없어 잠금을 쓸 수 없습니다" if supported else
+            "이 보드(펌웨어)는 잠금을 쓸 수 없습니다" if supported else
             "이 펌웨어는 잠금을 지원하지 않습니다 (펌웨어 v1.1 이상 필요)")
         self.lock_editor.set_autolock_supported(not on or self.client.info.supports_autolock)
 
     def _update_title(self) -> None:
-        base = self.windowTitle().lstrip("* ")
-        self.setWindowTitle(("* " if self.has_unsaved() else "") + base)
+        # The keyboard being edited (connected, or picked in the board list)
+        parts = [f"{APP_TITLE} v{VERSION}", f"{self.board.name} ({self.board.summary})"]
+        if self._mock_label:
+            parts.append(self._mock_label)
+        self.setWindowTitle(("* " if self.has_unsaved() else "") + " — ".join(parts))
 
     # ------------------------------------------------------------ slot editing
     def select_slot(self, slot: int) -> None:
@@ -411,7 +425,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("장치에 연결했습니다", 3000)
         if client.info.locked:
             self.statusBar().showMessage(
-                "장치가 잠겨 있습니다. 키보드에서 노브를 2초 누른 뒤 패턴 암호를 입력하면 설정을 읽어옵니다", 8000)
+                f"장치가 잠겨 있습니다. 키보드에서 {client.info.board.hold_name}를 2초 누른 뒤 "
+                "패턴 암호를 입력하면 설정을 읽어옵니다", 8000)
         elif not self.has_unsaved():
             self.read_from_device(confirm=False)
         else:
@@ -735,6 +750,7 @@ def parse_board(text: str) -> p.Board:
 
 
 # The mock acts like the newest firmware
+BOARD_COMBO_HINT = "연결 전에 보드를 골라 화면 구성을 미리 볼 수 있습니다. 연결되면 자동으로 맞춰집니다"
 MOCK_FEATURES = p.BOARD_FEATURE_RGB_LED | p.BOARD_FEATURE_LOCK | p.BOARD_FEATURE_AUTO_LOCK
 MOCK_FW = p.SHORT_LOCK_FIRMWARE      # takes 2-step patterns
 

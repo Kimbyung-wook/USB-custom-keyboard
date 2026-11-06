@@ -29,15 +29,25 @@ static __code int8_t encTable[16] = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1
 static __idata uint8_t encPrev;
 static __idata int8_t encCount;
 #define ENC_MIN_STEPS 2 // quadrature steps that make a detent (of 4)
-
-// Knob switch. With a lock pattern stored, a press is typed on release so
-// that holding it for LOCK_HOLD_MS can start a pattern entry instead.
-static __idata uint8_t knobHeld; // a press still waiting for release or the hold time
-static __idata uint16_t knobDownAt;
-
 #endif
 
+// Hold switch: holding it for LOCK_HOLD_MS starts a pattern entry. It is the
+// knob switch, or any key on a board without a knob. With a lock pattern
+// stored, its press is typed on release so that a hold can start the entry
+// instead.
+#if BOARD_KNOBS
+#define IS_HOLD_SWITCH(i) ((i) == KNOB_SWITCH)
+#define SWITCH_SLOT(i) ((i) == KNOB_SWITCH ? SLOT_KNOB_PRESS : (i))
+#else
+#define IS_HOLD_SWITCH(i) 1
+#define SWITCH_SLOT(i) (i)
+#endif
+#define NO_SWITCH 0xFF
+static __idata uint8_t heldSwitch; // press waiting for release or the hold time
+static __idata uint16_t heldAt;
+
 void input_init(void) {
+  heldSwitch = NO_SWITCH;
 #if BOARD_KNOBS
   encPrev = hal_encoder();
 #endif
@@ -56,23 +66,30 @@ void input_action(uint8_t slot) {
   }
 }
 
-#if BOARD_KNOBS
-static void knobDown(void) {
-  if (lock_entering() || !storage_lock_len()) {
-    input_action(SLOT_KNOB_PRESS);
-    return;
+// A press still waiting is a short press: act on it now
+static void releaseHeld(void) {
+  __data uint8_t sw = heldSwitch;
+  if (sw != NO_SWITCH) {
+    heldSwitch = NO_SWITCH;
+    input_action(SWITCH_SLOT(sw));
   }
-  knobHeld = 1;
-  knobDownAt = now16;
 }
 
-static void knobUp(void) {
-  if (knobHeld) {
-    knobHeld = 0;
-    input_action(SLOT_KNOB_PRESS); // a short press: typed when open
+static void switchDown(__data uint8_t i) {
+  if (!IS_HOLD_SWITCH(i) || lock_entering() || !storage_lock_len()) {
+    input_action(SWITCH_SLOT(i));
+    return;
+  }
+  releaseHeld(); // another key still down from before was pressed first
+  heldSwitch = i;
+  heldAt = now16;
+}
+
+static void switchUp(__data uint8_t i) {
+  if (heldSwitch == i) {
+    releaseHeld();
   }
 }
-#endif
 
 static void scanSwitches(void) {
   __data hal_sw_t switches = hal_switches();
@@ -87,26 +104,17 @@ static void scanSwitches(void) {
     } else if (pressed != keyStable[i] &&
                (uint16_t)(now16 - keyChangedAt[i]) >= DEBOUNCE_MS) {
       keyStable[i] = pressed;
-#if BOARD_KNOBS
-      if (i == KNOB_SWITCH) {
-        if (pressed) {
-          knobDown();
-        } else {
-          knobUp();
-        }
-      } else
-#endif
       if (pressed) {
-        input_action(i);
+        switchDown(i);
+      } else {
+        switchUp(i);
       }
     }
   }
-#if BOARD_KNOBS
-  if (knobHeld && (uint16_t)(now16 - knobDownAt) >= LOCK_HOLD_MS) {
-    knobHeld = 0;
+  if (heldSwitch != NO_SWITCH && (uint16_t)(now16 - heldAt) >= LOCK_HOLD_MS) {
+    heldSwitch = NO_SWITCH;
     lock_start_entry();
   }
-#endif
 }
 
 #if BOARD_KNOBS

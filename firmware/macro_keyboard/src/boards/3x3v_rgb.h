@@ -13,7 +13,8 @@
 #define BOARD_KEYS 9
 #define BOARD_KNOBS 0
 #define BOARD_ROWS 3
-#define BOARD_FEATURES BOARD_FEATURE_RGB_LED // no lock: entry is a knob hold
+// No knob: holding any key starts the pattern entry (src/core/input.c)
+#define BOARD_FEATURES (BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK)
 
 // Port 0 = A, 1 = B. Keys in slot order (row-major, 1-9), pressed = low,
 // internal pull-up. PA14/PA15 need SWJ off (hal_init). Key 7 is on PB2 (BOOT1).

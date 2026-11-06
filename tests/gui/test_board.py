@@ -115,7 +115,7 @@ def test_window_builds_the_connected_board(qapp, board):
     assert f"{board.name} ({board.summary})" in w.conn_label.text()
     last = board.slot_count - 1
     w.device_view.buttons[last].click()
-    assert w.current == last and board.slot_label(last) in w.editor.title.text()
+    assert w.current == last and board.slot_label(last) in w.editor.title()
     w.close()
 
 

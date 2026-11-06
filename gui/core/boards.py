@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import chips
-from .protocol import BOARD_FEATURE_RGB_LED, Board
+from .protocol import BOARD_FEATURE_AUTO_LOCK, BOARD_FEATURE_LOCK, BOARD_FEATURE_RGB_LED, Board
 
 # vnproch55x -c: the bootloader entry pin written with the firmware
 BOOT_P15 = 1        # P1.5 pull-down: hold the key on P1.5 while plugging in
@@ -64,10 +64,11 @@ BOARDS = (
               factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
                            "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
     # CH32V203C8U6, 9 keys, no knob (docs/PORT_CH32V203.md). The ROM bootloader needs
-    # the BOOT bridge; there is no software entry.
+    # the BOOT bridge; there is no software entry. Without a knob, holding any
+    # key starts the lock pattern entry.
     BoardSpec("3X3V_RGB", "9키 (3x3), 노브 없음, 줄별 RGB LED (CH32V203)",
               Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
-                    features=BOARD_FEATURE_RGB_LED),
+                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
               boot_config=0, boot_text="BOOT 브리지(BOOT1 아래 패드 2개)를 이은 채",
               factory_boot="BOOT 브리지를 이은 채 꽂으세요",
               flash_text=r"tools\flash.ps1 -Board 3x3v_rgb"),

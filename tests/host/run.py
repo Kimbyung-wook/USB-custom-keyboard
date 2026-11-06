@@ -302,9 +302,25 @@ def main() -> int:
               keys((0, 0x04), (0, 0x0c)))
         check("3X3V_RGB: a 10 ms bounce is not a key press",
               typed9(letters, "p4", "w10", "r4", "w300")[0], "")
-        lines = run(exe9, out, p.encode_blob(list("abcdefghi"), [3, 6]))
-        check("3X3V_RGB: a lock pattern is refused (no knob to open it)",
-              lines[2], f"commit status {p.Status.BAD_ARG}")
+        # No knob: holding any key starts the pattern entry (pattern D, G)
+        locked9 = p.encode_blob(list("abcdefghi"), [3, 6])
+        lines = run(exe9, out, locked9)
+        check("3X3V_RGB: a lock pattern commits", lines[2], "commit status 0")
+        unlock = ("p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p6", "w30", "r6", "w300")
+        check("3X3V_RGB: locked keys type nothing",
+              typed9(locked9, "p0", "w30", "r0", "p3", "w30", "r3", "p6", "w30", "r6", "w300")[0], "")
+        check("3X3V_RGB: key hold + pattern opens, then a key types on release",
+              typed9(locked9, *unlock, "p0", "w30", "r0", "w300")[0], keys((0, 0x04)))
+        check("3X3V_RGB: with a pattern, a held key types nothing before release",
+              typed9(locked9, *unlock, "p0", "w300")[0], "")
+        check("3X3V_RGB: with a pattern, rolled keys type both in order",
+              typed9(locked9, *unlock, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
+              keys((0, 0x04), (0, 0x0c)))
+        check("3X3V_RGB: wrong pattern stays locked",
+              typed9(locked9, "p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p5", "w30", "r5",
+                     "w300", "p0", "w30", "r0", "w300")[0], "")
+        check("3X3V_RGB: re-lock with key hold + pattern",
+              typed9(locked9, *unlock, *unlock, "p0", "w30", "r0", "w300")[0], "")
         lines = run(exe9, out, p.encode_blob(short, autolock=2), extra=["lock", "mmm"])
         check("3X3V_RGB: settings slot without a lock never locks",
               lock_states(lines)[-1], "open 0")
