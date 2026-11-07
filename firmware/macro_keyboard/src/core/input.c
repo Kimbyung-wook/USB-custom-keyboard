@@ -33,8 +33,9 @@ static __idata int8_t encCount;
 
 // Hold switch: holding it for LOCK_HOLD_MS starts a pattern entry. It is the
 // knob switch, or any key on a board without a knob. With a lock pattern
-// stored, its press is typed on release so that a hold can start the entry
-// instead.
+// stored, the knob press is typed on release so that a hold can start the
+// entry instead. A key on a board without a knob is typed on press anyway
+// (typing on release felt late); holding it to relock types it once first.
 #if BOARD_KNOBS
 #define IS_HOLD_SWITCH(i) ((i) == KNOB_SWITCH)
 #define SWITCH_SLOT(i) ((i) == KNOB_SWITCH ? SLOT_KNOB_PRESS : (i))
@@ -66,6 +67,7 @@ void input_action(uint8_t slot) {
   }
 }
 
+#if BOARD_KNOBS
 // A press still waiting is a short press: act on it now
 static void releaseHeld(void) {
   __data uint8_t sw = heldSwitch;
@@ -74,20 +76,29 @@ static void releaseHeld(void) {
     input_action(SWITCH_SLOT(sw));
   }
 }
+#endif
 
 static void switchDown(__data uint8_t i) {
   if (!IS_HOLD_SWITCH(i) || lock_entering() || !storage_lock_len()) {
     input_action(SWITCH_SLOT(i));
     return;
   }
+#if BOARD_KNOBS
   releaseHeld(); // another key still down from before was pressed first
+#else
+  input_action(SWITCH_SLOT(i)); // typed now; only the hold is timed
+#endif
   heldSwitch = i;
   heldAt = now16;
 }
 
 static void switchUp(__data uint8_t i) {
   if (heldSwitch == i) {
+#if BOARD_KNOBS
     releaseHeld();
+#else
+    heldSwitch = NO_SWITCH;
+#endif
   }
 }
 

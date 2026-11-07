@@ -46,8 +46,8 @@ uint16_t hal_ms(void) { return (uint16_t)now; }
 hal_sw_t hal_switches(void) { return switches; }
 uint8_t hal_encoder(void) { return encoderLines; }
 uint8_t kb_caps_lock(void) { return keyboardLedStatus & 0x02; }
-void hal_leds(uint8_t color, uint8_t mask, uint8_t maskColor) {
-  int frame = color << 16 | mask << 8 | maskColor;
+void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
+  int frame = color << 24 | mask << 8 | maskColor;
   if (frame != ledLast) printf(" L%u.%02x.%u", color, mask, maskColor);
   ledLast = frame;
 }

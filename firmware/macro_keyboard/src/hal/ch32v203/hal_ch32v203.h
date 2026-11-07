@@ -19,9 +19,8 @@ typedef uint16_t hal_sw_t; // 9 keys do not fit in 8 bits
 hal_sw_t hal_switches(void);
 
 extern const uint8_t hal_palette[][3];
-// One color for every LED line: the mask is never used
-void hal_leds_all(uint8_t color);
-#define hal_leds(color, mask, maskColor) hal_leds_all(color)
+// Every key LED in color, the keys in mask (bit i = key i) in maskColor
+void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor);
 
 // Config: RAM copy of the last BLOB_CAPACITY bytes of flash; hal_store_flush() writes it
 uint8_t hal_store_read(blob_pos_t addr);

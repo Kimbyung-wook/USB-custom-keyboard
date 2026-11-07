@@ -14,6 +14,18 @@
 #define LED_REFRESH_MS 200
 #define ENTRY_DARK_MS 150        // key LEDs: dark after a pattern step
 
+#ifndef BOARD_LED_SELF_TEST
+#define BOARD_LED_SELF_TEST 0
+#endif
+#if BOARD_LED_SELF_TEST
+// At power-up every LED shows red, green, blue, white, then off, so a dead
+// color or LED is seen at once
+#define SELF_TEST_STEP_MS 300
+static const uint8_t selfTestColors[] = {COLOR_RED, COLOR_TYPING, COLOR_IDLE, COLOR_SAVED, COLOR_OFF};
+#define SELF_TEST_STEPS (sizeof(selfTestColors) / sizeof(selfTestColors[0]))
+static __idata uint8_t selfTestDone;
+#endif
+
 // R, G, B per COLOR_* value (hal.h)
 __code uint8_t hal_palette[][3] = {
     {0, 0, 0},    // COLOR_OFF
@@ -33,20 +45,21 @@ static __idata uint16_t pressAt;
 static __idata uint16_t blinkAt; // start of the current locked blink period
 
 #if BOARD_KEY_LEDS
-#if BOARD_KEYS > 8 || BOARD_LED_COUNT != BOARD_KEYS
-#error key LEDs: one LED per key, at most 8
+#if BOARD_LED_COUNT != BOARD_KEYS
+#error key LEDs: one LED per key
 #endif
-#define ALL_KEYS ((1 << BOARD_KEYS) - 1)
-static __idata uint8_t greenKeys; // pressed during the current typing
-static __idata uint8_t darkKeys;  // pressed in a pattern entry, dark for a moment
+// Key masks are hal_sw_t (8 bits on CH552, 16 on CH32V)
+#define ALL_KEYS ((hal_sw_t)((1u << BOARD_KEYS) - 1))
+static __idata hal_sw_t greenKeys; // pressed during the current typing
+static __idata hal_sw_t darkKeys;  // pressed in a pattern entry, dark for a moment
 static __idata uint16_t darkAt;
-static __idata uint8_t ledMask;   // LEDs shown in ledMaskColor instead of ledColor
+static __idata hal_sw_t ledMask;   // LEDs shown in ledMaskColor instead of ledColor
 static __idata uint8_t ledMaskColor;
 
 // The key LED of an action; a knob action stands for all of them
-#define KEY_LEDS_OF(slot) ((slot) < BOARD_KEYS ? 1 << (slot) : ALL_KEYS)
+#define KEY_LEDS_OF(slot) ((slot) < BOARD_KEYS ? (hal_sw_t)(1u << (slot)) : ALL_KEYS)
 
-static void showLeds(uint8_t color, uint8_t mask, uint8_t maskColor) {
+static void showLeds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
   // Resend periodically even without a change, so a frame lost at power-up
   // does not leave the LED dark
   if (color == ledColor && mask == ledMask && maskColor == ledMaskColor &&
@@ -97,6 +110,17 @@ void led_saved(void) {
 void led_boot(void) { hal_leds(COLOR_BOOT, 0, COLOR_OFF); }
 
 void led_task(void) {
+#if BOARD_LED_SELF_TEST
+  if (!selfTestDone) {
+    // now16 counts from power-up; the test ends before it can wrap
+    uint16_t step = now16 / SELF_TEST_STEP_MS;
+    if (step < SELF_TEST_STEPS) {
+      showColor(selfTestColors[step]);
+      return;
+    }
+    selfTestDone = 1;
+  }
+#endif
   if (savedFlash) {
     if ((uint16_t)(now16 - savedAt) < SAVED_FLASH_MS) {
       showColor(COLOR_SAVED);

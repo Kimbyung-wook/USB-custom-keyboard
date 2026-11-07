@@ -47,30 +47,34 @@ hal_sw_t hal_switches(void) {
 }
 
 // ---- LEDs: software PWM on TIM3 ----
-// Each row has an R, G and B line shared by its 3 keys, low = lit. 16 levels
-// at 1 kHz. Full scale (palette value 40) differs per color because the green
-// LED is much brighter than red and blue.
+// RGB LED per key. Each row has an R, G and B cathode line shared by its 3
+// keys (low = lit); each key has its own anode pin (high = lit). The R, G and
+// B of one LED share the anode current: lit together only red shows (lowest
+// forward voltage). So the colors take turns: in a 16-tick phase one color's
+// cathode line is low on every row and each key's anode carries that key's
+// duty for the color. Only colors in use get a phase (one color: full time).
+// 16 kHz tick, 16 steps = 1 kHz per phase. Full scale (palette value 40)
+// differs per color because the green LED is much brighter.
 #define PWM_STEPS 16
 #define PALETTE_FULL 40
-static const uint8_t fullDuty[3] = {12, 3, 8}; // R, G, B at palette value 40
-// A row's R, G and B seem to share one resistor: lit together, only red shows
-// (lowest forward voltage). A mixed color (white, purple) therefore lights
-// one color at a time, each in its own 16-tick phase (1/3 brightness each).
-// A row with a single usable color line is never time-shared.
-static volatile uint8_t duty[3];
-static uint8_t rowShared[BOARD_LED_ROWS]; // row has more than one color line
-static volatile uint8_t mixed; // more than one color on
+static const uint8_t fullDuty[3] = {10, 7, 14}; // R, G, B at palette value 40 (tuned for white, 2026-11-07)
+static const uint8_t anodePins[BOARD_KEYS][2] = {BOARD_KEY_LED_PINS};
+static GPIO_TypeDef *anodePort[BOARD_KEYS];
+static uint16_t anodeMask[BOARD_KEYS];
+static volatile uint8_t keyDuty[BOARD_KEYS][3];
+static volatile uint8_t colorsOn; // bit c: some key uses color c
 static uint8_t tick;
-static uint8_t phase; // color allowed to light while mixed
+static uint8_t phase; // color lit in this phase
 
-void TIM3_IRQHandler(void) __attribute__((interrupt("machine")));
-void TIM3_IRQHandler(void) {
-  uint8_t t = tick;
-  uint8_t mix = mixed;
+static void anodesOff(void) {
+  for (uint8_t i = 0; i < BOARD_KEYS; i++) {
+    anodePort[i]->BCR = anodeMask[i];
+  }
+}
 
-  TIM3->INTFR = (uint16_t)~TIM_IT_Update;
+// Cathode line c of every row low (c > 2: all high)
+static void cathodes(uint8_t lit) {
   for (uint8_t row = 0; row < BOARD_LED_ROWS; row++) {
-    uint8_t shared = mix && rowShared[row];
     for (uint8_t c = 0; c < 3; c++) {
       uint8_t port = ledPins[row][c][0];
       uint32_t m;
@@ -78,42 +82,77 @@ void TIM3_IRQHandler(void) {
         continue;
       }
       m = 1u << ledPins[row][c][1];
-      if (t < duty[c] && (!shared || c == phase)) {
-        portPtr(port)->BCR = m; // lit
+      if (c == lit) {
+        portPtr(port)->BCR = m;
       } else {
         portPtr(port)->BSHR = m;
       }
     }
   }
-  tick = (uint8_t)((t + 1) & (PWM_STEPS - 1));
-  if (tick == 0) {
-    phase = phase == 2 ? 0 : (uint8_t)(phase + 1);
-  }
 }
 
-void hal_leds_all(uint8_t color) {
-  uint8_t on = 0;
-  for (uint8_t c = 0; c < 3; c++) {
-    duty[c] = (uint8_t)((hal_palette[color][c] * fullDuty[c] + PALETTE_FULL / 2) / PALETTE_FULL);
-    on += duty[c] != 0;
+void TIM3_IRQHandler(void) __attribute__((interrupt("machine")));
+void TIM3_IRQHandler(void) {
+  uint8_t t = tick;
+  uint8_t p = phase;
+
+  TIM3->INTFR = (uint16_t)~TIM_IT_Update;
+  if (t == 0) {
+    // Next color in use; anodes off first so no key flashes the old color
+    uint8_t on = colorsOn;
+    anodesOff();
+    if (on) {
+      do {
+        p = p >= 2 ? 0 : (uint8_t)(p + 1);
+      } while (!((on >> p) & 1));
+      cathodes(p);
+    } else {
+      cathodes(3);
+    }
+    phase = p;
   }
-  mixed = on > 1;
+  for (uint8_t i = 0; i < BOARD_KEYS; i++) {
+    if (t < keyDuty[i][p]) {
+      anodePort[i]->BSHR = anodeMask[i];
+    } else {
+      anodePort[i]->BCR = anodeMask[i];
+    }
+  }
+  tick = (uint8_t)((t + 1) & (PWM_STEPS - 1));
+}
+
+void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
+  uint8_t on = 0;
+  for (uint8_t i = 0; i < BOARD_KEYS; i++) {
+    uint8_t k = (mask >> i) & 1 ? maskColor : color;
+    for (uint8_t c = 0; c < 3; c++) {
+      uint8_t d = (uint8_t)((hal_palette[k][c] * fullDuty[c] + PALETTE_FULL / 2) / PALETTE_FULL);
+      keyDuty[i][c] = d;
+      if (d) {
+        on |= (uint8_t)(1u << c);
+      }
+    }
+  }
+  colorsOn = on;
 }
 
 static void ledInit(void) {
   TIM_TimeBaseInitTypeDef tb;
   NVIC_InitTypeDef nv;
 
+  for (uint8_t i = 0; i < BOARD_KEYS; i++) {
+    anodePort[i] = portPtr(anodePins[i][0]);
+    anodeMask[i] = (uint16_t)(1u << anodePins[i][1]);
+    anodePort[i]->BCR = anodeMask[i]; // dark
+    pinMode(anodePins[i][0], anodePins[i][1], GPIO_Mode_Out_PP);
+  }
   for (uint8_t row = 0; row < BOARD_LED_ROWS; row++) {
-    uint8_t lines = 0;
     for (uint8_t c = 0; c < 3; c++) {
       if (ledPins[row][c][0] != NO_PORT) {
-        lines++;
         GPIO_WriteBit(portPtr(ledPins[row][c][0]), (uint16_t)(1u << ledPins[row][c][1]), Bit_SET);
         pinMode(ledPins[row][c][0], ledPins[row][c][1], GPIO_Mode_Out_PP);
       }
     }
-    rowShared[row] = lines > 1;
   }
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   tb.TIM_Period = 62 - 1; // 1 MHz / 62 = 16 kHz
@@ -216,9 +255,8 @@ void hal_init(void) {
 
   Delay_Init(); // the USB driver uses Delay_Us/Delay_Ms
 
-  // Every free pin pulled up first, as in tests/hw/ch32v203: with the free pins
-  // left floating the LEDs stay dark (some free pin seems to switch the LED
-  // power; which one is unknown). Pull-ups only, never driven.
+  // Every free pin pulled up (unused pins not left floating). PB6/PB7 are USB.
+  // The LED anode pins among them are driven by ledInit.
   for (uint8_t bit = 0; bit < 16; bit++) {
     pinMode(0, bit, GPIO_Mode_IPU);
     if (bit != 6 && bit != 7) { // PB6/PB7: USBFS D-/D+

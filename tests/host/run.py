@@ -282,21 +282,27 @@ def main() -> int:
                   "L5.00.0 L0.00.0 L5.00.0 L5.08.0 L5.00.0 L1.00.0" if key_leds
                   else "L5.00.0 L0.00.0 L5.00.0 L1.00.0")
 
-        # 3X3V_RGB (CH32V203): 9 keys, no knob, no lock, LEDs per row
+        # 3X3V_RGB (CH32V203): 9 keys, no knob, LED per key (mask 9 bits)
         exe9 = build(out, "3X3V_RGB")
 
         def typed9(blob: bytes, *steps: str) -> tuple[str, str]:
             text = " ".join(run(exe9, out, blob, extra=["input", *steps])[3:])
             return (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)),
-                    " ".join(re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)))
+                    " ".join(re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)))
 
         lines = run(exe9, out, letters)
         check("3X3V_RGB: 9-slot blob commits", lines[2], "commit status 0")
         for i in range(9):
             check(f"3X3V_RGB: key {i + 1} types slot {i}",
                   typed9(letters, f"p{i}", "w30", f"r{i}", "w300")[0], keys((0, 0x04 + i)))
-        check("3X3V_RGB: key press lights green, then blue again",
-              typed9(letters, "p8", "w30", "r8", "w300")[1], "L1.00.0 L2.00.0 L1.00.0")
+        check("3X3V_RGB: key 9 press lights only key 9 green, then blue again",
+              typed9(letters, "w1600", "p8", "w30", "r8", "w300")[1].split(" ", 5)[5],
+              "L1.00.0 L1.100.2 L1.00.0")
+        check("3X3V_RGB: key 1 press lights only key 1 green",
+              typed9(letters, "w1600", "p0", "w30", "r0", "w300")[1].split(" ", 5)[5],
+              "L1.00.0 L1.01.2 L1.00.0")
+        check("3X3V_RGB: power-up LED test red, green, blue, white, off, then blue",
+              typed9(letters, "w1600")[1], "L5.00.0 L2.00.0 L1.00.0 L3.00.0 L0.00.0 L1.00.0")
         check("3X3V_RGB: two keys at once type both",
               typed9(letters, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
               keys((0, 0x04), (0, 0x0c)))
@@ -309,18 +315,18 @@ def main() -> int:
         unlock = ("p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p6", "w30", "r6", "w300")
         check("3X3V_RGB: locked keys type nothing",
               typed9(locked9, "p0", "w30", "r0", "p3", "w30", "r3", "p6", "w30", "r6", "w300")[0], "")
-        check("3X3V_RGB: key hold + pattern opens, then a key types on release",
+        check("3X3V_RGB: key hold + pattern opens, then a key types",
               typed9(locked9, *unlock, "p0", "w30", "r0", "w300")[0], keys((0, 0x04)))
-        check("3X3V_RGB: with a pattern, a held key types nothing before release",
-              typed9(locked9, *unlock, "p0", "w300")[0], "")
+        check("3X3V_RGB: with a pattern, a key types on press (before release)",
+              typed9(locked9, *unlock, "p0", "w300")[0], keys((0, 0x04)))
         check("3X3V_RGB: with a pattern, rolled keys type both in order",
               typed9(locked9, *unlock, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
               keys((0, 0x04), (0, 0x0c)))
         check("3X3V_RGB: wrong pattern stays locked",
               typed9(locked9, "p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p5", "w30", "r5",
                      "w300", "p0", "w30", "r0", "w300")[0], "")
-        check("3X3V_RGB: re-lock with key hold + pattern",
-              typed9(locked9, *unlock, *unlock, "p0", "w30", "r0", "w300")[0], "")
+        check("3X3V_RGB: re-lock with key hold + pattern (held key types once)",
+              typed9(locked9, *unlock, *unlock, "p0", "w30", "r0", "w300")[0], keys((0, 0x08)))
         lines = run(exe9, out, p.encode_blob(short, autolock=2), extra=["lock", "mmm"])
         check("3X3V_RGB: settings slot without a lock never locks",
               lock_states(lines)[-1], "open 0")

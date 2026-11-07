@@ -17,6 +17,7 @@ uint8_t hal_reset_cause(void);
 uint8_t hal_fault_read(uint32_t out[3]);
 
 void hal_gpio_input_pullup(uint8_t port, uint8_t bit);
+void hal_gpio_input_pulldown(uint8_t port, uint8_t bit); // weak, safe on a pin tied high or low
 void hal_gpio_output(uint8_t port, uint8_t bit);
 void hal_gpio_write(uint8_t port, uint8_t bit, uint8_t high);
 uint8_t hal_gpio_read(uint8_t port, uint8_t bit); // 1 = high

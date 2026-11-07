@@ -1,8 +1,9 @@
 #ifndef __MK_BOARD_3X3V_RGB_H__
 #define __MK_BOARD_3X3V_RGB_H__
 
-// 3X3V_RGB: 9-key (3 x 3) CH32V203C8U6 keyboard, no knob. Each row of three
-// keys has one R, G and B LED line shared by the row (not WS2812), active low.
+// 3X3V_RGB: 9-key (3 x 3) CH32V203C8U6 keyboard, no knob. RGB LED per key
+// (not WS2812): each row has R, G and B cathode lines shared by its 3 keys
+// (low = lit), each key has its own anode pin (high = lit).
 // Pins confirmed with tests/hw/ch32v203/test_ch32v203 (2026-11-05). HAL: src/hal/ch32v203.
 // The name must match gui/core/boards.py.
 
@@ -21,7 +22,7 @@
 #define BOARD_KEY_PINS                                                         \
   {1, 15}, {0, 14}, {0, 4}, {1, 10}, {0, 15}, {0, 3}, {1, 2}, {1, 11}, {1, 1}
 
-// LED lines per row {red, green, blue} as {port, bit}; low = lit.
+// LED cathode lines per row {red, green, blue} as {port, bit}; low = lit.
 // Row 1 red/green are PA11/PA12, the pins of the USBD controller (unused). USB
 // runs on USBFS = PB6/PB7 (datasheet 48-pin table; PB6 reads low = D- idle).
 #define BOARD_LED_ROWS 3
@@ -29,6 +30,12 @@
   {{0, 11}, {0, 12}, {0, 13}},                                                 \
   {{0, 8}, {0, 9}, {0, 10}},                                                   \
   {{0, 0}, {0, 1}, {0, 2}}
-#define BOARD_KEY_LEDS 0 // LEDs are per row, not per key
+// Anode pin per key, in slot order; high = lit. Found with the PWR mode of
+// tests/hw/ch32v203/test_ch32v203 (2026-11-07): pulled down, only that key went dark.
+#define BOARD_KEY_LED_PINS \
+  {1, 3}, {1, 4}, {1, 9}, {1, 14}, {1, 5}, {1, 8}, {1, 13}, {1, 12}, {1, 0}
+#define BOARD_LED_COUNT 9
+#define BOARD_KEY_LEDS 1 // only the pressed key's LED turns green
+#define BOARD_LED_SELF_TEST 1 // R, G, B, white, off at power-up (src/core/led.c)
 
 #endif

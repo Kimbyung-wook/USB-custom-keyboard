@@ -96,6 +96,10 @@ void hal_gpio_input_pullup(uint8_t port, uint8_t bit) {
   gpioSetup(port, bit, GPIO_Mode_IPU);
 }
 
+void hal_gpio_input_pulldown(uint8_t port, uint8_t bit) {
+  gpioSetup(port, bit, GPIO_Mode_IPD);
+}
+
 void hal_gpio_output(uint8_t port, uint8_t bit) {
   gpioSetup(port, bit, GPIO_Mode_Out_PP);
 }

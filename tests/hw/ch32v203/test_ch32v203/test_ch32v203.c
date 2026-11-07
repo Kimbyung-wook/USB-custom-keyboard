@@ -9,9 +9,15 @@
 
   A short press is a press released within 1 s; holding any key for 1 s is a
   long press. Every mode change is typed as "MODE: ...":
-                     KEYS -> FIND -> DUMP -> BOOT (jumps to the ISP bootloader) ...
+                     KEYS -> PWR -> FIND -> DUMP -> BOOT (jumps to the ISP bootloader) ...
       KEYS : (start) every press types the pin name, "PA0", and every release
              "PA0 up". Press every key once here first: FIND skips those pins.
+      PWR  : (3X3V_RGB) looks for the pins that power the LEDs. Every row is
+             lit blue. Step 1: each free pin in turn is pulled down for 3 s
+             ("DOWN PB05"), then back up. Step 2: all free pins pulled down
+             ("ALL DOWN"), then each alone pulled up for 3 s ("UP PB05").
+             Report which keys go dark (step 1) or light (step 2) for each
+             pin. Weak pulls only, never driven. Repeats until a long press.
       FIND : every pin that was not a key is driven low for 1 s ("L" typed),
              then high for 1 s ("H" typed), then released. "LED? PB3" is
              typed first. Report which pin lights which key, color, and
@@ -57,11 +63,26 @@ static uint32_t heldAt = 0;
 static uint8_t heldLong = 0;
 
 #define MODE_KEYS 0
-#define MODE_FIND 1
-#define MODE_DUMP 2
-#define MODE_BOOT 3
-#define NUM_MODES 4
-static const char *modeNames[NUM_MODES] = {"KEYS", "FIND", "DUMP", "BOOT"};
+#define MODE_PWR 1
+#define MODE_FIND 2
+#define MODE_DUMP 3
+#define MODE_BOOT 4
+#define NUM_MODES 5
+static const char *modeNames[NUM_MODES] = {"KEYS", "PWR", "FIND", "DUMP", "BOOT"};
+
+// PWR (3X3V_RGB): the free pins, i.e. not a key, LED line or USB (PB6/PB7)
+#define NUM_PWR 15
+static const uint8_t pwrPort[NUM_PWR] = {0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2};
+static const uint8_t pwrBit[NUM_PWR] = {5, 6, 7, 0, 3, 4, 5, 8, 9, 12, 13, 14, 13, 14, 15};
+// Blue line of each row: lit during PWR
+#define NUM_BLUE 3
+static const uint8_t bluePort[NUM_BLUE] = {0, 0, 0};
+static const uint8_t blueBit[NUM_BLUE] = {13, 10, 2};
+#define PWR_STEP_MS 3000
+#define PWR_GAP_MS 1000
+static uint8_t pwrStage; // 0 step 1, 1 step 2
+static uint8_t pwrIndex;
+static uint8_t pwrActive; // pin under test is pulled (1) or in the gap (0)
 
 #define PHASE_MS 1000
 
@@ -77,6 +98,13 @@ static void typePin(uint8_t i) {
   hal_hid_write('0' + pinBit[i] % 10);
 }
 
+static void typePort(uint8_t port, uint8_t bit) {
+  hal_hid_write('P');
+  hal_hid_write('A' + port);
+  hal_hid_write(bit >= 10 ? '1' : '0');
+  hal_hid_write('0' + bit % 10);
+}
+
 static void typeHex(uint32_t v) {
   for (int k = 28; k >= 0; k -= 4) {
     uint8_t d = (v >> k) & 15;
@@ -84,11 +112,13 @@ static void typeHex(uint32_t v) {
   }
 }
 
-// Drive pin i as an output, low first
-static void claimPin(uint8_t i) {
-  hal_gpio_output(pinPort[i], pinBit[i]);
-  hal_gpio_write(pinPort[i], pinBit[i], 0);
+// Drive a pin as an output, low first
+static void claimPinAt(uint8_t port, uint8_t bit) {
+  hal_gpio_output(port, bit);
+  hal_gpio_write(port, bit, 0);
 }
+
+static void claimPin(uint8_t i) { claimPinAt(pinPort[i], pinBit[i]); }
 
 static void releasePin(uint8_t i) {
   hal_gpio_input_pullup(pinPort[i], pinBit[i]);
@@ -143,10 +173,75 @@ static void dumpWords(uint32_t from, uint32_t count) {
   }
 }
 
+static void pwrAll(uint8_t up) {
+  for (uint8_t k = 0; k < NUM_PWR; k++) {
+    if (up) {
+      hal_gpio_input_pullup(pwrPort[k], pwrBit[k]);
+    } else {
+      hal_gpio_input_pulldown(pwrPort[k], pwrBit[k]);
+    }
+  }
+}
+
+static void pwrBlue(uint8_t on) {
+  for (uint8_t k = 0; k < NUM_BLUE; k++) {
+    if (on) {
+      claimPinAt(bluePort[k], blueBit[k]);
+    } else {
+      hal_gpio_input_pullup(bluePort[k], blueBit[k]);
+    }
+  }
+}
+
+// Start step `stage` with its first pin
+static void pwrStart(uint8_t stage) {
+  pwrStage = stage;
+  pwrIndex = 0;
+  pwrActive = 0;
+  pwrAll(stage == 0);
+  hal_hid_print(stage == 0 ? "STEP 1: DOWN one by one\n" : "STEP 2: ALL DOWN, UP one by one\n");
+  stepAt = hal_millis();
+}
+
+static void pwrTask(void) {
+  uint32_t now = hal_millis();
+
+  if (now - stepAt < (pwrActive ? PWR_STEP_MS : PWR_GAP_MS)) {
+    return;
+  }
+  if (pwrActive) { // end of a pin: back to the stage's resting pull
+    if (pwrStage == 0) {
+      hal_gpio_input_pullup(pwrPort[pwrIndex], pwrBit[pwrIndex]);
+    } else {
+      hal_gpio_input_pulldown(pwrPort[pwrIndex], pwrBit[pwrIndex]);
+    }
+    pwrActive = 0;
+    if (++pwrIndex == NUM_PWR) {
+      pwrStart(pwrStage ^ 1);
+      return;
+    }
+  } else {
+    hal_hid_print(pwrStage == 0 ? "DOWN " : "UP ");
+    typePort(pwrPort[pwrIndex], pwrBit[pwrIndex]);
+    hal_hid_write('\n');
+    if (pwrStage == 0) {
+      hal_gpio_input_pulldown(pwrPort[pwrIndex], pwrBit[pwrIndex]);
+    } else {
+      hal_gpio_input_pullup(pwrPort[pwrIndex], pwrBit[pwrIndex]);
+    }
+    pwrActive = 1;
+  }
+  stepAt = hal_millis();
+}
+
 static void setMode(uint8_t m) {
   if (mode == MODE_FIND && findIndex != NO_PIN) {
     releasePin(findIndex);
     findIndex = NO_PIN;
+  }
+  if (mode == MODE_PWR) {
+    pwrBlue(0);
+    pwrAll(1);
   }
   mode = m;
   stepAt = hal_millis();
@@ -154,7 +249,10 @@ static void setMode(uint8_t m) {
   hal_hid_print("MODE: ");
   hal_hid_print(modeNames[m]);
   hal_hid_write('\n');
-  if (m == MODE_FIND) {
+  if (m == MODE_PWR) {
+    pwrBlue(1);
+    pwrStart(0);
+  } else if (m == MODE_FIND) {
     findNext();
   } else if (m == MODE_DUMP) {
     dumpWords(0x1FFF8000u, 16);
@@ -184,7 +282,25 @@ static void updateLeds(void) {
   }
 }
 
-static uint8_t isOutput(uint8_t i) { return i == findIndex; }
+// Pins this mode pulls or drives itself: never read as keys
+static uint8_t isOutput(uint8_t i) {
+  if (i == findIndex) {
+    return 1;
+  }
+  if (mode == MODE_PWR) {
+    for (uint8_t k = 0; k < NUM_PWR; k++) {
+      if (pinPort[i] == pwrPort[k] && pinBit[i] == pwrBit[k]) {
+        return 1;
+      }
+    }
+    for (uint8_t k = 0; k < NUM_BLUE; k++) {
+      if (pinPort[i] == bluePort[k] && pinBit[i] == blueBit[k]) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
 
 static void scanInputs(void) {
   uint32_t now = hal_millis();
@@ -274,5 +390,8 @@ int main(void) {
   while (1) {
     scanInputs();
     updateLeds();
+    if (mode == MODE_PWR) {
+      pwrTask();
+    }
   }
 }

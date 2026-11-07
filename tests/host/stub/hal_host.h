@@ -24,7 +24,7 @@ hal_sw_t hal_switches(void);
 uint8_t hal_encoder(void);
 
 extern uint8_t hal_palette[][3];
-void hal_leds(uint8_t color, uint8_t mask, uint8_t maskColor);
+void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor);
 
 uint8_t hal_store_read(blob_pos_t addr);
 void hal_store_write(blob_pos_t addr, uint8_t value);
