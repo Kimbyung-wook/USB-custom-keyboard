@@ -24,7 +24,7 @@
 | 도구 | 용도 |
 |---|---|
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
-| `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능 |
+| `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. 9키 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
 | `tools/flash.ps1 -Board 3x3v_rgb` | 9키(CH32V203)를 자체 부트로더로 장입 (키 7). `-Full`: 부트로더째 wchisp로 (BOOT 브리지) |
 | `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행) |
@@ -212,6 +212,8 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 - `wchisp`가 못 찾으면: 브리지 접촉 확인, ROM 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
 - 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 ROM 부트로더)
 - ⚠️ 제조사 펌웨어는 읽기 보호: 장입하면 지워지고 되돌릴 수 없음
+- ⚠️ `-Full`은 설정도 지움 → 먼저 GUI로 백업. 자체 부트로더 업데이트는 설정 유지
+- 자세히: [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md) "설치·업데이트"
 
 ## 3. 동작
 

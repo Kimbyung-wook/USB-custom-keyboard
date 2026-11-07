@@ -21,6 +21,9 @@
 // internal pull-up. PA14/PA15 need SWJ off (hal_init). Key 7 is on PB2 (BOOT1).
 #define BOARD_KEY_PINS                                                         \
   {1, 15}, {0, 14}, {0, 4}, {1, 10}, {0, 15}, {0, 3}, {1, 2}, {1, 11}, {1, 1}
+// Held at power-up = our bootloader (firmware/bootloader_ch32v203): slot index
+// into BOARD_KEY_PINS, key 7 = bottom left. gui/core/boards.py boot_key matches.
+#define BOARD_BOOT_KEY 6
 
 // LED cathode lines per row {red, green, blue} as {port, bit}; low = lit.
 // Row 1 red/green are PA11/PA12, the pins of the USBD controller (unused). USB

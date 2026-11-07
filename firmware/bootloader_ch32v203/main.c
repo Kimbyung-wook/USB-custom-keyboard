@@ -1,7 +1,11 @@
 // CH32V203 bootloader for the macro keyboard (docs/BOOTLOADER_CH32V203.md).
-// Stays when key 7 (PB2) is held at power-up, the app left the RAM mark, or the
-// app info is missing/bad; otherwise jumps to the app at 0x08002000.
+// Stays when the board's boot key (BOARD_BOOT_KEY, 3X3V_RGB: key 7 = PB2) is
+// held at power-up, the app left the RAM mark, or the app info is missing/bad;
+// otherwise jumps to the app at 0x08002000.
 // While staying: all LEDs purple, vendor HID 1209:C55E (HELLO/ERASE/WRITE/CHECK/RUN).
+// Pins come from the app's board file (src/boards/<board>.h, included by the
+// Makefile): BOARD_NAME, BOARD_KEY_PINS, BOARD_BOOT_KEY, BOARD_LED_PINS,
+// BOARD_KEY_LED_PINS.
 #include "ch32v20x.h"
 #include "ch32v20x_flash.h"
 #include "boot_layout.h"
@@ -10,8 +14,8 @@
 
 #define BL_VER_MAJOR 1
 #define BL_VER_MINOR 0
-#ifndef BOARD_NAME
-#define BOARD_NAME "3X3V_RGB"
+#if !defined(BOARD_NAME) || !defined(BOARD_KEY_PINS) || !defined(BOARD_BOOT_KEY)
+#error "board file needs BOARD_NAME, BOARD_KEY_PINS and BOARD_BOOT_KEY"
 #endif
 
 // ---- time: SysTick at HCLK/8 = 6 MHz ----
@@ -31,46 +35,61 @@ static void pin_mode(GPIO_TypeDef *g, uint8_t pin, uint32_t mode) {
   *cr = (*cr & ~(0xFu << sh)) | (mode << sh);
 }
 
-// 3X3V_RGB LEDs (src/boards/3x3v_rgb.h): row cathodes on PA (low = lit),
-// per-key anodes on PB (high = lit). Red and blue together show only red, so
-// purple alternates them.
-static const uint8_t led_red[3] = {11, 8, 0}, led_green[3] = {12, 9, 1},
-                     led_blue[3] = {13, 10, 2};
-static const uint8_t led_anode[9] = {3, 4, 9, 14, 5, 8, 13, 12, 0};
-#define KEY7_PIN 2 // PB2
+// Pins as {port, bit}, port 0 = A, 1 = B, 2 = C
+typedef struct {
+  uint8_t port, bit;
+} pin_t;
+static GPIO_TypeDef *port_of(uint8_t p) { return p == 0 ? GPIOA : p == 1 ? GPIOB : GPIOC; }
+static void pin_out(pin_t p, int high) {
+  port_of(p.port)->BSHR = 1u << (p.bit + (high ? 0 : 16));
+  pin_mode(port_of(p.port), p.bit, 0x2);
+}
+static void pin_set(pin_t p, int high) { port_of(p.port)->BSHR = 1u << (p.bit + (high ? 0 : 16)); }
+
+static const pin_t key_pins[] = {BOARD_KEY_PINS};
+#define boot_key (key_pins[BOARD_BOOT_KEY])
+_Static_assert(BOARD_BOOT_KEY < sizeof key_pins / sizeof key_pins[0], "BOARD_BOOT_KEY");
+
+// LEDs: per row, R/G/B cathode lines (low = lit); per key, an anode (high =
+// lit) when the board has them. Red and blue together show only red, so purple
+// alternates them.
+#ifdef BOARD_LED_PINS
+static const pin_t led_rows[][3] = {BOARD_LED_PINS};
+#define LED_ROWS (sizeof led_rows / sizeof led_rows[0])
+#endif
+#ifdef BOARD_KEY_LED_PINS
+static const pin_t led_anodes[] = {BOARD_KEY_LED_PINS};
+#define LED_ANODES (sizeof led_anodes / sizeof led_anodes[0])
+#endif
 
 static void led_init(void) {
-  // SWJ off: PA13 (blue row 1) and PB3/PB4 (anodes) are debug pins
+  // SWJ off: SWD/JTAG pins (PA13-PA15, PB3, PB4) may be LEDs
   AFIO->PCFR1 = (AFIO->PCFR1 & ~(7u << 24)) | (4u << 24);
-  for (int r = 0; r < 3; r++) {
-    GPIOA->BSHR = (1u << led_red[r]) | (1u << led_green[r]) | (1u << led_blue[r]);
-    pin_mode(GPIOA, led_red[r], 0x2);
-    pin_mode(GPIOA, led_green[r], 0x2);
-    pin_mode(GPIOA, led_blue[r], 0x2);
-  }
-  for (int k = 0; k < 9; k++) {
-#ifdef DIAG
-    GPIOB->BSHR = 1u << (led_anode[k] + (k ? 16 : 0)); // key 1 only
-#else
-    GPIOB->BSHR = 1u << led_anode[k];
+#ifdef BOARD_LED_PINS
+  for (unsigned r = 0; r < LED_ROWS; r++)
+    for (int c = 0; c < 3; c++)
+      pin_out(led_rows[r][c], 1);
 #endif
-    pin_mode(GPIOB, led_anode[k], 0x2);
-  }
+#ifdef BOARD_KEY_LED_PINS
+  for (unsigned k = 0; k < LED_ANODES; k++)
+#ifdef DIAG
+    pin_out(led_anodes[k], k == 0); // key 1 only
+#else
+    pin_out(led_anodes[k], 1);
+#endif
+#endif
 }
 
 // phase 0 = off, 1 = red, 2 = blue, 3 = green
 static void led_phase(int phase) {
-  uint32_t on = 0, all = 0;
-  for (int r = 0; r < 3; r++) {
-    all |= (1u << led_red[r]) | (1u << led_blue[r]) | (1u << led_green[r]);
-    if (phase == 1)
-      on |= 1u << led_red[r];
-    if (phase == 2)
-      on |= 1u << led_blue[r];
-    if (phase == 3)
-      on |= 1u << led_green[r];
-  }
-  GPIOA->BSHR = (all & ~on) | (on << 16); // set = off, reset = lit
+#ifdef BOARD_LED_PINS
+  static const int8_t color[4] = {-1, 0, 2, 1}; // phase -> R/G/B index
+  for (unsigned r = 0; r < LED_ROWS; r++)
+    for (int c = 0; c < 3; c++)
+      pin_set(led_rows[r][c], c != color[phase]); // high = off
+#else
+  (void)phase;
+#endif
 }
 
 static uint32_t busy_t; // last erase/write: blink for a while after it
@@ -126,13 +145,17 @@ static int app_valid(void) {
 }
 
 // ---- start-up decision ----
-static int key7_held(void) {
-  RCC->APB2PCENR |= RCC_APB2Periph_GPIOB;
-  GPIOB->BSHR = 1u << KEY7_PIN; // pull-up
-  pin_mode(GPIOB, KEY7_PIN, 0x8);
+// Boot key pressed = low (internal pull-up), 20 reads 1 ms apart
+static int boot_key_held(void) {
+  GPIO_TypeDef *g = port_of(boot_key.port);
+  RCC->APB2PCENR |= RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
+                    RCC_APB2Periph_AFIO;
+  AFIO->PCFR1 = (AFIO->PCFR1 & ~(7u << 24)) | (4u << 24); // SWJ off: the key may be PA13-PA15
+  g->BSHR = 1u << boot_key.bit; // pull-up
+  pin_mode(g, boot_key.bit, 0x8);
   delay_ms(1);
   for (int i = 0; i < 20; i++) {
-    if (GPIOB->INDR & (1u << KEY7_PIN))
+    if (g->INDR & (1u << boot_key.bit))
       return 0;
     delay_ms(1);
   }
@@ -141,7 +164,8 @@ static int key7_held(void) {
 
 static void jump_app(void) {
   SysTick->CTLR = 0;
-  RCC->APB2PRSTR = RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO;
+  RCC->APB2PRSTR = RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
+                   RCC_APB2Periph_AFIO;
   RCC->APB2PRSTR = 0;
   RCC->APB2PCENR = 0;
   __asm volatile("li t0, 0x8\n csrc mstatus, t0" ::: "t0"); // MIE off
@@ -271,11 +295,11 @@ int main(void) {
   int stay = *mark == BOOT_MARK_ENTER;
   *mark = 0;
   if (!stay)
-    stay = key7_held();
+    stay = boot_key_held();
   if (!stay && app_valid())
     jump_app();
 
-  RCC->APB2PCENR |= RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO;
+  RCC->APB2PCENR |= RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
   led_init();
   usb_init();
   static uint8_t rq[64], rs[64];

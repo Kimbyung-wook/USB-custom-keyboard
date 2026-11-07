@@ -77,6 +77,15 @@ BOARDS = (
               factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) BOOT 브리지(BOOT1 아래 패드 2개)를 "
                            r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board 3x3v_rgb -Full을 실행하세요 (wchisp)",
               flash_text=r"tools\flash.ps1 -Board 3x3v_rgb -Full"),
+    # CH32V203C8U6, 8 keys (2 x 4), no knob, same scheme as 3X3V_RGB; boot key 5
+    # (bottom left, PA5). Pins: firmware/macro_keyboard/src/boards/2x4v_rgb.h
+    BoardSpec("2X4V_RGB", "8키 (2x4), 노브 없음, 키별 RGB LED (CH32V203)",
+              Board(keys=8, knobs=0, rows=2, name="2X4V_RGB", chip_id=0x19,
+                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
+              boot_config=0, boot_key="5", hidboot=True,
+              factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) BOOT 브리지(BOOT1 아래 패드 2개)를 "
+                           r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board 2x4v_rgb -Full을 실행하세요 (wchisp)",
+              flash_text=r"tools\flash.ps1 -Board 2x4v_rgb -Full"),
 )
 
 

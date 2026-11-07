@@ -34,7 +34,9 @@
 |---|---|
 | **키 D를 누른 채 USB 연결** | ROM 부트로더(P1.5) |
 | **노브를 누른 채 USB 연결** | 펌웨어가 부트로더로 점프 (키 D 방법이 안 될 때의 예비) |
-| GUI의 BOOT 명령 | 지원함(GUI 화면에는 아직 버튼 없음). 잠긴 동안에는 거부 |
+| GUI의 BOOT 명령 | GUI 업데이트 창 [업데이트 모드로 전환]. 잠긴 동안에는 거부 |
+
+- CH32V203(3X3V_RGB): **키 7을 누른 채 USB 연결** 또는 BOOT 명령 → 자체 HID 부트로더(보라). 처음 한 번만 BOOT 브리지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md))
 
 ### 잠금
 
@@ -74,7 +76,9 @@
 ## 빌드
 
 - **CH32V203 보드(3X3V_RGB)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
-  (경로·주의점은 [PORT_CH32V203](../../docs/PORT_CH32V203.md), [test_ch32v203](../test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
+  (경로·주의점은 [PORT_CH32V203](../../docs/PORT_CH32V203.md), [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
+  - `BOOTLOADER ?= 1`(기본): 자체 부트로더용. 앱 시작 0x08002000, 최대 52992 B. `BOOTLOADER=0`은 예전 배치(바꾸면 `rm -rf build`)
+  - 보통은 `tools\build_fw.ps1 -Board 3x3v_rgb` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요
@@ -165,6 +169,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 - 이 펌웨어(v1.0 이상)가 이미 올라가 있으면 **GUI의 [펌웨어 업데이트]** 사용
 - 잠금이 풀린 키보드는 GUI가 BOOT 명령으로 업데이트 모드에 넣음 → 키 D 누를 필요 없음([사용 설명서 8장](../../docs/MANUAL.md#8-펌웨어-업데이트))
+- CH32V203(3X3V_RGB): 처음 한 번 BOOT 브리지 + `tools\flash.ps1 -Board 3x3v_rgb -Full`, 이후 GUI 업데이트 창 ([사용 설명서 10장](../../docs/MANUAL.md#펌웨어-올리기))
 
 **스크립트**
 

@@ -15,7 +15,7 @@
     P36           = D+ pull-up (1.5-2 kOhm between chip pin 12 and pin 16)
 
   CH32V203 (-Board 3x3v_rgb): our own HID bootloader (docs/BOOTLOADER_CH32V203.md).
-  Plug in while holding key 7 (purple LEDs), or pass -Enter when the keyboard runs
+  Plug in while holding the bottom-left key (3x3v_rgb: 7, 2x4v_rgb: 5; purple LEDs), or pass -Enter when the keyboard runs
   unlocked; then gui\core\hidboot.py writes -Bin (default: the tools\build_fw.ps1
   result, linked at 0x08002000) and starts it. The settings stay.
   -Full: first install through the ROM bootloader. Connect the BOOT bridge, plug in,
@@ -36,10 +36,10 @@ param(
     [ValidateSet('P15', 'P36')][string]$BootPin = 'P15',
     [ValidateRange(1, 255)][int]$TimeoutSec = 60,
     # CH32V203 boards
-    [ValidateSet('', '3x3v_rgb')][string]$Board = '',
+    [ValidateSet('', '3x3v_rgb', '2x4v_rgb')][string]$Board = '',
     [string]$Bin,
     [switch]$Full,     # bootloader + app with wchisp (BOOT bridge), first install
-    [switch]$Enter,    # send BOOT to the running app instead of holding key 7
+    [switch]$Enter,    # send BOOT to the running app instead of holding the boot key
     [string]$Wchisp = 'C:\Users\user\tools\wchisp\wchisp-win-x64\wchisp.exe'
 )
 
@@ -48,6 +48,7 @@ $ErrorActionPreference = 'Stop'
 if ($Board) {
     $root = Split-Path $PSScriptRoot -Parent
     $name = $Board.ToUpper()
+    $bootKey = @{ "3x3v_rgb" = "7"; "2x4v_rgb" = "5" }[$Board] # bottom-left key, BOARD_BOOT_KEY
     if (-not $Full) {
         if (-not $Bin) { $Bin = Join-Path $root "firmware\macro_keyboard\build\ch32v203\macro_keyboard-$name.bin" }
         if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: tools\build_fw.ps1 -Board $Board)" }
@@ -57,7 +58,7 @@ if ($Board) {
             $extra = @('--enter')
         } else {
             $extra = @()
-            Write-Host "1. Unplug the keyboard, hold key 7 and plug it in (all LEDs purple)."
+            Write-Host "1. Unplug the keyboard, hold key $bootKey and plug it in (all LEDs purple)."
             Read-Host "   Press Enter when the LEDs are purple" | Out-Null
         }
         Push-Location $root
@@ -108,7 +109,7 @@ if ($Board) {
     if ($code -eq 0) {
         Write-Host "3. Remove the BOOT bridge and replug USB (with the bridge it starts the ROM bootloader again)."
         Write-Host "4. Check: uv run python tools\check_device.py"
-        Write-Host "   Later updates: tools\flash.ps1 -Board $Board (key 7, no bridge)"
+        Write-Host "   Later updates: tools\flash.ps1 -Board $Board (key $bootKey, no bridge)"
     }
     exit $code
 }

@@ -174,13 +174,13 @@ def wait_for_bootloader(wait_s: float) -> bytes:
         if paths:
             return paths[0]
         time.sleep(0.2)
-    raise BootError("부트로더를 찾을 수 없습니다 (키 7을 누른 채 USB를 꽂으세요)")
+    raise BootError("부트로더를 찾을 수 없습니다 (왼쪽 아래 키를 누른 채 USB를 꽂으세요: 9키 7, 8키 5)")
 
 
 def open_first(wait_s: float = 0.0) -> Bootloader:
     paths = find_paths() if wait_s <= 0 else [wait_for_bootloader(wait_s)]
     if not paths:
-        raise BootError("부트로더를 찾을 수 없습니다 (키 7을 누른 채 USB를 꽂으세요)")
+        raise BootError("부트로더를 찾을 수 없습니다 (왼쪽 아래 키를 누른 채 USB를 꽂으세요: 9키 7, 8키 5)")
     return Bootloader(HidTransport(paths[0]))
 
 

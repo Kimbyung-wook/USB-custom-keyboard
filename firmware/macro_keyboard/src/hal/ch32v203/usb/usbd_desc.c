@@ -132,10 +132,14 @@ const uint8_t MyProdInfo[ ]  =
     0x1E, 0x03, 'M', 0, 'i', 0, 'n', 0, 'i', 0, ' ', 0, 'M', 0, 'a', 0, 'c', 0, 'r', 0, 'o', 0, ' ', 0, 'K', 0, 'b', 0, 'd', 0
 };
 
-/* Serial Number Information */
+/* Serial Number Information: the board name (8 characters, e.g. "2X4V_RGB"),
+   so Windows keeps the 8-key and 9-key boards apart */
+#include "config.h"
+_Static_assert(sizeof(BOARD_NAME) == 9, "serial string expects an 8-character board name");
+#define SN_CH(i) (uint8_t)BOARD_NAME[i], 0
 const uint8_t  MySerNumInfo[ ] =
 {
-    0x12, 0x03, '3', 0, 'X', 0, '3', 0, 'V', 0, '_', 0, 'R', 0, 'G', 0, 'B', 0
+    0x12, 0x03, SN_CH(0), SN_CH(1), SN_CH(2), SN_CH(3), SN_CH(4), SN_CH(5), SN_CH(6), SN_CH(7)
 };
 
 #endif // __riscv

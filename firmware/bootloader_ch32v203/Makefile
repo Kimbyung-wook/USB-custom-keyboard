@@ -24,7 +24,9 @@ WCHISP ?= wchisp
 PYTHON ?= python
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8
-DEFS := -DSYSCLK_FREQ_48MHz_HSI -DBOARD_NAME=\"$(BOARD)\"
+# Pins, name and boot key from the app's board file (src/boards/<board>.h)
+BOARD_FILE := $(APPDIR)/src/boards/$(shell echo $(BOARD) | tr A-Z a-z).h
+DEFS := -DSYSCLK_FREQ_48MHz_HSI -include $(BOARD_FILE)
 # DIAG=1: LEDs show how far USB enumeration got (main.c)
 ifeq ($(DIAG),1)
 DEFS += -DDIAG
@@ -39,7 +41,9 @@ LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUI
 SRCS_ASM := startup_ch32v20x_D6.S
 SRCS_C := main.c usb_hid.c system_ch32v20x.c ch32v20x_flash.c
 VPATH := . $(EXAM)/SRC/Startup $(PERIPH)/src $(USERD)
-OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
+# Objects per board (and DIAG): the board file is compiled in
+OBJDIR := $(BUILD)/obj-$(BOARD)$(if $(filter 1,$(DIAG)),-diag)
+OBJS := $(addprefix $(OBJDIR)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
 
 all: $(BUILD)/$(TARGET).bin
 
@@ -59,7 +63,7 @@ $(BUILD)/$(TARGET).bin: $(BUILD)/$(TARGET).elf
 $(BUILD)/src/%.c: %.c | $(BUILD)/src
 > sed -e 's/WCH-Interrupt-fast/machine/g' -e 's|^#define SYSCLK_FREQ_96MHz_HSE|//&|' $< > $@
 
-$(BUILD)/%.o: $(BUILD)/src/%.c | $(BUILD)
+$(OBJDIR)/%.o: $(BUILD)/src/%.c $(BOARD_FILE) | $(OBJDIR)
 > $(CC) $(CFLAGS) $(INCS) -c $< -o $@
 
 # No CSR 0xbc0 write (write-once); main in machine mode (mstatus MPP = 3) so the
@@ -67,10 +71,10 @@ $(BUILD)/%.o: $(BUILD)/src/%.c | $(BUILD)
 $(BUILD)/src/%.S: %.S | $(BUILD)/src
 > sed -e '/csrw[[:space:]]*0xbc0/d' -e 's/li t0, 0x88[[:space:]]*$$/li t0, 0x1888/' $< > $@
 
-$(BUILD)/%.o: $(BUILD)/src/%.S | $(BUILD)
+$(OBJDIR)/%.o: $(BUILD)/src/%.S | $(OBJDIR)
 > $(CC) $(ASFLAGS) $(INCS) -c $< -o $@
 
-$(BUILD) $(BUILD)/src:
+$(BUILD) $(BUILD)/src $(OBJDIR):
 > mkdir -p $@
 
 app:

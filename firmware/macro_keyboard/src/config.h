@@ -48,6 +48,8 @@
 #include "boards/mk6k1nl.h"
 #elif defined(BOARD_3X3V_RGB)
 #include "boards/3x3v_rgb.h"
+#elif defined(BOARD_2X4V_RGB)
+#include "boards/2x4v_rgb.h"
 #else
 #include "boards/mk6k1n.h"
 #endif

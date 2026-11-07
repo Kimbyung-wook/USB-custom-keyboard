@@ -1,6 +1,7 @@
 # 키보드별 핀 배치
 
 - 이 프로젝트가 지원하는 키보드(보드)의 핀 연결
+- 이 문서: CH552G 보드 두 개. 9키 3X3V_RGB(CH32V203)는 [BOARD_3X3V_RGB.md](BOARD_3X3V_RGB.md), 8키 2X4V_RGB는 [BOARD_2X4V_RGB.md](BOARD_2X4V_RGB.md)
 - 두 보드 모두 칩은 **CH552G**(SOP-16), 키·노브 핀이 같음. **LED만 다름**
 
 | 보드 | 생김새 | LED | 확인한 테스트 펌웨어 | 보드 파일 |

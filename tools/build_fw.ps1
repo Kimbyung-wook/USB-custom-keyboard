@@ -18,7 +18,7 @@
   tools\flash.ps1, and a copy named macro_keyboard-<BOARD>.hex, the file the
   GUI's firmware update window offers first for that board.
 
-  CH32V203 boards (3x3v_rgb) build with Makefile.ch32v203 instead (xPack
+  CH32V203 boards (3x3v_rgb, 2x4v_rgb) build with Makefile.ch32v203 instead (xPack
   riscv-none-elf-gcc, mingw32-make, WCH EVT SDK; paths in -GccBin, -Sdk).
   Result: firmware\macro_keyboard\build\ch32v203\macro_keyboard-<BOARD>.bin (app
   at 0x08002000, flashed with tools\flash.ps1 -Board 3x3v_rgb or the GUI: key 7),
@@ -33,7 +33,7 @@
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board 3x3v_rgb
 #>
 param(
-    [ValidateSet('mk6k1n', 'mk6k1nl', '3x3v_rgb')]
+    [ValidateSet('mk6k1n', 'mk6k1nl', '3x3v_rgb', '2x4v_rgb')]
     [string]$Board = 'mk6k1n',
     # CH32V203 only
     [string]$GccBin = 'C:\Users\user\tools\gcc\xpack-riscv-none-elf-gcc-15.2.0-1\bin',
@@ -46,6 +46,7 @@ $boardChips = @{
     mk6k1n     = 'ch552'
     mk6k1nl    = 'ch552'
     '3x3v_rgb' = 'ch32v203'
+    '2x4v_rgb' = 'ch32v203'
 }
 $chipFqbns = @{
     ch552 = 'CH55xDuino:mcs51:ch552:usb_settings=user266,bootloader_pin=p15'
