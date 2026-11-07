@@ -26,7 +26,7 @@
 | **3X3V_RGB** | **2X4V_RGB** |
 | ![3X3V_RGB 키 배치](images/buttons_3x3v_rgb.svg) | ![2X4V_RGB 키 배치](images/buttons_2x4v_rgb.svg) |
 
-- 주황 = 부트로더 진입 키. 그림 다시 그리기: [BOARD_MK6K1N.md](board/BOARD_MK6K1N.md) "그림 다시 그리기"
+- 주황 = 부트로더 진입 키. 칩 핀맵 그림(`pinmap_<보드>.svg`)은 각 보드 문서 3절. 그림 다시 그리기: [board/_TEMPLATE.md](board/_TEMPLATE.md#그림-만들기)
 
 ## 펌웨어 업데이트
 
@@ -62,9 +62,13 @@
 
 ### 세부 문서 목차 (보드 공통)
 
-1. 개요: 제품, 칩, 구성, 보드 파일, 확인 근거
-2. 키 배치 (그림: `tools/draw_pinmap.py`로 그려 `docs/images/`에 둠)
-3. LED
-4. 부팅·장입: 진입 방법, 처음 설치
-5. 본 펌웨어에서의 동작
-6. 확인 결과
+- 양식(절 제목, 표 열, 그림): [board/_TEMPLATE.md](board/_TEMPLATE.md)
+
+1. 개요: 제품, 칩, 구성, 개발 보드 UID, 확인 근거
+2. 버튼 배치와 매핑: 그림 `buttons_<보드>.svg` + 표(키, 슬롯, GPIO, 칩 핀, LED)
+3. 칩 핀맵: 그림 `pinmap_<보드>.svg` + 표(핀 번호, 이름, 용도)
+4. LED
+5. 부팅·장입: 진입 키, 처음 설치, 평소 업데이트
+6. 본 펌웨어에서의 동작: 보드 파일, 빌드, 다른 점
+7. 확인 결과
+- 이력은 각 절 끝 **이력**

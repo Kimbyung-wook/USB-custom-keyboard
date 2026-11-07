@@ -157,10 +157,11 @@ stateDiagram-v2
 | 공통 | [PROTOCOL.md](docs/PROTOCOL.md) | 펌웨어와 GUI가 공유하는 Vendor HID 설정 통신 규격 |
 | 보드 요약 | [BOARDS.md](docs/BOARDS.md) | **보드마다 다른 점 한 표**: 칩, 키/노브, LED, 저장 용량, 부트로더·진입 키, 처음 설치, 펌웨어 파일 |
 | 보드 추가 | [NEW_BOARD.md](docs/NEW_BOARD.md) | 새 키보드를 이 펌웨어로 바꾸는 절차: 식별, 안전, 진입 방법, 핀 찾기, 보드 파일, 설치·확인, 문서화 |
-| 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. CH552G 핀, 노브 신호, 핀 그림 |
-| 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. LED 체인 |
-| 보드 세부 | [board/BOARD_3X3V_RGB.md](docs/board/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 핀, LED, 부팅, 확인 결과 |
-| 보드 세부 | [board/BOARD_2X4V_RGB.md](docs/board/BOARD_2X4V_RGB.md) | 8키 (CH32V203). 핀, LED, 부팅, 확인 결과 |
+| 보드 추가 | [board/_TEMPLATE.md](docs/board/_TEMPLATE.md) | 보드 문서 양식(절 순서, 표 열), 그림 다시 그리기 |
+| 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. 버튼 매핑, CH552G 칩 핀맵, 노브 신호 |
+| 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
+| 보드 세부 | [board/BOARD_3X3V_RGB.md](docs/board/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 | [board/BOARD_2X4V_RGB.md](docs/board/BOARD_2X4V_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
 | 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |
 | 옛 문서 | [old/PORT_CH32V203.md](docs/old/PORT_CH32V203.md) | CH32V203 이식 계획·기록 (끝남) |

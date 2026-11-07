@@ -4,7 +4,8 @@ pinmap_*.svg: the CH552G (SOP-16) as seen from the top, pins 1-8 down the
 left side, 16-9 down the right side, each with what it is wired to.
 buttons_*.svg: the keyboard as seen from the top, each key and the knob
 with its GPIO, chip pin and slot (and LED, on boards with one per key).
-CH32V203 boards: buttons_<board>.svg (key pin, slot, anode, cathode group)
+CH32V203 boards: buttons_<board>.svg (key pin, slot, anode, cathode group),
+pinmap_<board>.svg (the 48-pin chip with what each pin is wired to)
 and leds_<board>.svg (cathode lines x per-key anodes).
 
 Run from the repo root:  uv run python tools\\draw_pinmap.py
@@ -368,9 +369,127 @@ def draw_rgb_leds(board: str) -> str:
     return svg_wrap(width, height, parts)
 
 
+# CH32V203C8 pins 1-48 as in the datasheet's LQFP48 (C8T6) table. The boards
+# carry the QFN48 (C8U6); its numbering is assumed to be the same and still
+# needs checking against the C8U6 datasheet table (docs say "확인 필요").
+CH32_PINS = (
+    "VBAT", "PC13", "PC14", "PC15", "PD0", "PD1", "NRST", "VSSA", "VDDA", "PA0", "PA1", "PA2",
+    "PA3", "PA4", "PA5", "PA6", "PA7", "PB0", "PB1", "PB2", "PB10", "PB11", "VSS", "VDD",
+    "PB12", "PB13", "PB14", "PB15", "PA8", "PA9", "PA10", "PA11", "PA12", "PA13", "VSS", "VDD",
+    "PA14", "PA15", "PB3", "PB4", "PB5", "PB6", "PB7", "BOOT0", "PB8", "PB9", "VSS", "VDD",
+)
+CH32_POWER = {"VBAT", "VSSA", "VDDA", "VSS", "VDD"}
+CH32_NOTES = {"PA13": "SWDIO", "PA14": "SWCLK", "PA15": "JTDI", "PB2": "BOOT1"}
+
+
+def ch32_uses(board: str) -> dict[str, tuple[str, str]]:
+    """GPIO name -> (what it is wired to, kind) on a CH32V203 board."""
+    b = RGB_BOARDS[board]
+    uses: dict[str, tuple[str, str]] = {}
+    for i, (pin, anode, _) in enumerate(b["keys"]):
+        boot = i == b["boot"]
+        uses[pin] = (f"키 {i + 1} · 슬롯 {i}" + (" · 진입 키" if boot else ""), "boot" if boot else "key")
+        uses[anode] = (f"키 {i + 1} LED 양극", "led")
+    for name, _, *pins in b["groups"]:
+        for (color, _), pin in zip(LED_RGB, pins):
+            uses[pin] = (f"{name} {color} 음극", "led")
+    uses["PB6"] = ("USB D− (USBFS)", "usb")
+    uses["PB7"] = ("USB D+ (USBFS)", "usb")
+    uses["BOOT0"] = ("ROM 부트로더 선택 (브리지 확인 필요)", "boot")
+    uses["NRST"] = ("리셋", "power")
+    uses.setdefault("PB2", ("풀다운으로 보임 · 키 아님", "none"))
+    return uses
+
+
+def ch32_label(name: str, uses: dict[str, tuple[str, str]]) -> tuple[str, str]:
+    if name in CH32_POWER:
+        return ("전원" if name.startswith(("VDD", "VBAT")) else "GND"), "power"
+    text, kind = uses.get(name, ("미사용", "none"))
+    if name in CH32_NOTES:
+        text += f" ({CH32_NOTES[name]})"
+    return text, kind
+
+
+def draw_ch32_pinmap(board: str) -> str:
+    """CH32V203C8 (48 pins, 12 a side) from the top with what this board wires to each pin."""
+    uses = ch32_uses(board)
+    side, pitch, first, stub = 460, 30, 65, 16
+    x0, y0 = 320, 380                  # chip body
+    gap, bw, bh = 40, 250, 22          # pin -> label box
+    width, height = x0 + side + gap + bw + 30, y0 + side + gap + bw + 80
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        f'{escape(RGB_BOARDS[board]["title"])} 칩 핀맵 (CH32V203C8U6, 윗면)</text>',
+        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#c62828">'
+        '핀 번호는 자료표 LQFP48(C8T6) 배치 기준. QFN48(C8U6) 번호는 확인 필요</text>',
+        f'<rect x="{x0}" y="{y0}" width="{side}" height="{side}" rx="10" fill="#37474f" stroke="#263238" stroke-width="2"/>',
+        f'<circle cx="{x0 + 22}" cy="{y0 + 22}" r="7" fill="#cfd8dc"/>',
+        f'<text x="{x0 + side / 2}" y="{y0 + side / 2 - 8}" text-anchor="middle" font-size="22" font-weight="bold" '
+        'fill="#ffffff">CH32V203C8U6</text>',
+        f'<text x="{x0 + side / 2}" y="{y0 + side / 2 + 16}" text-anchor="middle" font-size="13" fill="#cfd8dc">'
+        'QFN48 · 윗면 · ● = 1번 핀</text>',
+    ]
+    for n, name in enumerate(CH32_PINS, start=1):
+        text, kind = ch32_label(name, uses)
+        fill, stroke = COLORS[kind]
+        dash = ' stroke-dasharray="4 4"' if kind == "none" else ""
+        k = (n - 1) % 12
+        label = f'<tspan font-weight="bold">{n}</tspan> {name}'
+        if n <= 12:      # left side, top to bottom
+            y = y0 + first + k * pitch
+            parts.append(f'<rect x="{x0 - stub}" y="{y - 5}" width="{stub}" height="10" fill="#b0bec5" stroke="#78909c"/>')
+            parts.append(f'<text x="{x0 + 10}" y="{y + 4}" font-size="11" fill="#ffffff">{label}</text>')
+            parts.append(f'<line x1="{x0 - gap}" y1="{y}" x2="{x0 - stub}" y2="{y}" stroke="{stroke}" stroke-width="2"{dash}/>')
+            bx, by, tr = x0 - gap - bw, y - bh / 2, ""
+        elif n <= 36 and n >= 25:   # right side, bottom to top
+            y = y0 + side - first - k * pitch
+            parts.append(f'<rect x="{x0 + side}" y="{y - 5}" width="{stub}" height="10" fill="#b0bec5" stroke="#78909c"/>')
+            parts.append(f'<text x="{x0 + side - 10}" y="{y + 4}" text-anchor="end" font-size="11" fill="#ffffff">'
+                         f'{name} <tspan font-weight="bold">{n}</tspan></text>')
+            parts.append(f'<line x1="{x0 + side + stub}" y1="{y}" x2="{x0 + side + gap}" y2="{y}" stroke="{stroke}" '
+                         f'stroke-width="2"{dash}/>')
+            bx, by, tr = x0 + side + gap, y - bh / 2, ""
+        else:            # bottom (13-24, left to right) or top (37-48, right to left); text turned upward
+            bottom = n <= 24
+            x = x0 + first + k * pitch if bottom else x0 + side - first - k * pitch
+            if bottom:
+                parts.append(f'<rect x="{x - 5}" y="{y0 + side}" width="10" height="{stub}" fill="#b0bec5" stroke="#78909c"/>')
+                parts.append(f'<text transform="translate({x + 4} {y0 + side - 10}) rotate(-90)" font-size="11" '
+                             f'fill="#ffffff">{label}</text>')
+                parts.append(f'<line x1="{x}" y1="{y0 + side + stub}" x2="{x}" y2="{y0 + side + gap}" stroke="{stroke}" '
+                             f'stroke-width="2"{dash}/>')
+                tr = f' transform="translate({x} {y0 + side + gap}) rotate(-90)"'
+                bx, by = -bw, -bh / 2
+            else:
+                parts.append(f'<rect x="{x - 5}" y="{y0 - stub}" width="10" height="{stub}" fill="#b0bec5" stroke="#78909c"/>')
+                parts.append(f'<text transform="translate({x + 4} {y0 + 10}) rotate(-90)" text-anchor="end" font-size="11" '
+                             f'fill="#ffffff">{name} <tspan font-weight="bold">{n}</tspan></text>')
+                parts.append(f'<line x1="{x}" y1="{y0 - gap}" x2="{x}" y2="{y0 - stub}" stroke="{stroke}" '
+                             f'stroke-width="2"{dash}/>')
+                tr = f' transform="translate({x} {y0 - gap}) rotate(-90)"'
+                bx, by = 0, -bh / 2
+        parts.append(f'<g{tr}><rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="5" fill="{fill}" '
+                     f'stroke="{stroke}" stroke-width="1.5"/>'
+                     f'<text x="{bx + bw / 2}" y="{by + 15}" text-anchor="middle" font-size="12">{escape(text)}</text></g>')
+    legend = [("key", "키"), ("boot", "진입 키 · BOOT"), ("led", "LED"), ("usb", "USB"),
+              ("power", "전원 · 리셋"), ("none", "미사용")]
+    lx = 20
+    for kind, label in legend:
+        fill, stroke = COLORS[kind]
+        parts.append(f'<rect x="{lx}" y="{height - 30}" width="16" height="16" rx="3" fill="{fill}" stroke="{stroke}"/>')
+        parts.append(f'<text x="{lx + 22}" y="{height - 17}" font-size="13">{label}</text>')
+        lx += 46 + sum(14 if ord(c) > 127 else 8 for c in label)
+    parts.append(f'<text x="{width - 20}" y="{height - 17}" text-anchor="end" font-size="12" fill="#757575">'
+                 f'{board} · tools/draw_pinmap.py</text>')
+    return svg_wrap(width, height, parts)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
+        "pinmap_3x3v_rgb.svg": draw_ch32_pinmap("3X3V_RGB"),
+        "pinmap_2x4v_rgb.svg": draw_ch32_pinmap("2X4V_RGB"),
         "buttons_3x3v_rgb.svg": draw_rgb_buttons("3X3V_RGB"),
         "leds_3x3v_rgb.svg": draw_rgb_leds("3X3V_RGB"),
         "buttons_2x4v_rgb.svg": draw_rgb_buttons("2X4V_RGB"),

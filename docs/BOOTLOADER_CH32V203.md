@@ -6,7 +6,7 @@
 - 배경: WCH ROM 부트로더는 소프트웨어로 들어가도 앱으로 돌려보냄 ([시험](../tests/hw/ch32v203/test_ch32v203/README.md) "실험: 소프트웨어로 부트로더 진입")
 - 대상: 3X3V_RGB(진입 키 7), 2X4V_RGB(진입 키 5). 진입 키·LED 핀은 보드 파일에서 읽음(`BOARD_BOOT_KEY`, `BOARD_KEY_PINS`, `BOARD_LED_PINS`, `BOARD_KEY_LED_PINS`)
 - 상태: 구현·빌드 완료(부트로더 4.4 KB), PC 쪽 pytest 통과. 하드웨어 확인: 설치, 앱 시작, 키 7 진입·HELLO, HID 앱 장입(키 7, BOOT 명령 모두), 장입 뒤 설정 유지, GUI 업데이트 창, 장입 중 뽑기 → 다시 장입. 8키(2X4V_RGB): 설치, 키 5 진입, HID 장입 확인
-  - 9키 장치의 부트로더는 아직 이전 빌드(보드 파일에서 핀을 읽기 전, 키 7 고정). 동작은 같고, 다음 `-Full` 장입 때 바뀜
+  - 9키 장치는 1.7.0 `-Full`로 부트로더를 새 빌드로 바꿈. 8키 장치는 이전 빌드 그대로(보드 이름을 2X4V_RGB로 알려 장입에 문제없음)
 
 ## 결정
 
@@ -62,7 +62,7 @@
 
 ## 빌드
 
-- `tools\build_fw.ps1 -Board 3x3v_rgb`: 앱 + 부트로더 + 전체 이미지
+- `tools\build_fw.ps1 -Board 3x3v_rgb`(8키는 `2x4v_rgb`, 아래 파일 이름도 보드 이름만 다름): 앱 + 부트로더 + 전체 이미지
   - 앱: `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin`
   - 전체: `firmware/bootloader_ch32v203/build/full-3X3V_RGB.bin` (부트로더 + 앱 + 앱 정보, 61200 B, `mkfull.py`)
 - 부트로더만: `firmware/bootloader_ch32v203`에서 `mingw32-make` (8 KB 넘으면 실패)

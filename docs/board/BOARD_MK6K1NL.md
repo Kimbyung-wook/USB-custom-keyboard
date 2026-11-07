@@ -1,31 +1,54 @@
 # MK6K1NL 보드 (6키 + 노브, 키마다 LED)
 
-- 요약 표: [BOARDS.md](../BOARDS.md). 같은 기판의 LED 1개 판: [MK6K1N](BOARD_MK6K1N.md)
+- 요약 표: [BOARDS.md](../BOARDS.md). 같은 기판의 LED 1개 판: [MK6K1N](BOARD_MK6K1N.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
 
 ## 1. 개요
 
-- 칩: **CH552G** (MK6K1N과 같음)
+- 제품: 6키 + 노브 CH552G 미니 매크로 키보드, 키마다 LED (제조사 펌웨어 USB ID `1189:8890`)
+- 칩: **CH552G** (MK6K1N과 같음), ROM 부트로더 2.5.0
 - 구성: 2×3 키(A~F) + 노브 1개, **키마다 WS2812 LED**(6개)
-- 보드 파일: `src/boards/mk6k1nl.h` (공통 핀은 `src/boards/ch552_6k1n.h`)
-- 이름: MK6K1N과 키 수가 같고 기판이 다름 → 끝에 `L`(키마다 LED)
+- 개발 보드 UID: 칩 고유 ID `5E-E0-6E-BF` (첫 장치)
 - 확인 근거: [test_mk6k1nl](../../tests/hw/mk6k1nl/test_mk6k1nl/README.md) (2026-10-31)
-- 첫 장치: 칩 고유 ID `5E-E0-6E-BF`, 부트로더 2.5.0
+- 이름: MK6K1N과 키 수가 같고 기판이 다름 → 끝에 `L`(키마다 LED)
 
-## 2. 키 배치
-
-- 키·노브 핀은 MK6K1N과 같음: [BOARD_MK6K1N.md](BOARD_MK6K1N.md) "CH552G 핀", "노브 신호"
-
-### 버튼 별 맵핑
+## 2. 버튼 배치와 매핑
 
 ![MK6K1NL 버튼 별 맵핑: 윗면에서 본 키 A~F와 노브의 GPIO, 칩 핀 번호, 슬롯, 키 아래 LED와 체인 순서](../images/buttons_mk6k1nl.svg)
 
-### 핀맵
+| 키 | 슬롯 | GPIO | 칩 핀 | LED | 비고 |
+|---|---|---|---|---|---|
+| A | 0 | P1.1 | 9 | LED 0 | |
+| B | 1 | P1.7 | 5 | LED 1 | |
+| C | 2 | P1.6 | 4 | LED 2 | |
+| D | 3 | **P1.5** | 3 | LED 3 | **진입 키**(ROM 부트로더 진입 핀) |
+| E | 4 | P1.4 | 2 | LED 4 | |
+| F | 5 | P3.2 | 1 | LED 5 | |
+| 노브 A | 6 = 시계 방향, 7 = 반시계 방향 | P3.0 | 8 | – | |
+| 노브 B | ↑ | P3.1 | 7 | – | |
+| 노브 누르기 | 8 | P3.3 | 10 | – | |
+
+- 키·노브 핀은 MK6K1N과 같음. 펌웨어 핀 이름과 노브 신호: [BOARD_MK6K1N.md](BOARD_MK6K1N.md#2-버튼-배치와-매핑), [노브 신호](BOARD_MK6K1N.md#노브-신호)
+- LED 번호 = 체인 순서 (4절)
+
+## 3. 칩 핀맵
 
 ![MK6K1NL 핀맵: CH552G 핀 순서대로 연결된 키, 노브, LED 체인](../images/pinmap_mk6k1nl.svg)
 
-## 3. LED
+- MK6K1N과 같음([BOARD_MK6K1N.md 3절](BOARD_MK6K1N.md#3-칩-핀맵)). 다른 점만:
+
+| 핀 번호 | 이름 | 용도 | 비고 |
+|---|---|---|---|
+| 11 | P3.4 | WS2812 LED 체인 데이터 (GRB) | LED 0(키 A) → … → LED 5(키 F) |
+
+## 4. LED
 
 - **키마다 LED 하나**. P3.4에서 시작해 A → B → C → D → E → F 순서로 이어짐
+
+| 순서 | 키 | 비고 |
+|---|---|---|
+| 0 | A | P3.4에 바로 이어짐 |
+| 1~5 | B~F | 앞 LED의 출력에 이어짐 |
+
 - 펌웨어 설정: `BOARD_LED_COUNT 6`, `BOARD_KEY_LEDS 1`(LED i는 키 i 아래)
 - LED 표시:
 
@@ -44,19 +67,20 @@
 - 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
 - 2026-11-07 (1.7.0): 꽂을 때 색 바퀴 점검 (전에는 CH32V203 보드만)
 
-## 4. 부팅·장입
+## 5. 부팅·장입
 
-- 우리 펌웨어가 있으면 MK6K1N과 같음: **키 D**(P1.5)를 누른 채 꽂기 ([BOARD_MK6K1N.md](BOARD_MK6K1N.md) "부팅·장입")
+- 우리 펌웨어가 있으면 MK6K1N과 같음: **키 D**(P1.5)를 누른 채 꽂기 ([BOARD_MK6K1N.md 5절](BOARD_MK6K1N.md#5-부팅장입))
 - 제조사 펌웨어(USB ID `1189:8890`)에서는 **키로 업데이트 모드에 안 들어감**
   - 처음 한 번은 **D+ 풀업**(12번–16번, 1.5~2kΩ)으로 들어가서 올림 ([TROUBLESHOOTING 3-7](../TROUBLESHOOTING.md#3-7-mk6k1nl-제조사-펌웨어에서-업데이트-모드로-들어가지-않음))
   - GUI 펌웨어 업데이트 창은 이 키보드를 식별 못 함 → **장입할 보드**에서 MK6K1NL 선택([MANUAL 8장](../MANUAL.md#8-펌웨어-업데이트))
 
-## 5. 본 펌웨어에서의 동작
+## 6. 본 펌웨어에서의 동작
 
+- 보드 파일: `src/boards/mk6k1nl.h` (공통 핀은 `src/boards/ch552_6k1n.h`)
 - 빌드: `tools\build_fw.ps1 -Board mk6k1nl` → `macro_keyboard-MK6K1NL.hex`
-- 키 수·슬롯·잠금은 MK6K1N과 같음. 다른 점은 LED 표시(위 3절)
+- 키 수·슬롯·잠금은 MK6K1N과 같음. 다른 점은 LED 표시(4절)
 
-## 6. 확인 결과
+## 7. 확인 결과
 
 | 항목 | 상태 |
 |---|---|

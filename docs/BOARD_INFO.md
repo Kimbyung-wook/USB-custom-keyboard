@@ -172,7 +172,9 @@ class Board:
 | `MK6K1N` | 6키 + 노브 1개, LED 1개 | CH552 | 6 / 1 / 2 | P1.5 (키 D) | `macro_keyboard-MK6K1N.hex` |
 | `MK6K1NL` | 6키 + 노브 1개, 키마다 LED (핀은 MK6K1N과 같음) | CH552 | 6 / 1 / 2 | P1.5 (키 D) | `macro_keyboard-MK6K1NL.hex` |
 | `3X3V_RGB` | 9키(3x3), 노브 없음, 키별 RGB LED | CH32V203 | 9 / 0 / 3 | 키 7 (자체 부트로더). 처음 설치는 BOOT 브리지 | `ch32v203/macro_keyboard-3X3V_RGB.bin` |
-(핀 배치 그림은 나중에 추가)
+| `2X4V_RGB` | 8키(2x4), 노브 없음, 키별 RGB LED | CH32V203 | 8 / 0 / 2 | 키 5 (자체 부트로더). 처음 설치는 BOOT 브리지 | `ch32v203/macro_keyboard-2X4V_RGB.bin` |
+
+- 핀 배치 그림·표: 보드 문서 2·3절 ([BOARDS.md](BOARDS.md))
 
 - MK6K1NL: 이름 규칙(위 5절)대로 키 수가 같고 기판이 다른 보드 → 끝에 구분 글자 `L`(키마다 LED)
   - 공장 펌웨어(`1189:8890`)에서는 키로 업데이트 모드에 안 들어감 → 처음에는 D+ 풀업으로 올림([test_mk6k1nl](../tests/hw/mk6k1nl/test_mk6k1nl/README.md))

@@ -5,7 +5,7 @@ pytest.importorskip("PySide6")
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from gui.core import protocol as p  # noqa: E402
+from gui.core import boards, protocol as p  # noqa: E402
 from gui.ui.app import MainWindow, SAMPLE_SLOTS, make_mock_connector  # noqa: E402
 from gui.core.transport import MockDevice  # noqa: E402
 from gui.ui.widgets import DeviceView  # noqa: E402
@@ -404,3 +404,24 @@ def test_key_picture_not_squeezed(qapp):
     dv = w.device_view
     assert dv.height() >= dv.minimumSizeHint().height()
     w.close()
+
+
+# Every board in boards.BOARDS must show up wherever the GUI lists boards
+@pytest.mark.parametrize("name", [b.name for b in boards.BOARDS])
+def test_every_board_listed_and_drawn(win, name):
+    from PySide6.QtWidgets import QGridLayout
+    spec = boards.find(name)
+    combo = win.board_combo
+    assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.BOARDS]
+    i = combo.findData(name)
+    combo.setCurrentIndex(i)
+    win._on_board_picked(i)
+    b = spec.layout
+    assert win.board == b and len(win.slots) == b.slot_count
+    # Keys drawn in rows x cols (e.g. 2X4V_RGB: 2 rows of 4)
+    grid = win.device_view._body.layout().itemAt(0).layout()
+    assert isinstance(grid, QGridLayout)
+    cells = {grid.getItemPosition(k)[:2] for k in range(grid.count())}
+    assert cells == {(s // b.cols, s % b.cols) for s in range(b.keys)}
+    assert b.rows * b.cols >= b.keys and (b.keys - 1) // b.cols == b.rows - 1
+

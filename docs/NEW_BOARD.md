@@ -152,11 +152,12 @@
 
 ## 7. 문서화
 
-- `docs/board/BOARD_<보드>.md`: 기존 보드 문서와 같은 목차([BOARDS.md](BOARDS.md) "세부 문서 목차")
-  - 개요(제품, 칩, UID, 확인 근거), 키 배치, LED, 부팅·장입, 본 펌웨어 동작, 확인 결과, 이력
+- `docs/board/BOARD_<보드>.md`: 양식 [board/_TEMPLATE.md](board/_TEMPLATE.md)를 그대로 따름
+  - 1 개요(제품, 칩, 구성, UID, 확인 근거), 2 버튼 배치와 매핑(그림 + 표), 3 칩 핀맵(그림 + 표), 4 LED, 5 부팅·장입, 6 본 펌웨어에서의 동작, 7 확인 결과. 이력은 각 절 끝
+  - 칩 핀 번호를 자료표로 확인하지 못했으면 "확인 필요"로 표시
 - [BOARDS.md](BOARDS.md): "구성"·"펌웨어 업데이트" 표에 행 추가
-- 그림: `tools/draw_pinmap.py`에 보드 값을 넣고 `uv run python tools\draw_pinmap.py` → `docs/images/buttons_<보드>.svg` 등
-  - CH552: `PINS`, `KEY_PINS`. CH32V203: `RGB_BOARDS`
+- 그림: `tools/draw_pinmap.py`에 보드 값을 넣고 `uv run python tools\draw_pinmap.py` → `docs/images/buttons_<보드>.svg`, `pinmap_<보드>.svg` 등 ([_TEMPLATE.md "그림 만들기"](board/_TEMPLATE.md#그림-만들기))
+  - CH552: `PINS`, `KEY_PINS`. CH32V203: `RGB_BOARDS`(칩 그림은 `CH32_PINS` 공통)
 - 시험 펌웨어 README에 결과(핀 표, 날짜) 기록
 - [README.md](../README.md) 대상 보드 목록, 필요하면 [MANUAL.md](MANUAL.md)의 보드별 진입 키 표
 

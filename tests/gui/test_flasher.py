@@ -493,3 +493,14 @@ def test_dialog_ch32v203_other_board_and_flash_error(qapp, tmp_path):
     assert not dlg.start() and not dlg.succeeded
     assert "플래시" in dlg.stage_label.text() and "키 7을 누른 채" in dlg.stage_label.text()
     assert dlg.start_btn.isEnabled()                      # try again
+
+
+@pytest.mark.parametrize("name", [b.name for b in boards.BOARDS])
+def test_flash_dialog_lists_every_board(qapp, tmp_path, name):
+    """Every board in boards.BOARDS is in the update window's list; the
+    connected keyboard's board is picked."""
+    dlg = make_dialog(tmp_path, [], keyboard=boards.find(name).layout)
+    assert [dlg.board_combo.itemData(i) for i in range(dlg.board_combo.count())] == \
+        [b.name for b in boards.BOARDS]
+    assert dlg.board_combo.currentData() == name
+    dlg.close()

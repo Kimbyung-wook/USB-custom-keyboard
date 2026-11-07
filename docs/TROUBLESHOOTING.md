@@ -26,7 +26,7 @@
 | 도구 | 용도 |
 |---|---|
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
-| `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. 9키 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
+| `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. CH32V203 보드(8·9키)의 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
 | `tools/flash.ps1 -Board 3x3v_rgb` | CH32V203 보드를 자체 부트로더로 장입 (8키는 `2x4v_rgb`). `-Full`: BOOT 브리지로 wchisp가 부트로더만 쓴 뒤, 진입 키를 누른 채 다시 꽂으면 앱을 HID로 |
 | `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행). `--board` 생략: 키보드가 HELLO로 알린 보드를 `boards.py`에서 찾아 비교(모르는 보드면 실패). `--board none`: 비교 안 함. 기능은 `boards.py`에 적힌 기능을 모두 가졌는지로 비교 |

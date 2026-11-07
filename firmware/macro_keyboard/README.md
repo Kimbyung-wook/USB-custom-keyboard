@@ -65,7 +65,7 @@
   - 2초 넘게 누르면 패턴 입력이 시작되고 문자열은 입력 안 됨
   - 패턴 암호가 없으면 누를 때 입력됨
 - 2초 누르기는 **꽂은 뒤에** (노브 없는 보드는 진입 키를 누른 채 꽂으면 부트로더)
-- **노브 없는 보드(3X3V_RGB 등)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
+- **노브 없는 보드(3X3V_RGB, 2X4V_RGB)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
   - 패턴 단계는 키만
   - 키는 항상 누를 때 입력(뗄 때 입력은 늦게 느껴짐). 풀린 상태에서 2초 눌러 다시 잠그면 그 키가 한 번 입력됨
 - 잠긴 동안 GUI에서 읽기·테스트 입력 안 됨
@@ -85,7 +85,7 @@
 
 ## 빌드
 
-- **CH32V203 보드(3X3V_RGB)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
+- **CH32V203 보드(3X3V_RGB, 2X4V_RGB)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
   (경로·주의점은 [PORT_CH32V203](../../docs/old/PORT_CH32V203.md), [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
   - `BOOTLOADER ?= 1`(기본): 자체 부트로더용. 앱 시작 0x08002000, 최대 52992 B. `BOOTLOADER=0`은 부트로더 없는 배치(바꾸면 `rm -rf build`)
   - 보통은 `tools\build_fw.ps1 -Board 3x3v_rgb` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
