@@ -369,9 +369,9 @@ def draw_rgb_leds(board: str) -> str:
     return svg_wrap(width, height, parts)
 
 
-# CH32V203C8 pins 1-48 as in the datasheet's LQFP48 (C8T6) table. The boards
-# carry the QFN48 (C8U6); its numbering is assumed to be the same and still
-# needs checking against the C8U6 datasheet table (docs say "확인 필요").
+# CH32V203C8 pins 1-48: datasheet V2.6 table 3-1-1, one column for LQFP48 and
+# QFN48 (checked 2026-11-08). QFN48 (C8U6, these boards) adds pin 0 = the
+# exposed pad (VSS).
 CH32_PINS = (
     "VBAT", "PC13", "PC14", "PC15", "PD0", "PD1", "NRST", "VSSA", "VDDA", "PA0", "PA1", "PA2",
     "PA3", "PA4", "PA5", "PA6", "PA7", "PB0", "PB1", "PB2", "PB10", "PB11", "VSS", "VDD",
@@ -395,7 +395,7 @@ def ch32_uses(board: str) -> dict[str, tuple[str, str]]:
             uses[pin] = (f"{name} {color} 음극", "led")
     uses["PB6"] = ("USB D− (USBFS)", "usb")
     uses["PB7"] = ("USB D+ (USBFS)", "usb")
-    uses["BOOT0"] = ("ROM 부트로더 선택 (브리지 확인 필요)", "boot")
+    uses["BOOT0"] = ("BOOT 브리지 → ROM 부트로더", "boot")
     uses["NRST"] = ("리셋", "power")
     uses.setdefault("PB2", ("풀다운으로 보임 · 키 아님", "none"))
     return uses
@@ -421,8 +421,8 @@ def draw_ch32_pinmap(board: str) -> str:
         f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
         f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
         f'{escape(RGB_BOARDS[board]["title"])} 칩 핀맵 (CH32V203C8U6, 윗면)</text>',
-        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#c62828">'
-        '핀 번호는 자료표 LQFP48(C8T6) 배치 기준. QFN48(C8U6) 번호는 확인 필요</text>',
+        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#616161">'
+        '핀 번호: 자료표 V2.6 표 3-1-1, LQFP48/QFN48 공통. 0번 = 바닥 패드 VSS</text>',
         f'<rect x="{x0}" y="{y0}" width="{side}" height="{side}" rx="10" fill="#37474f" stroke="#263238" stroke-width="2"/>',
         f'<circle cx="{x0 + 22}" cy="{y0 + 22}" r="7" fill="#cfd8dc"/>',
         f'<text x="{x0 + side / 2}" y="{y0 + side / 2 - 8}" text-anchor="middle" font-size="22" font-weight="bold" '
