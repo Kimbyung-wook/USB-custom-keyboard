@@ -120,7 +120,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   3. 펌웨어 버전과 빌드 날짜
 - 연결 방식(HID 경로 등)은 마우스를 올리면 보임
 - 보드 목록: 연결 안 됨이면 목록에서 보드를 골라 해당 배치로 화면을 바꿈. 장치를 인식하면 그 보드에 맞게 자동 전환하고 목록은 잠김
-- 노브 없는 보드(3X3V_RGB)는 잠금 편집기가 꺼짐
+- 잠금 기능이 없는 보드(HELLO 보드 기능에 잠금 비트 없음)는 잠금 편집기가 꺼짐. 지금 목록의 보드는 모두 잠금 있음
 - 버튼: [연결]/[연결 끊기], [새로고침]
 - 실제 장치 모드: 2초마다 장치 확인. 꽂으면 자동 연결, 뽑으면 연결 끊김 표시
 
@@ -187,11 +187,11 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - 업데이트 모드인 칩의 파트 번호와 시리얼 번호(칩 ID)를 목록으로 표시
 - `.hex`를 고른 뒤 [장입]을 누르면 올림 (`bootloader.py`, `flasher.py`, `flash_dialog.py`)
 - **장입할 보드** (창 맨 위)
-  - 고른 보드로 칩, 업로더 옵션, 업데이트 모드 진입 방법을 **보드 목록**(`boards.py`)과 **칩 표**(`chips.py`)에서 찾음 ([docs/BOARD_INFO.md](../docs/BOARD_INFO.md) 4, 5)
+  - 고른 보드로 칩, 업로더 옵션, 업데이트 모드 진입 방법을 **보드 목록**(`boards.py`)과 **칩 표**(`chips.py`)에서 찾음 ([docs/BOARD_INFO.md](../docs/BOARD_INFO.md) 4, 5). 보드별 값은 [docs/BOARDS.md](../docs/BOARDS.md)
   - 처음 선택: **마지막으로 연결된 키보드의 보드**(HELLO 보드 정보). 펌웨어 파일도 그 보드의 것(`macro_keyboard-<보드>.hex`)으로 바뀜
 - **키보드를 식별할 수 없을 때**도 장입 가능
   - 해당 경우: 공장 펌웨어, 보드 정보가 없는 1.2.x 이하, 연결 안 됨, 목록에 없는 보드
-  - 창에 `⚠ 연결된 키보드를 식별할 수 없습니다`와 그 보드의 공장 펌웨어 진입 방법 표시 (MK6K1N: 키 E, MK6K1NL: D+ 풀업 저항)
+  - 창에 `⚠ 연결된 키보드를 식별할 수 없습니다`와 그 보드의 처음 설치 방법(`factory_boot`, [BOARDS.md](../docs/BOARDS.md)) 표시
   - [장입] 시 고른 보드가 맞는지 한 번 물음. 식별된 키보드와 다른 보드를 골랐을 때도 물음
 - 파일 크기 검사: 칩 용량(CH552 14,336바이트, CH32V203 앱 영역 52,992바이트)을 넘으면 올리지 않음
 - **식별 문자열** (펌웨어 1.3.0부터, 예: `MKFW1:MK6K1N:CH552:1.3.0`)
@@ -203,14 +203,14 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - 업데이트 모드 칩의 고유 ID가 연결되어 있던 키보드의 것(HELLO 32~35)과 같으면 "방금 연결된 키보드"로 표시
 - 업데이트 모드 진입
   - 연결됨 + 잠금 풀림: BOOT 명령으로 진입 (키 필요 없음)
-  - 잠김 또는 미연결: 보드 목록의 안내대로 "키 D(9키: 키 7)를 누른 채 다시 꽂으세요" 표시, 60초 대기
+  - 잠김 또는 미연결: 보드 목록의 진입 키(`boot_key`)로 "키 D를 누른 채 다시 꽂으세요" 같은 안내 표시, 60초 대기
 - 업로더 실행
   - CH55xDuino의 `vnproch55x.exe`를 보드 목록의 옵션으로 실행 (MK6K1N: `-t CH552 -c 1`, 부트로더 진입 핀 P1.5, `tools/flash.ps1`과 같음)
   - 출력에서 칩 종류, 부트로더 버전, 쓰기/검증 진행률을 읽어 표시
-- CH32V203 보드(3X3V_RGB): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
+- CH32V203 보드(3X3V_RGB, 2X4V_RGB): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
   - 앱 영역만 지움 → 설정 유지. 끊기면 다음에 꽂을 때 부트로더에 머묾
-  - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board 3x3v_rgb -Full` 안내
+  - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내
   - 자세히: [docs/BOOTLOADER_CH32V203.md](../docs/BOOTLOADER_CH32V203.md)
 - 업로더 위치: exe 빌드에 포함(`uploader\`). 소스 실행 시 `MACROKB_UPLOADER` 환경 변수나 설치된 CH55xDuino에서 찾음
 - 끝나면 키보드에 다시 연결. 키별 문자열과 패턴 암호는 그대로 남음
@@ -299,7 +299,7 @@ uv run python tools\capture_screens.py
   - 키보드가 없어 잠금을 풀 수 없음
   - 패턴을 저장해도 "다음에 꽂을 때"가 없어 잠기지 않음
 - 펌웨어 업데이트 대상: **보드 목록(`boards.py`)에 있는 보드**만
-  - 현재: MK6K1N, MK6K1NL (CH552, 부트로더 진입 핀 P1.5), 3X3V_RGB (CH32V203, 자체 부트로더, 키 7), 2X4V_RGB (CH32V203, 자체 부트로더, 키 5)
+  - 현재: MK6K1N, MK6K1NL, 3X3V_RGB, 2X4V_RGB ([docs/BOARDS.md](../docs/BOARDS.md))
   - 식별되지 않은 키보드는 사용자가 이 목록에서 보드를 골라 장입 ([docs/BOARD_INFO.md](../docs/BOARD_INFO.md) 진행 순서 4)
 - 라이선스: 업로더(`vnproch55x.exe`와 DLL)는 CH55xDuino(LGPL-2.1)에 포함된 것, `CH375DLL.dll`은 WCH의 드라이버 DLL
   - exe를 다른 사람에게 배포할 때는 이 사실과 라이선스를 함께 알릴 것

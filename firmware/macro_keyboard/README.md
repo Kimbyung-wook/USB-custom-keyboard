@@ -1,6 +1,7 @@
 # macro_keyboard: 본 펌웨어 v1.6
 
-- 대상: 6키 + 노브 1개 CH552G 미니 키보드(MK6K1N, MK6K1NL). 보드별 핀은 [docs/PINMAP.md](../../docs/PINMAP.md)
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: 3X3V_RGB, 2X4V_RGB). 보드별 핀은 `docs/BOARD_<보드>.md`
+- 이 문서의 예시는 MK6K1N 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
 - [gui](../../gui/) 설정 프로그램과 [PROTOCOL.md](../../docs/PROTOCOL.md) v2 규격으로 통신함
 
@@ -32,11 +33,11 @@
 
 | 방법 | 동작 |
 |---|---|
-| **키 D를 누른 채 USB 연결** | ROM 부트로더(P1.5) |
-| **노브를 누른 채 USB 연결** | 펌웨어가 부트로더로 점프 (키 D 방법이 안 될 때의 예비) |
+| **진입 키를 누른 채 USB 연결** | CH552: 키 D(P1.5) → ROM 부트로더. CH32V203: 보드 파일의 `BOARD_BOOT_KEY`(9키 키 7, 8키 키 5) → 자체 HID 부트로더 |
+| **노브를 누른 채 USB 연결** (노브 있는 보드) | 펌웨어가 부트로더로 점프 (키 D 방법이 안 될 때의 예비) |
 | GUI의 BOOT 명령 | GUI 업데이트 창 [업데이트 모드로 전환]. 잠긴 동안에는 거부 |
 
-- CH32V203(3X3V_RGB): **키 7을 누른 채 USB 연결** 또는 BOOT 명령 → 자체 HID 부트로더(보라). 처음 한 번만 BOOT 브리지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md))
+- 보드별 진입 키·처음 설치: [docs/BOARDS.md](../../docs/BOARDS.md), CH32V203 부트로더 설계: [BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md)
 
 ### 잠금
 
@@ -139,13 +140,15 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 | 보드 파일 | 보드 | LED | 하드웨어 확인 |
 |---|---|---|---|
-| `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [test_pinmap](../test_pinmap/README.md) |
-| `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누른 키만 초록, 나머지는 파랑. 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [test_mk6k1nl](../test_mk6k1nl/README.md) |
+| `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [BOARD_MK6K1N](../../docs/BOARD_MK6K1N.md) |
+| `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누른 키만 초록, 나머지는 파랑. 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/BOARD_MK6K1NL.md) |
+| `3x3v_rgb.h` | 3X3V_RGB: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_3X3V_RGB](../../docs/BOARD_3X3V_RGB.md) |
+| `2x4v_rgb.h` | 2X4V_RGB: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_2X4V_RGB](../../docs/BOARD_2X4V_RGB.md) |
 
 - **공통 기판 파일** `ch552_6k1n.h`: 두 보드가 같은 기판이라 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠
   - HAL 선택(`BOARD_HAL_CH55X`)도 여기서 정함
 - `mk6k1n.h` / `mk6k1nl.h`: 각자 이름(`BOARD_NAME`)과 LED(`BOARD_LED_COUNT`, `BOARD_KEY_LEDS`: 1 = LED i가 키 i 아래)를 정한 뒤 `ch552_6k1n.h`를 include함
-- 핀 그림: [docs/PINMAP.md](../../docs/PINMAP.md)
+- 보드 요약: [docs/BOARDS.md](../../docs/BOARDS.md), 핀 그림: `docs/BOARD_<보드>.md`
 - 새 보드 추가:
   - 기판(핀)이 같으면: 이름과 LED만 정한 보드 파일 하나
   - 기판이 다르면: `<칩>_<배치>.h` 같은 공통 파일도 새로 만들고, `src/config.h`의 고르기 목록과 `tools/build_fw.ps1`의 `$boardChips`에 더함
@@ -155,6 +158,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|
 | `tools/build_fw.ps1 -Board mk6k1n` | `-DBOARD_MK6K1N` | `build/macro_keyboard-MK6K1N.hex` |
 | `tools/build_fw.ps1 -Board mk6k1nl` | `-DBOARD_MK6K1NL` | `build/macro_keyboard-MK6K1NL.hex` |
+| `tools/build_fw.ps1 -Board 3x3v_rgb` / `2x4v_rgb` | `BOARD=3X3V_RGB` / `2X4V_RGB` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`, 전체 이미지 `full-<보드>.bin` |
 | `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1n` | – |
 
 - `macro_keyboard-<보드>.hex`는 GUI 펌웨어 업데이트 창이 먼저 고르는 파일
@@ -168,10 +172,12 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 **GUI (가장 쉬움)**
 
 - 이 펌웨어(v1.0 이상)가 이미 올라가 있으면 **GUI의 [펌웨어 업데이트]** 사용
-- 잠금이 풀린 키보드는 GUI가 BOOT 명령으로 업데이트 모드에 넣음 → 키 D 누를 필요 없음([사용 설명서 8장](../../docs/MANUAL.md#8-펌웨어-업데이트))
-- CH32V203(3X3V_RGB): 처음 한 번 BOOT 브리지 + `tools\flash.ps1 -Board 3x3v_rgb -Full`, 이후 GUI 업데이트 창 ([사용 설명서 10장](../../docs/MANUAL.md#펌웨어-올리기))
+- 잠금이 풀린 키보드는 GUI가 BOOT 명령으로 업데이트 모드에 넣음 → 진입 키 누를 필요 없음
+- 절차·처음 설치·복구(모든 보드): [사용 설명서 8장](../../docs/MANUAL.md#8-펌웨어-업데이트)
 
-**스크립트**
+**스크립트 (CH552 보드)**
+
+- CH32V203 보드: [사용 설명서 8장 "스크립트로 올리기"](../../docs/MANUAL.md#스크립트로-올리기)
 
 1. 저장소 폴더에서 실행
 2. **키 D를 누른 채** 키보드 연결

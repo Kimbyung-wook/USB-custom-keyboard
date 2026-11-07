@@ -51,6 +51,12 @@ void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
   if (frame != ledLast) printf(" L%u.%02x.%u", color, mask, maskColor);
   ledLast = frame;
 }
+// Power-up color wheel: printed as " C<r>.<g>.<b>" when it changes
+void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
+  int frame = 1 << 30 | r << 16 | g << 8 | b;
+  if (frame != ledLast) printf(" C%u.%u.%u", r, g, b);
+  ledLast = frame;
+}
 
 static int pressed = 0; // a key is down and must be released next
 static int errors = 0;

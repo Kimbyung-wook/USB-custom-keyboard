@@ -54,11 +54,21 @@ hal_sw_t hal_switches(void) {
 // forward voltage). So the colors take turns: in a 16-tick phase one color's
 // cathode line is low on every row and each key's anode carries that key's
 // duty for the color. Only colors in use get a phase (one color: full time).
-// 16 kHz tick, 16 steps = 1 kHz per phase. Full scale (palette value 40)
-// differs per color because the green LED is much brighter.
-#define PWM_STEPS 16
+// PWM_STEPS x 1 kHz tick (TIM3), so about 1 kHz per phase. Full scale (palette
+// value 40) differs per color because the green LED is much brighter.
+// 64 steps (2026-11-07, was 16): smoother color wheel fades.
+#ifndef PWM_STEPS
+#define PWM_STEPS 64 // power of 2
+#endif
+#define PWM_TICK_US (1000u / PWM_STEPS) // TIM3 period at 1 MHz (15 us = 67 kHz for 64 steps)
+#define DUTY16(x) ((x) * PWM_STEPS / 16) // duty given in 16ths
 #define PALETTE_FULL 40
-static const uint8_t fullDuty[3] = {10, 7, 14}; // R, G, B at palette value 40 (tuned for white, 2026-11-07)
+// R, G, B at palette value 40: the same top duty for every color (2026-11-07).
+// Before: tuned for white with 16 steps R 10, G 7, B 14 (green LED is brighter).
+#ifndef LED_FULL_DUTY
+#define LED_FULL_DUTY DUTY16(14)
+#endif
+static const uint8_t fullDuty[3] = {LED_FULL_DUTY, LED_FULL_DUTY, LED_FULL_DUTY};
 static const uint8_t anodePins[BOARD_KEYS][2] = {BOARD_KEY_LED_PINS};
 static GPIO_TypeDef *anodePort[BOARD_KEYS];
 static uint16_t anodeMask[BOARD_KEYS];
@@ -137,6 +147,35 @@ void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
   colorsOn = on;
 }
 
+// Every LED in one R, G, B (palette units 0..PALETTE_FULL): the power-up color
+// wheel. Same top duty for every color (more steps for a smoother fade than the
+// white-balanced fullDuty), 2026-11-07
+#ifndef WHEEL_FULL_DUTY
+#define WHEEL_FULL_DUTY LED_FULL_DUTY
+#endif
+#ifndef WHEEL_MIN_DUTY
+#define WHEEL_MIN_DUTY 1
+#endif
+void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
+  const uint8_t rgb[3] = {r, g, b};
+  uint8_t on = 0;
+  for (uint8_t c = 0; c < 3; c++) {
+    uint8_t d = (uint8_t)((rgb[c] * WHEEL_FULL_DUTY + PALETTE_FULL / 2) / PALETTE_FULL);
+    // At least duty 1: every color keeps its phase, so the time share does not
+    // jump when a color fades in or out (2026-11-07)
+    if (d < WHEEL_MIN_DUTY) {
+      d = WHEEL_MIN_DUTY;
+    }
+    for (uint8_t i = 0; i < BOARD_KEYS; i++) {
+      keyDuty[i][c] = d;
+    }
+    if (d) {
+      on |= (uint8_t)(1u << c);
+    }
+  }
+  colorsOn = on;
+}
+
 static void ledInit(void) {
   TIM_TimeBaseInitTypeDef tb;
   NVIC_InitTypeDef nv;
@@ -156,7 +195,7 @@ static void ledInit(void) {
     }
   }
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-  tb.TIM_Period = 62 - 1; // 1 MHz / 62 = 16 kHz
+  tb.TIM_Period = PWM_TICK_US - 1; // 1 MHz / 15 = 67 kHz (64 steps)
   tb.TIM_Prescaler = 48 - 1;
   tb.TIM_ClockDivision = TIM_CKD_DIV1;
   tb.TIM_CounterMode = TIM_CounterMode_Up;

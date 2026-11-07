@@ -1,6 +1,6 @@
 # test_mk6k1nl: MK6K1NL 하드웨어 확인용 테스트 펌웨어
 
-> 확인한 핀 배치 다이어그램: [docs/PINMAP.md](../../../../docs/PINMAP.md)
+> 확인한 핀 배치 다이어그램: [docs/BOARD_MK6K1NL.md](../../../../docs/BOARD_MK6K1NL.md)
 
 - **대상**: **MK6K1NL**(6키 + 노브 1개, CH552G, 키마다 LED)
 - **확인 항목**:

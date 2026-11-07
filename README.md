@@ -2,15 +2,23 @@
 
 상용 미니 매크로 키보드(CH552G, CH32V203)에 커스텀 펌웨어를 올려 키마다 **긴 문자열**을 HID 키보드로 출력하는 프로젝트.
 
-- 대상
-  - CH552G, 키 6개 + 노브 1개 ([핀 배치](docs/PINMAP.md))
-    - **MK6K1N**: LED 1개
-    - **MK6K1NL**: 키마다 LED
-  - CH32V203C8U6, 노브 없음 ([이식 상태](docs/PORT_CH32V203.md))
-    - **3X3V_RGB**: 9키, 키마다 RGB LED ([보드](docs/BOARD_3X3V_RGB.md))
-    - **2X4V_RGB**: 8키, 키마다 RGB LED ([보드](docs/BOARD_2X4V_RGB.md))
+- 대상 보드 ([요약 표](docs/BOARDS.md))
+  - CH552G, 키 6개 + 노브 1개: **MK6K1N**(LED 1개), **MK6K1NL**(키마다 LED)
+  - CH32V203C8U6, 노브 없음: **3X3V_RGB**(9키), **2X4V_RGB**(8키), 키마다 RGB LED
 - PC GUI에서 문자열 확인·수정
 - 펌웨어 업로드, 설정, 문자열 출력을 모두 USB 포트 하나로 처리
+
+## 현재 버전 (2026-11-07)
+
+| 항목 | 버전 | 위치 |
+|---|---|---|
+| 본 펌웨어 (모든 보드) | **1.6.0** | `firmware/macro_keyboard/src/config.h` (`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`) |
+| GUI | **1.6.0** | `gui/core/version.py` (`VERSION`) |
+| 자체 부트로더 (CH32V203) | **1.0** | `firmware/bootloader_ch32v203/main.c` (`BL_VER_MAJOR`/`BL_VER_MINOR`) |
+| 설정 통신 규격 | **v2** | [docs/PROTOCOL.md](docs/PROTOCOL.md) |
+
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / 3X3V_RGB, 2X4V_RGB (CH32V203C8U6)
+- 아래 표·문서의 "v1.7"은 CH32V203 이식 때 붙인 예정 번호. 코드의 번호는 아직 1.6.0 (올리지 않음)
 
 ## 핵심 요구사항
 
@@ -123,39 +131,39 @@ stateDiagram-v2
 - 패턴 암호가 저장되어 있으면 노브 누르기 문자열은 뗄 때(2초 미만) 입력됨
 - **노브 없는 보드(8/9키)**: 그림의 "노브 2초"는 **아무 키 2초**
   - 패턴 단계는 키만
-  - 패턴 암호가 있으면 모든 키가 뗄 때 입력됨. 2초 누른 키는 입력 안 됨
-  - 여러 키를 겹쳐 누르면 앞 키가 바로 입력되고 마지막 키만 기다림
-- 꽂는 순간 노브를 누르고 있으면 부트로더로 들어가므로, 노브 2초 누르기는 꽂은 뒤에 함 (9키는 키 7)
+  - 키는 누를 때 입력(v1.7, 암호가 있어도). 풀린 상태에서 2초 눌러 다시 잠그면 그 키가 한 번 입력됨 ([MANUAL 10장](docs/MANUAL.md#10-노브-없는-보드에서-다른-점))
+- 꽂는 순간 진입 키(노브, 키 D / 9키 키 7 / 8키 키 5)를 누르고 있으면 부트로더로 들어가므로, 2초 누르기는 꽂은 뒤에 함
 
-## 하드웨어 요약 (MK6K1N)
+## 하드웨어 요약
 
-- 9키 3X3V_RGB: [docs/BOARD_3X3V_RGB.md](docs/BOARD_3X3V_RGB.md)
-
-| 입력 | GPIO |
-|---|---|
-| 키 A / B / C (윗줄) | P1.1 / P1.7 / P1.6 |
-| 키 D / E / F (아랫줄) | P1.5 / P1.4 / P3.2 |
-| 노브 회전 | P3.0 / P3.1 |
-| 노브 누르기 | P3.3 |
-| LED | P3.4, WS2812 (GRB) |
-
-- MCU: CH552G (Flash 16KB, RAM 1KB + 256B, DataFlash 128B), ROM 부트로더 2.5.0
-- 부트로더 진입: **키 D를 누른 채 USB 연결** (제조사 펌웨어가 있을 때는 키 E)
+- 보드별 칩·키·LED·부트로더·진입 키: [docs/BOARDS.md](docs/BOARDS.md)
+- 핀·확인 결과: `docs/BOARD_<보드>.md` ([MK6K1N](docs/BOARD_MK6K1N.md), [MK6K1NL](docs/BOARD_MK6K1NL.md), [3X3V_RGB](docs/BOARD_3X3V_RGB.md), [2X4V_RGB](docs/BOARD_2X4V_RGB.md))
 
 ## 폴더 구조
 
+**문서 (`docs/`)**
+
+| 구분 | 문서 | 내용 |
+|---|---|---|
+| 공통 | [MANUAL.md](docs/MANUAL.md) | **사용 설명서**: 사용·설정·펌웨어 업데이트·복구 (모든 보드) |
+| 공통 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실제로 겪은 문제와 해결 방법(빌드 오류, 업로드 실패와 복구 등) |
+| 공통 | [PROTOCOL.md](docs/PROTOCOL.md) | 펌웨어와 GUI가 공유하는 Vendor HID 설정 통신 규격 |
+| 보드 요약 | [BOARDS.md](docs/BOARDS.md) | **보드마다 다른 점 한 표**: 칩, 키/노브, LED, 저장 용량, 부트로더·진입 키, 처음 설치, 펌웨어 파일 |
+| 보드 세부 | [BOARD_MK6K1N.md](docs/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. CH552G 핀, 노브 신호, 핀 그림 |
+| 보드 세부 | [BOARD_MK6K1NL.md](docs/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. LED 체인 |
+| 보드 세부 | [BOARD_3X3V_RGB.md](docs/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 핀, LED, 부팅, 확인 결과 |
+| 보드 세부 | [BOARD_2X4V_RGB.md](docs/BOARD_2X4V_RGB.md) | 8키 (CH32V203). 핀, LED, 부팅, 확인 결과 |
+| 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
+| 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |
+| 기록 | [PORT_CH32V203.md](docs/PORT_CH32V203.md) | CH32V203 이식 계획·상태 |
+| 기록 | [FIRMWARE_SIZE.md](docs/FIRMWARE_SIZE.md) | 펌웨어 크기 줄이기 제안과 단계별 결과 |
+| 기록 | [PLAN.md](docs/PLAN.md) | 초기 계획, 하드웨어 조사 기록 (역사) |
+| 안내 | [PINMAP.md](docs/PINMAP.md) | 옛 핀 배치 문서 → 보드 문서로 안내 |
+
+**그 밖의 폴더**
+
 | 경로 | 내용 |
 |---|---|
-| [docs/MANUAL.md](docs/MANUAL.md) | **사용 설명서**: 키보드 사용 방법(LED, 패턴 암호), 설정 프로그램(GUI) 사용 방법 |
-| [docs/PLAN.md](docs/PLAN.md) | 전체 계획, 하드웨어 조사 기록, 단계별 진행 |
-| [docs/PROTOCOL.md](docs/PROTOCOL.md) | 펌웨어와 GUI가 공유하는 Vendor HID 설정 통신 규격 |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실제로 겪은 문제와 해결 방법(빌드 오류, 업로드 실패와 복구 등) |
-| [docs/PINMAP.md](docs/PINMAP.md) | **키보드별 핀 배치**: CH552G 핀, MK6K1N·MK6K1NL 배치와 LED 체인 다이어그램, 노브 신호 |
-| [docs/BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보 설계: 여러 키보드(보드) 지원, 보드 목록, 칩 표 |
-| [docs/PORT_CH32V203.md](docs/PORT_CH32V203.md) | CH32V203 보드(9키, 8키) 이식 계획·상태 |
-| [docs/BOARD_3X3V_RGB.md](docs/BOARD_3X3V_RGB.md) | 9키 보드 핀·LED·부팅 |
-| [docs/BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 설치·업데이트·복구, 플래시 배치, 명령 |
-| [docs/FIRMWARE_SIZE.md](docs/FIRMWARE_SIZE.md) | 펌웨어 크기 줄이기 제안과 단계별 결과 |
 | [firmware/macro_keyboard/](firmware/macro_keyboard/) | 본 펌웨어 (빌드, 업로드, 동작 테스트 방법 포함) |
 | [gui/](gui/) | PySide6 설정 프로그램. `core/`(장치 논리, Qt 없음), `ui/`(창·위젯) |
 | [tests/gui/](tests/gui/) | GUI pytest 테스트 (`uv run pytest`) |
@@ -167,7 +175,7 @@ stateDiagram-v2
 
 | tools/ 파일 | 용도 |
 |---|---|
-| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Board 3x3v_rgb`: 자체 부트로더로 장입, `-Full`: 처음 설치(wchisp, BOOT 브리지) |
+| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Hex`: CH552, `-Board 3x3v_rgb`/`2x4v_rgb`: 자체 부트로더로 장입, `-Full`: 처음 설치(wchisp, BOOT 브리지) |
 | `usb_monitor.ps1` | USB 장치 감지 기록 |
 | `build_fw.ps1` | 펌웨어 빌드, `-Board`로 보드 선택, 빌드 일자 기록 |
 | `build_gui.ps1` | GUI exe 빌드, 빌드 일자 기록 |
@@ -193,9 +201,12 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
   - `macro_keyboard-MK6K1N.hex`: 보드 이름이 붙은 파일, GUI가 먼저 고름
   - `macro_keyboard.ino.hex`
 - 키마다 LED가 있는 보드: `-Board mk6k1nl`로 빌드 → `macro_keyboard-MK6K1NL.hex`
-- 9키: `-Board 3x3v_rgb` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) 빌드)
+- CH32V203 보드: `-Board 3x3v_rgb`(9키), `-Board 2x4v_rgb`(8키) → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) 빌드)
+- 보드별 파일 이름: [BOARDS.md](docs/BOARDS.md)
 
 ### 펌웨어 업로드
+
+- 보드 공통 절차: [사용 설명서 8장](docs/MANUAL.md#8-펌웨어-업데이트). 아래는 CH552 보드 스크립트 예
 
 1. 스크립트 실행
 
@@ -204,8 +215,6 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
    ```
 
 2. 키 D를 누른 채 키보드 연결
-
-- 9키(3X3V_RGB): [사용 설명서 10장](docs/MANUAL.md#10-9키-키보드-3x3v_rgb)
 
 ### GUI 실행
 

@@ -1,6 +1,7 @@
 # 문제 해결 (Troubleshooting)
 
-- 2026-10-25 첫 장치 개조 중 실제로 겪은 문제와 해결 방법
+- 2026-10-25 첫 장치 개조부터 실제로 겪은 문제와 해결 방법
+- 정상 절차는 [MANUAL 8장](MANUAL.md#8-펌웨어-업데이트), 보드별 진입 키·처음 설치는 [BOARDS.md](BOARDS.md)
 - 증상으로 찾기
 
 | 증상 | 바로 가기 |
@@ -15,7 +16,7 @@
 | 본 펌웨어에서 LED가 안 켜짐 | [3-4](#3-4-본-펌웨어에서-led가-켜지지-않음-v10-첫-빌드) |
 | 키 C를 누르면 `CCW`/`CW`가 입력됨 (MK6K1NL) | [3-6](#3-6-키-c를-누르면-ccwcw가-입력됨-mk6k1nl-v150-이전-빌드) |
 | MK6K1NL 제조사 펌웨어에서 업데이트 모드 진입 안 됨 | [3-7](#3-7-mk6k1nl-제조사-펌웨어에서-업데이트-모드로-들어가지-않음) |
-| 9키(3X3V_RGB): GUI 업데이트 창에 칩이 안 나타남, `wchisp`가 장치를 못 찾음 | [2-6](#2-6-9키3x3v_rgb-업데이트-모드와-wchisp) |
+| CH32V203 보드(9키, 8키): GUI 업데이트 창에 칩이 안 나타남, `wchisp`가 장치를 못 찾음 | [2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp) |
 | 9키(3X3V_RGB): 1줄 LED가 파랑 외에는 안 켜짐 | [3-8](#3-8-9키3x3v_rgb-1줄-led가-파랑만-켜짐) |
 | LED가 꺼져 있거나(가끔 빨강) 빨강이고, 키를 눌러도 아무것도 입력되지 않음 | 고장 아님. 잠금 상태(꺼짐 + 가끔 빨강) 또는 패턴 입력 중(빨강, 노브 2초 누르기 뒤. 노브 없는 보드는 아무 키 2초). [macro_keyboard README의 "잠금"](../firmware/macro_keyboard/README.md#잠금) |
 
@@ -26,7 +27,7 @@
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
 | `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. 9키 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
-| `tools/flash.ps1 -Board 3x3v_rgb` | 9키(CH32V203)를 자체 부트로더로 장입 (키 7). `-Full`: 부트로더째 wchisp로 (BOOT 브리지) |
+| `tools/flash.ps1 -Board 3x3v_rgb` | CH32V203 보드를 자체 부트로더로 장입 (8키는 `2x4v_rgb`). `-Full`: 부트로더째 wchisp로 (BOOT 브리지) |
 | `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행) |
 
 - PowerShell 스크립트 실행이 막혀 있으면: `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex ...`
@@ -112,7 +113,9 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 ## 2. 업로드와 부트로더
 
-### 2-1. 부트로더 진입 방법 정리
+### 2-1. 부트로더 진입 방법 정리 (CH552 보드)
+
+- CH32V203 보드는 [2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp), 보드별 요약은 [BOARDS.md](BOARDS.md)
 
 | 상황 | 진입 방법 |
 |---|---|
@@ -194,7 +197,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 ---
 
-### 2-6. 9키(3X3V_RGB): 업데이트 모드와 wchisp
+### 2-6. CH32V203 보드: 업데이트 모드와 wchisp
 
 **증상**
 
@@ -204,16 +207,16 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 **원인·조치**
 
 - 업데이트 모드는 두 가지
-  - **자체 부트로더**(보통): 키 7 누른 채 꽂기 또는 [업데이트 모드로 전환]. LED 보라, `1209:C55E` HID(드라이버 불필요)
+  - **자체 부트로더**(보통): 진입 키(9키: 키 7, 8키: 키 5) 누른 채 꽂기 또는 [업데이트 모드로 전환]. LED 보라, `1209:C55E` HID(드라이버 불필요)
   - **ROM 부트로더**(처음 설치·복구): BOOT 브리지(BOOT1 실크 아래 패드 2개) 이은 채 꽂기. wchisp, `-Full`
-- 보라가 안 켜짐: 부트로더가 아직 없음(공장 펌웨어, 예전 펌웨어) → `tools\flash.ps1 -Board 3x3v_rgb -Full`
+- 보라가 안 켜짐: 부트로더가 아직 없음(공장 펌웨어, 예전 펌웨어) → 처음 설치 ([MANUAL 8장](MANUAL.md#처음-설치-공장-펌웨어))
 - 보라인데 칩 표에 없음: `uv run python -m gui.core.hidboot info`로 확인. 다른 HID 프로그램 닫기
-- 키 7을 안 눌러도 보라: 앱 정보가 없거나 틀림(장입이 끊김) → 다시 장입
+- 진입 키를 안 눌러도 보라: 앱 정보가 없거나 틀림(장입이 끊김) → 다시 장입
 - `wchisp`가 못 찾으면: 브리지 접촉 확인, ROM 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
 - 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 ROM 부트로더)
 - ⚠️ 제조사 펌웨어는 읽기 보호: 장입하면 지워지고 되돌릴 수 없음
 - ⚠️ `-Full`은 설정도 지움 → 먼저 GUI로 백업. 자체 부트로더 업데이트는 설정 유지
-- 자세히: [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md) "설치·업데이트"
+- 절차: [MANUAL 8장](MANUAL.md#8-펌웨어-업데이트), 부트로더 설계: [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md)
 
 ## 3. 동작
 
@@ -297,7 +300,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 - 펌웨어 v1.5.0(최종 빌드)부터 한 칸(4단계) 중 **같은 방향으로 2단계 이상** 움직여야 회전으로 셈(`ENC_MIN_STEPS`)
 - 두 보드 모두 적용
-- 노브 신호: [PINMAP 노브 신호](PINMAP.md#노브-신호) 참고
+- 노브 신호: [BOARD_MK6K1N 노브 신호](BOARD_MK6K1N.md#노브-신호) 참고
 
 ### 3-7. MK6K1NL 제조사 펌웨어에서 업데이트 모드로 들어가지 않음
 
@@ -326,5 +329,5 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 **해결**
 
-- 최신 펌웨어로 업데이트 ([2-6](#2-6-9키3x3v_rgb-업데이트-모드와-wchisp))
+- 최신 펌웨어로 업데이트 ([2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp))
 

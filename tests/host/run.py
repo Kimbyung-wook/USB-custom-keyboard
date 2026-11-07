@@ -285,10 +285,11 @@ def main() -> int:
         # 3X3V_RGB (CH32V203): 9 keys, no knob, LED per key (mask 9 bits)
         exe9 = build(out, "3X3V_RGB")
 
-        def typed9(blob: bytes, *steps: str) -> tuple[str, str]:
+        def typed9(blob: bytes, *steps: str) -> tuple[str, str, list[str]]:
             text = " ".join(run(exe9, out, blob, extra=["input", *steps])[3:])
             return (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)),
-                    " ".join(re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)))
+                    " ".join(re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)),
+                    re.findall(r"C\d+\.\d+\.\d+", text))
 
         lines = run(exe9, out, letters)
         check("3X3V_RGB: 9-slot blob commits", lines[2], "commit status 0")
@@ -296,13 +297,18 @@ def main() -> int:
             check(f"3X3V_RGB: key {i + 1} types slot {i}",
                   typed9(letters, f"p{i}", "w30", f"r{i}", "w300")[0], keys((0, 0x04 + i)))
         check("3X3V_RGB: key 9 press lights only key 9 green, then blue again",
-              typed9(letters, "w1600", "p8", "w30", "r8", "w300")[1].split(" ", 5)[5],
+              typed9(letters, "w6500", "p8", "w30", "r8", "w300")[1].split(" ", 1)[1],
               "L1.00.0 L1.100.2 L1.00.0")
         check("3X3V_RGB: key 1 press lights only key 1 green",
-              typed9(letters, "w1600", "p0", "w30", "r0", "w300")[1].split(" ", 5)[5],
+              typed9(letters, "w6500", "p0", "w30", "r0", "w300")[1].split(" ", 1)[1],
               "L1.00.0 L1.01.2 L1.00.0")
-        check("3X3V_RGB: power-up LED test red, green, blue, white, off, then blue",
-              typed9(letters, "w1600")[1], "L5.00.0 L2.00.0 L1.00.0 L3.00.0 L0.00.0 L1.00.0")
+        _, power_leds, wheel = typed9(letters, "w6500")
+        check("3X3V_RGB: power-up color wheel, then off, then blue",
+              power_leds, "L0.00.0 L1.00.0")
+        check("3X3V_RGB: color wheel starts red and passes green and blue",
+              (wheel[:1], "C0.40.0" in wheel, "C0.0.40" in wheel), (["C40.0.0"], True, True))
+        check("3X3V_RGB: color wheel goes round 2 times",
+              sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b), 2)
         check("3X3V_RGB: two keys at once type both",
               typed9(letters, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
               keys((0, 0x04), (0, 0x0c)))

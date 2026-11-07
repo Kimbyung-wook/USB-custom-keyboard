@@ -18,12 +18,36 @@
 #define BOARD_LED_SELF_TEST 0
 #endif
 #if BOARD_LED_SELF_TEST
-// At power-up every LED shows red, green, blue, white, then off, so a dead
-// color or LED is seen at once
-#define SELF_TEST_STEP_MS 300
-static const uint8_t selfTestColors[] = {COLOR_RED, COLOR_TYPING, COLOR_IDLE, COLOR_SAVED, COLOR_OFF};
-#define SELF_TEST_STEPS (sizeof(selfTestColors) / sizeof(selfTestColors[0]))
+// At power-up every LED runs a smooth color wheel (red, yellow, green, cyan,
+// blue, purple, red) SELF_TEST_CYCLES times (2 x 3 s), then goes off for a moment, so a dead color
+// or LED is seen at once. Needs hal_leds_rgb (CH32V203 HAL).
+#ifndef SELF_TEST_CYCLE_MS
+#define SELF_TEST_CYCLE_MS 3000 // one turn of the wheel (-D to try others; chosen 2026-11-07)
+#endif
+#ifndef SELF_TEST_CYCLES
+#define SELF_TEST_CYCLES 2
+#endif
+#define SELF_TEST_OFF_MS 300
+#define SELF_TEST_SEG_MS ((SELF_TEST_CYCLE_MS + 5) / 6) // one sixth of a turn
+#if SELF_TEST_CYCLE_MS * SELF_TEST_CYCLES + SELF_TEST_OFF_MS > 30000
+#error self test too long for now16
+#endif
 static __idata uint8_t selfTestDone;
+
+// Wheel position t (ms within a cycle) -> R, G, B in palette units (0..40)
+static void wheel(uint16_t t) {
+  uint8_t seg = (uint8_t)(t / SELF_TEST_SEG_MS);
+  uint8_t up = (uint8_t)((uint16_t)(t % SELF_TEST_SEG_MS) * 40 / SELF_TEST_SEG_MS);
+  uint8_t down = (uint8_t)(40 - up);
+  switch (seg) {
+  case 0: hal_leds_rgb(40, up, 0); break;   // red -> yellow
+  case 1: hal_leds_rgb(down, 40, 0); break; // yellow -> green
+  case 2: hal_leds_rgb(0, 40, up); break;   // green -> cyan
+  case 3: hal_leds_rgb(0, down, 40); break; // cyan -> blue
+  case 4: hal_leds_rgb(up, 0, 40); break;   // blue -> purple
+  default: hal_leds_rgb(40, 0, seg == 5 ? down : 0); break; // purple -> red
+  }
+}
 #endif
 
 // R, G, B per COLOR_* value (hal.h)
@@ -113,9 +137,12 @@ void led_task(void) {
 #if BOARD_LED_SELF_TEST
   if (!selfTestDone) {
     // now16 counts from power-up; the test ends before it can wrap
-    uint16_t step = now16 / SELF_TEST_STEP_MS;
-    if (step < SELF_TEST_STEPS) {
-      showColor(selfTestColors[step]);
+    if (now16 < SELF_TEST_CYCLE_MS * SELF_TEST_CYCLES) {
+      wheel(now16 % SELF_TEST_CYCLE_MS);
+      return;
+    }
+    if (now16 < SELF_TEST_CYCLE_MS * SELF_TEST_CYCLES + SELF_TEST_OFF_MS) {
+      showColor(COLOR_OFF);
       return;
     }
     selfTestDone = 1;
