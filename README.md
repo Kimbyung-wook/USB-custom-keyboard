@@ -10,12 +10,20 @@
 
 ## 현재 버전 (2026-11-07)
 
-| 항목 | 버전 | 위치 |
+<!-- gen:versions -->
+| 항목 | 버전 | 정의한 곳 |
 |---|---|---|
-| 본 펌웨어 (모든 보드) | **1.7.0** | `firmware/macro_keyboard/src/config.h` (`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`) |
-| GUI | **1.7.0** | `gui/core/version.py` (`VERSION`) |
-| 자체 부트로더 (CH32V203) | **1.0** | `firmware/bootloader_ch32v203/main.c` (`BL_VER_MAJOR`/`BL_VER_MINOR`) |
-| 설정 통신 규격 | **v2** | [docs/PROTOCOL.md](docs/PROTOCOL.md) |
+| 펌웨어 | 1.7.0 | `firmware/macro_keyboard/src/config.h` |
+| GUI | 1.7.0 | `gui/core/version.py` |
+| Python 프로젝트 | 1.7.0 | `pyproject.toml` |
+| CH32V203 부트로더 | 1.0 | `firmware/bootloader_ch32v203/main.c` |
+| 설정 프로토콜 | 2 | `firmware/macro_keyboard/src/core/protocol.h` |
+| 보드 정보 (HELLO) | 1 | `firmware/macro_keyboard/src/config.h` |
+<!-- /gen:versions -->
+
+- 표는 `tools/gen_docs.py`가 코드에서 만듦(손으로 고치지 않음)
+- 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
+- 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
 - 지원 보드: MK6K1N, MK6K1NL (CH552G) / 3X3V_RGB, 2X4V_RGB (CH32V203C8U6)
 
@@ -158,6 +166,8 @@ stateDiagram-v2
 | 보드 요약 | [BOARDS.md](docs/BOARDS.md) | **보드마다 다른 점 한 표**: 칩, 키/노브, LED, 저장 용량, 부트로더·진입 키, 처음 설치, 펌웨어 파일 |
 | 보드 추가 | [NEW_BOARD.md](docs/NEW_BOARD.md) | 새 키보드를 이 펌웨어로 바꾸는 절차: 식별, 안전, 진입 방법, 핀 찾기, 보드 파일, 설치·확인, 문서화 |
 | 보드 추가 | [board/_TEMPLATE.md](docs/board/_TEMPLATE.md) | 보드 문서 양식(절 순서, 표 열), 그림 다시 그리기 |
+| 출시 | [RELEASE.md](docs/RELEASE.md) | 출시 체크리스트: 문서 반영 → 버전 → 문서 생성 → 빌드 → pytest → 장치 확인 → 변경 기록 → 커밋 |
+| 출시 | [CHANGELOG.md](CHANGELOG.md) | 저장소 전체 변경 기록: `## 미출시` 항목(문서 영향·반영 표시)과 버전별 요약 |
 | 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. 버튼 매핑, CH552G 칩 핀맵, 노브 신호 |
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
 | 보드 세부 | [board/BOARD_3X3V_RGB.md](docs/board/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |

@@ -113,12 +113,18 @@ class Board:
 - `gui/core/chips.py`(새 파일) 한 곳에 칩별 값을 모음
 - 업데이트 창의 `CH552`, `14336` 고정값을 이 표로 바꿈
 
-| 칩 ID | 이름 | 펌웨어 최대 크기 | 업로드 도구 | 상태 |
-|---|---|---:|---|---|
-| `0x51` | CH551 | 10,240 | vnproch55x `-t CH551` | 펌웨어 미지원(USB 버퍼 축소 필요) |
-| `0x52` | CH552 | 14,336 | vnproch55x `-t CH552` | 지원 |
-| `0x54` | CH554 | 14,336 | vnproch55x `-t CH554` (확인 필요) | 미확인 |
-| `0x19` | CH32V203 | 52,992 (앱 영역) | 자체 HID 부트로더 (`hidboot.py`, `.bin`). 처음 한 번만 wchisp + BOOT 브리지 ([BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md)) | 지원 (3X3V_RGB, 2X4V_RGB) |
+<!-- gen:chips -->
+| 칩 ID | 칩 | 펌웨어 영역 | 지원 | 비고 |
+|---|---|---|---|---|
+| 0x51 | CH551 | 10,240 B | 아니오 | 펌웨어 미지원 (USB 버퍼를 줄여야 함) |
+| 0x52 | CH552 | 14,336 B | 예 | - |
+| 0x54 | CH554 | 14,336 B | 아니오 | 확인하지 않은 칩 |
+| 0x19 | CH32V203 | 52,992 B | 아니오 | vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH32V203.md) |
+<!-- /gen:chips -->
+
+- 표는 `tools/gen_docs.py`가 `gui/core/chips.py`에서 만듦. "지원"은 vnproch55x로 올릴 수 있는지
+- 업로드 도구: CH551·CH552·CH554는 vnproch55x `-t <칩>`(CH554는 확인 필요). CH32V203은 자체 HID 부트로더(`hidboot.py`, `.bin`), 처음 한 번만 wchisp + BOOT 브리지 ([BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md))
+- CH32V203은 3X3V_RGB, 2X4V_RGB에서 지원(자체 부트로더)
 
 - **업데이트 모드 칩 목록**: 부트로더 Detect가 돌려준 칩 ID로 이 표를 찾아 최대 크기와 업로드 도구를 정함
   - 표에 없거나 "미지원"이면 [장입]을 막고 이유를 보여 줌
@@ -167,12 +173,19 @@ class Board:
 
 지금 목록에 있는 보드:
 
-| 보드 이름 | 설명 | 칩 | 키 / 노브 / 행 | 진입 핀 | 펌웨어 파일 |
-|---|---|---|---|---|---|
-| `MK6K1N` | 6키 + 노브 1개, LED 1개 | CH552 | 6 / 1 / 2 | P1.5 (키 D) | `macro_keyboard-MK6K1N.hex` |
-| `MK6K1NL` | 6키 + 노브 1개, 키마다 LED (핀은 MK6K1N과 같음) | CH552 | 6 / 1 / 2 | P1.5 (키 D) | `macro_keyboard-MK6K1NL.hex` |
-| `3X3V_RGB` | 9키(3x3), 노브 없음, 키별 RGB LED | CH32V203 | 9 / 0 / 3 | 키 7 (자체 부트로더). 처음 설치는 BOOT 브리지 | `ch32v203/macro_keyboard-3X3V_RGB.bin` |
-| `2X4V_RGB` | 8키(2x4), 노브 없음, 키별 RGB LED | CH32V203 | 8 / 0 / 2 | 키 5 (자체 부트로더). 처음 설치는 BOOT 브리지 | `ch32v203/macro_keyboard-2X4V_RGB.bin` |
+<!-- gen:boards -->
+| 보드 | 칩 | 키 / 노브 / 줄 | LED | 업데이트 진입 | 처음 설치 | 펌웨어 파일 |
+|---|---|---|---|---|---|---|
+| MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
+| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
+| 3X3V_RGB | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board 3x3v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin` |
+| 2X4V_RGB | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board 2x4v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-2X4V_RGB.bin` |
+<!-- /gen:boards -->
+
+- 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
+- MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
+- 3X3V_RGB: 9키(3x3), 2X4V_RGB: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
+- 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
 
 - 핀 배치 그림·표: 보드 문서 2·3절 ([BOARDS.md](BOARDS.md))
 

@@ -6,12 +6,20 @@
 
 ## 구성
 
-| 보드 | 칩 | 키 / 노브 / 행 | LED | 저장 용량 (문자열 합계 최대) | 세부 문서 |
-|---|---|---|---|---|---|
-| **MK6K1N** | CH552G | 6 / 1 / 2 | WS2812 1개 | 128바이트 (102자) | [BOARD_MK6K1N.md](board/BOARD_MK6K1N.md) |
-| **MK6K1NL** | CH552G | 6 / 1 / 2 | WS2812 키마다 (6개 체인) | 128바이트 (102자) | [BOARD_MK6K1NL.md](board/BOARD_MK6K1NL.md) |
-| **3X3V_RGB** | CH32V203C8U6 | 9 / 0 / 3 | 키마다 RGB (색별 캐소드 + 키별 애노드) | 4096바이트 (4070자) | [BOARD_3X3V_RGB.md](board/BOARD_3X3V_RGB.md) |
-| **2X4V_RGB** | CH32V203C8U6 | 8 / 0 / 2 | 키마다 RGB (9키와 같은 방식) | 4096바이트 (4072자) | [BOARD_2X4V_RGB.md](board/BOARD_2X4V_RGB.md) |
+<!-- gen:boards -->
+| 보드 | 칩 | 키 / 노브 / 줄 | LED | 업데이트 진입 | 처음 설치 | 펌웨어 파일 |
+|---|---|---|---|---|---|---|
+| MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
+| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
+| 3X3V_RGB | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board 3x3v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin` |
+| 2X4V_RGB | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board 2x4v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-2X4V_RGB.bin` |
+<!-- /gen:boards -->
+
+- 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
+- 칩: CH552 = CH552G, CH32V203 = CH32V203C8U6
+- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), 3X3V_RGB 4096바이트(4070자), 2X4V_RGB 4096바이트(4072자)
+- RGB 보드의 LED: 색별 음극(캐소드) 묶음 + 키별 양극(애노드)
+- 세부 문서: [MK6K1N](board/BOARD_MK6K1N.md), [MK6K1NL](board/BOARD_MK6K1NL.md), [3X3V_RGB](board/BOARD_3X3V_RGB.md), [2X4V_RGB](board/BOARD_2X4V_RGB.md)
 
 - 노브 없는 보드: 패턴 입력 시작은 **아무 키 2초**, 단계는 키만, 키는 누를 때 입력 ([MANUAL 10장](MANUAL.md#10-노브-없는-보드에서-다른-점))
 - 패턴 암호·자동 잠금: 모든 보드에 있음

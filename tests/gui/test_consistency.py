@@ -10,42 +10,15 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
 from gui.core import boards, chips, hidboot, version
 
-ROOT = Path(__file__).resolve().parents[2]
-FW = ROOT / "firmware" / "macro_keyboard"
-SRC = FW / "src"
-BL = ROOT / "firmware" / "bootloader_ch32v203"
-
-
-def text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def defines(path: Path) -> dict[str, str]:
-    """#define NAME value of a header and the headers it includes (same folder)."""
-    out: dict[str, str] = {}
-    src = text(path)
-    for inc in re.findall(r'^#include\s+"([^"]+)"', src, re.M):
-        if (path.parent / inc).exists():
-            out.update(defines(path.parent / inc))
-    for name, value in re.findall(r"^#define\s+(\w+)[ \t]+([^\n]*?)\s*(?://.*)?$", src, re.M):
-        out[name] = value
-    return out
-
-
-def number(value: str) -> int:
-    return int(value.rstrip("uUlL").strip("()"), 0)
-
-
-def make_var(path: Path, name: str) -> str:
-    m = re.search(rf"^{name}\s*[:?]?=\s*(.+?)\s*$", text(path), re.M)
-    assert m, f"{name} not in {path.name}"
-    return m.group(1)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+from repo_facts import BL, FW, ROOT, SRC, board_files, defines, make_var, number, text  # noqa: E402
 
 
 # ---- (a) CH32V203 flash layout --------------------------------------------
@@ -118,16 +91,6 @@ def test_config_capacity():
 
 
 # ---- (b) board files against gui/core/boards.py -----------------------------
-
-def board_files() -> dict[str, Path]:
-    """BOARD_NAME -> board file (shared pin files have no BOARD_NAME)."""
-    out = {}
-    for path in sorted((SRC / "boards").glob("*.h")):
-        m = re.search(r'^#define\s+BOARD_NAME\s+"([^"]+)"', text(path), re.M)
-        if m:
-            out[m.group(1)] = path
-    return out
-
 
 BOARD_FILES = board_files()
 
