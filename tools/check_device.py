@@ -1,4 +1,4 @@
-"""Quick check of a freshly flashed keyboard (docs/PORT_CH32V203.md "확인할 것").
+"""Quick check of a freshly flashed keyboard (docs/old/PORT_CH32V203.md "확인할 것").
 
 Run from the repo root with the GUI venv:
   uv run python tools\\check_device.py                 # 1, 3, 8: USB, HELLO, board, chip

@@ -300,7 +300,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 - 펌웨어 v1.5.0(최종 빌드)부터 한 칸(4단계) 중 **같은 방향으로 2단계 이상** 움직여야 회전으로 셈(`ENC_MIN_STEPS`)
 - 두 보드 모두 적용
-- 노브 신호: [BOARD_MK6K1N 노브 신호](BOARD_MK6K1N.md#노브-신호) 참고
+- 노브 신호: [BOARD_MK6K1N 노브 신호](board/BOARD_MK6K1N.md#노브-신호) 참고
 
 ### 3-7. MK6K1NL 제조사 펌웨어에서 업데이트 모드로 들어가지 않음
 
@@ -314,7 +314,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
    - `tools\flash.ps1`, 또는
    - GUI 펌웨어 업데이트 창에서 **장입할 보드**를 MK6K1NL로 고르고 [장입]
 2. [2-3](#2-3-다운로드-실패-후-장치가-전혀-인식되지-않음-복구)처럼 **12번(D+)–16번(3V3) 사이에 1.5~2kΩ**을 대고 꽂음
-3. 한 번 올리면 진입 핀이 P1.5로 기록됨 → 다음부터는 키 D나 노브를 누른 채 꽂으면 됨
+3. 한 번 올리면 진입 핀이 P1.5로 기록됨 → 다음부터는 키 D를 누른 채 꽂으면 됨
 
 ### 3-8. 9키(3X3V_RGB): 1줄 LED가 파랑만 켜짐
 

@@ -66,7 +66,7 @@ BOARDS = (
               boot_config=BOOT_P15, boot_key="D",
               factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
                            "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
-    # CH32V203C8U6, 9 keys, no knob (docs/PORT_CH32V203.md). Our own HID bootloader
+    # CH32V203C8U6, 9 keys, no knob (docs/board/BOARD_3X3V_RGB.md). Our own HID bootloader
     # (docs/BOOTLOADER_CH32V203.md): key 7 at power-up, or BOOT from the app. It goes
     # on once through the ROM bootloader (BOOT bridge, wchisp: flash_text).
     # Without a knob, holding any key starts the lock pattern entry.

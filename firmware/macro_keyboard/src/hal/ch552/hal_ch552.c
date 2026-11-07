@@ -21,11 +21,7 @@ void hal_init(void) {
   P3_MOD_OC = (P3_MOD_OC | P3_INPUTS) & ~PIN_BIT(PIN_LED);
   P3_DIR_PU |= P3_INPUTS | PIN_BIT(PIN_LED);
   P3 &= ~PIN_BIT(PIN_LED);
-}
-
-uint8_t hal_boot_held(void) {
-  delay(20); // pull-ups settle
-  return !(P3 & PIN_BIT(PIN_KNOB_SW));
+  delay(20); // pull-ups settle before input_init reads the knob lines
 }
 
 uint8_t hal_switches(void) {

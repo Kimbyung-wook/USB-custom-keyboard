@@ -263,6 +263,13 @@ def main() -> int:
             check(f"{board}: key C types its slot", reports, keys((0, 0x06)))
             check(f"{board}: key C lights green, then blue again", leds,
                   "L1.00.0 L1.04.2 L1.00.0" if key_leds else "L1.00.0 L2.00.0 L1.00.0")
+            # Held 1 s: green from the press on, blue only after the release
+            steps = run(exe_b, out, letters, extra=["input", "p2", "w1000", "r2", "w30"])[3:]
+            held = {line.split(":", 1)[0]: re.findall(r"L\d\.[0-9a-f]{2}\.\d", line)
+                    for line in steps}
+            check(f"{board}: a held key stays green until its release",
+                  (held["w1000"], held["w30"]),
+                  (["L1.04.2"] if key_leds else ["L2.00.0"], ["L1.00.0"]))
             reports, leds = typed(letters, "e10", "e00", "e01", "e11", "w300")
             check(f"{board}: a clockwise detent types slot 6", reports, keys((0, 0x0a)))
             check(f"{board}: a knob action lights every key LED", leds,

@@ -37,7 +37,6 @@
 //   HAL_REQ[64], HAL_RES[64]           request and response buffers
 // System
 //   hal_init()                         pins; LEDs off
-//   uint8_t hal_boot_held()            the knob is held at power-up
 //   hal_usb_start()                    start USB (after hal_init)
 //   hal_enter_bootloader()             leave for the ROM bootloader
 //   uint8_t hal_chip_uid(i)            byte i (0-3) of the chip's unique ID

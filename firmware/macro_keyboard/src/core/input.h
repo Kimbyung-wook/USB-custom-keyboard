@@ -9,6 +9,9 @@
 // a board without a knob) for LOCK_HOLD_MS starts a pattern entry (lock.h).
 
 extern __data uint16_t now16; // this loop's hal_ms(), set by loop() first
+// Debounced switches down: bit i = switch i (keys, then the knob switch).
+// hal_sw_t comes from hal.h, included before this file.
+extern __idata hal_sw_t input_down;
 
 void input_init(void); // after hal_init(): the knob's resting lines
 void input_task(void); // from loop()

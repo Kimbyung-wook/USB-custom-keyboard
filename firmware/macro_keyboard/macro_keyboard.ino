@@ -11,8 +11,8 @@
     pattern entry: the pattern unlocks it. On an open keyboard the same hold
     and pattern lock it again (five wrong re-lock tries lock it as well).
   - LEDs: src/core/led.h.
-  - Bootloader: hold key D (ROM bootloader, P1.5) or hold the knob while
-    plugging in, or send BOOT from the GUI.
+  - Bootloader: hold key D (ROM bootloader, P1.5) while plugging in, or
+    send BOOT from the GUI.
 
   Layers (firmware/macro_keyboard/README.md "코드 구조"): this file only
   calls src/core/app.c, the sequence shared with the CH32V203 build. The

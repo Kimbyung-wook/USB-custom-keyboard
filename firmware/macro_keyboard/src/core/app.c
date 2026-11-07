@@ -15,12 +15,6 @@ static void enterBootloader(void) {
 
 void app_setup(void) {
   hal_init();
-  // Holding the knob while plugging in enters the bootloader (always 0 on
-  // boards without a knob)
-  if (hal_boot_held()) {
-    enterBootloader();
-  }
-
   storage_init();
   lock_init();
   input_init();

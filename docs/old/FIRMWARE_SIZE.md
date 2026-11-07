@@ -8,7 +8,7 @@
 
 ## 요약
 
-- **현재 크기 (1.6.0)**: MK6K1N 8,694바이트, MK6K1NL 8,915바이트
+- **현재 크기 (1.6.0, 2026-11-07)**: MK6K1N 8,726바이트, MK6K1NL 8,949바이트
 - **분석 당시 크기 (v1.2.0)**: **11,585바이트 / 14,336바이트 (81%)**, RAM(xdata) 498바이트
   - 실제 빌드로 측정한 값
   - README의 11,587바이트와 2바이트 차이는 빌드 날짜 숫자 때문
@@ -153,7 +153,7 @@
   - `readEncoder` → `hal_encoder` `src/hal/ch552/hal_ch552.c:43-46`
   - `scanKeys`의 `digitalRead` → `hal_switches` `src/hal/ch552/hal_ch552.c:31-41`
   - `setup`의 `pinMode`/`digitalWrite` → `hal_init` `src/hal/ch552/hal_ch552.c:16-24`
-  - 노브 눌림 확인(부트로더) → `hal_boot_held` `src/hal/ch552/hal_ch552.c:26-29`
+  - 노브 눌림 확인(부트로더) → `hal_boot_held` (2026-11-07 기능과 함께 삭제)
 - **무엇을**: 핀 번호를 표에서 찾아 바꾸는 코어 함수 대신 포트 레지스터를 직접 씀
   - 키 A~E는 P1, 키 F와 노브 스위치·엔코더·LED는 P3
   - 키 읽기: `__code uint8_t keyMask[7] = {0x02, 0x80, 0x40, 0x20, 0x10, 0x04, 0x08};` 그리고 `pressed = !((i < 5 ? P1 : P3) & keyMask[i]);`
@@ -168,7 +168,7 @@
   - CH552 "풀업 입력"(quasi-bidirectional) 설정 값은 코어 `pinMode(INPUT_PULLUP)`과 같은 레지스터 조합
   - CH55xDuino의 `pinModeFast`/`digitalReadFast` 매크로(`wiring_digital_fast.h`)를 써도 됨
 - **확인 방법**
-  - 장치: 키 6개, 노브 누름, 노브 양방향 회전, LED 색, "노브를 누른 채 연결하면 부트로더"를 하나씩 확인
+  - 장치: 키 6개, 노브 누름, 노브 양방향 회전, LED 색을 하나씩 확인 (당시에는 "노브를 누른 채 연결하면 부트로더"도, 2026-11-07 삭제)
   - `tests/hw/mk6k1n/test_pinmap`으로 핀 대응 재확인
 
 ### 3. 나눗셈·곱셈·범용 포인터 없애기 (−468바이트)
@@ -334,7 +334,7 @@
   - `delayMicroseconds`/`delay`를 쓰는 곳을 밀리초 카운터나 짧은 반복문으로 바꿈
     - `waitIdle`의 250 ms 제한: `src/hal/ch552/usb/hid.c:62-75` (`delayMicroseconds(5)` × 50000)
     - 부트로더 점프 전 100 ms: `hal_enter_bootloader` `src/hal/ch552/hal_ch552.c:86-87` (당시 `jumpToBootloader`)
-    - `setup`의 `delay(20)`: `hal_boot_held` `src/hal/ch552/hal_ch552.c:27`
+    - 풀업 안정화 `delay(20)`: `hal_init` 끝 `src/hal/ch552/hal_ch552.c:24`
     - `init`의 RC 안정화 5 ms (코어 `wiring.c`)
 - **위험**: 중간-높음
   - 클록 설정을 잘못하면 USB가 동작하지 않음
@@ -342,7 +342,7 @@
   - 1~9를 하고도 공간이 더 필요할 때만 권함
 - **확인 방법**
   - 오실로스코프나 로직 분석기 없이: `{DELAY:1000}`이 1초인지 스톱워치로, 3초 길게 누르기와 10초 시간 초과를 시계로 확인
-  - USB 인식, BOOT 명령, 노브 누른 채 연결
+  - USB 인식, BOOT 명령, 키 D 누른 채 연결
 
 ### 11. 기타 작은 것들 (추정)
 

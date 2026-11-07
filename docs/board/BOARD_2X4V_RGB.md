@@ -1,13 +1,13 @@
 # 2X4V_RGB 보드 (8키)
 
-- 요약 표: [BOARDS.md](BOARDS.md)
+- 요약 표: [BOARDS.md](../BOARDS.md)
 
 ## 1. 개요
 
 - 제품: SayoDevice Keyb T8B7 (같은 계열 9키 = [3X3V_RGB](BOARD_3X3V_RGB.md))
 - 칩: **CH32V203C8U6** (9키와 같음)
 - 구성: 2×4 키, **노브 없음**, 키마다 3색 한 칩 RGB LED
-- 확인 근거: [test_ch32v203](../tests/hw/ch32v203/test_ch32v203/README.md) KEYS·FIND·ANODE 모드 (2026-11-07)
+- 확인 근거: [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md) KEYS·FIND·ANODE 모드 (2026-11-07)
 - 개발 보드 UID: `CD-AB-30-92-4E-BD-4B-FB` (제조사 펌웨어는 보호 해제로 지워짐, 2026-11-07)
 
 ## 2. 키 배치
@@ -48,7 +48,7 @@
 
 - 평소 업데이트: 자체 HID 부트로더. **키 5를 누른 채 꽂기** 또는 GUI [업데이트 모드로 전환] → GUI 업데이트 창 (설정 유지)
 - 처음 설치·복구: **BOOT 브리지**(BOOT1 실크 아래 패드 2개, 9키와 같은 방식)를 이은 채 꽂고 `tools\flash.ps1 -Board 2x4v_rgb -Full` (wchisp, 설정도 지워짐)
-- 절차·플래시 배치: [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md)
+- 절차·플래시 배치: [BOOTLOADER_CH32V203.md](../BOOTLOADER_CH32V203.md)
 - ⚠️ 제조사 펌웨어는 읽기 보호(WRP도 일부 걸림). 보호 해제 때 지워짐(되돌릴 수 없음)
 
 ## 5. 본 펌웨어에서의 동작

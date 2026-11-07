@@ -42,7 +42,6 @@ extern __xdata __at (EP2_ADDR + 64) uint8_t Ep2InBuffer[];
 #define HAL_RES Ep2InBuffer
 
 void hal_init(void);
-uint8_t hal_boot_held(void);
 #define hal_usb_start() USBInit()
 void hal_enter_bootloader(void);
 // The unique ID in ROM, the same bytes the bootloader shows

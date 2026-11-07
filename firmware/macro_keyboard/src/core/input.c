@@ -16,6 +16,7 @@ __data uint16_t now16;
 
 #define DEBOUNCE_MS 20
 
+__idata hal_sw_t input_down; // bit i = switch i is down (debounced)
 static __xdata uint8_t keyStable[NUM_SWITCHES];
 static __xdata uint8_t keyLast[NUM_SWITCHES];
 static __xdata uint16_t keyChangedAt[NUM_SWITCHES];
@@ -116,8 +117,10 @@ static void scanSwitches(void) {
                (uint16_t)(now16 - keyChangedAt[i]) >= DEBOUNCE_MS) {
       keyStable[i] = pressed;
       if (pressed) {
+        input_down |= (hal_sw_t)(1u << i);
         switchDown(i);
       } else {
+        input_down &= (hal_sw_t)~(1u << i);
         switchUp(i);
       }
     }

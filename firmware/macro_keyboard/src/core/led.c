@@ -3,11 +3,10 @@
 #include "input.h"
 #include "led.h"
 #include "lock.h"
-#include "macro.h"
 // clang-format on
 
 #define SAVED_FLASH_MS 300
-#define PRESS_FLASH_MS 200       // green at least this long after a key press
+#define PRESS_FLASH_MS 200       // green at least this long after a press or knob turn
 #define LOCKED_BLINK_PERIOD 3000 // locked: one short red blink per period
 #define LOCKED_BLINK_MS 100
 #define BLOCKED_BLINK_SHIFT 9    // blocked: blink period 2 x 512 ms
@@ -67,6 +66,15 @@ static __idata uint16_t savedAt;
 static __idata uint8_t pressFlash;
 static __idata uint16_t pressAt;
 static __idata uint16_t blinkAt; // start of the current locked blink period
+// Switches whose press typed (bit = switch, as input_down): green while down
+static __idata hal_sw_t greenSw;
+#if BOARD_KNOBS
+#define SW_OF(slot)                                                            \
+  ((slot) < BOARD_KEYS ? (hal_sw_t)(1u << (slot))                              \
+   : (slot) == SLOT_KNOB_PRESS ? (hal_sw_t)(1u << BOARD_KEYS) : (hal_sw_t)0)
+#else
+#define SW_OF(slot) ((hal_sw_t)(1u << (slot)))
+#endif
 
 #if BOARD_KEY_LEDS
 #if BOARD_LED_COUNT != BOARD_KEYS
@@ -74,7 +82,7 @@ static __idata uint16_t blinkAt; // start of the current locked blink period
 #endif
 // Key masks are hal_sw_t (8 bits on CH552, 16 on CH32V)
 #define ALL_KEYS ((hal_sw_t)((1u << BOARD_KEYS) - 1))
-static __idata hal_sw_t greenKeys; // pressed during the current typing
+static __idata hal_sw_t flashKeys; // LEDs of the actions in the current flash
 static __idata hal_sw_t darkKeys;  // pressed in a pattern entry, dark for a moment
 static __idata uint16_t darkAt;
 static __idata hal_sw_t ledMask;   // LEDs shown in ledMaskColor instead of ledColor
@@ -117,13 +125,15 @@ static void showColor(uint8_t color) {
 #endif
 
 void led_typed(uint8_t slot) {
+#if BOARD_KEY_LEDS
+  if (!pressFlash) {
+    flashKeys = 0;
+  }
+  flashKeys |= KEY_LEDS_OF(slot);
+#endif
   pressFlash = 1;
   pressAt = now16;
-#if BOARD_KEY_LEDS
-  greenKeys |= KEY_LEDS_OF(slot);
-#else
-  (void)slot;
-#endif
+  greenSw |= SW_OF(slot);
 }
 
 void led_saved(void) {
@@ -158,6 +168,7 @@ void led_task(void) {
   if (pressFlash && (uint16_t)(now16 - pressAt) >= PRESS_FLASH_MS) {
     pressFlash = 0;
   }
+  greenSw &= input_down; // released: back to blue
   if (lock_state() == LOCK_BLOCKED) {
     showColor((now16 >> BLOCKED_BLINK_SHIFT) & 1 ? COLOR_OFF : COLOR_RED);
   } else if (lock_entering()) {
@@ -178,16 +189,27 @@ void led_task(void) {
       sinceBlink = 0;
     }
     showColor(sinceBlink < LOCKED_BLINK_MS ? COLOR_RED : COLOR_OFF);
-  } else if (macro_busy() || pressFlash) {
-#if BOARD_KEY_LEDS
-    showLeds(COLOR_IDLE, greenKeys, COLOR_TYPING);
-#else
-    showColor(COLOR_TYPING);
-#endif
   } else {
+    // Open: green from the press until the release (at least
+    // PRESS_FLASH_MS, also for a knob turn), blue otherwise. Typing that
+    // goes on after the release shows blue.
 #if BOARD_KEY_LEDS
-    greenKeys = 0;
+    hal_sw_t green = greenSw & ALL_KEYS;
+#if BOARD_KNOBS
+    if (greenSw >> BOARD_KEYS) {
+      green = ALL_KEYS; // the knob switch stands for all LEDs
+    }
 #endif
-    showColor(COLOR_IDLE);
+    if (pressFlash) {
+      green |= flashKeys;
+    }
+    if (green) {
+      showLeds(COLOR_IDLE, green, COLOR_TYPING);
+    } else {
+      showColor(COLOR_IDLE);
+    }
+#else
+    showColor(pressFlash || greenSw ? COLOR_TYPING : COLOR_IDLE);
+#endif
   }
 }

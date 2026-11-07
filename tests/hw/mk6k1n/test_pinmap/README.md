@@ -1,6 +1,6 @@
 # test_pinmap: 하드웨어 확인용 테스트 펌웨어
 
-> 확인한 핀 배치 다이어그램: [docs/BOARD_MK6K1N.md](../../../../docs/BOARD_MK6K1N.md)
+> 확인한 핀 배치 다이어그램: [docs/board/BOARD_MK6K1N.md](../../../../docs/board/BOARD_MK6K1N.md)
 
 - **대상**: 6키 + 노브 1개 CH552G 미니 키보드 **MK6K1N**(눈에 보이는 LED 1개)
 - **확인 항목**: 핀 매핑, LED

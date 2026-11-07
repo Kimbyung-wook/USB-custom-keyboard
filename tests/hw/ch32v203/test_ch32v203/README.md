@@ -25,10 +25,14 @@
 | **FIND** (음극 찾기) | 키가 아닌 핀을 **낮음 1초 → 높음 1초**로 구동. 나머지 핀은 풀업 → 음극(줄 R/G/B)이면 L 동안 그 줄이 그 색으로 희미하게 켜짐 | `LED? PA00`, `L`, `H` |
 | **ANODE** (양극 찾기) | 키가 아닌 핀을 모두 약하게 풀다운, 하나씩 **2초 높음** 구동 → 키별 양극이면 그 키 LED만 희미하게 켜짐 | `HI PB03`, `LOOP` |
 
-- 순서: KEYS → FIND → ANODE → KEYS (2026-11-07 개편. 예전 PWR(9키 전용)·DUMP·BOOT 실험 모드는 삭제, 결과는 아래 기록)
+- 순서: KEYS → FIND → ANODE → KEYS
 - **KEYS에서 키를 1번부터 차례로 한 번씩 누를 것**: FIND·ANODE는 눌러 본 핀을 건드리지 않음. 안 누른 키 핀은 구동될 수 있음 → FIND·ANODE 중에는 모드 넘기는 길게 누르기 말고 키를 누르지 않기
 - 제외 핀: PA11·PA12(USBD), PB6·PB7(USBFS D−/D+, 이 펌웨어의 USB). `STUCK` 핀은 ANODE에서 제외
 - 펌웨어 위치 0x08000000: 자체 부트로더도 덮어씀 → 시험 뒤 `tools\flash.ps1 -Board … -Full`로 다시 설치
+
+**이력**
+
+- 2026-11-07: 모드 개편. PWR(9키 전용)·DUMP·BOOT 실험 모드 삭제, 그 결과는 아래 "결과"·"실험" 절
 
 ## 빌드
 
@@ -96,7 +100,7 @@ mingw32-make
 ### 2X4V_RGB (8키)
 
 - 제품: SayoDevice Keyb T8B7 (같은 계열 9키 = 3X3V_RGB)
-- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_2X4V_RGB.md](../../../../docs/BOARD_2X4V_RGB.md). 아래는 시험 전에 적은 계획
+- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_2X4V_RGB.md](../../../../docs/board/BOARD_2X4V_RGB.md). 아래는 시험 전에 적은 계획
 
 **확인된 것** (사용자 확인, 장치 시험 전)
 

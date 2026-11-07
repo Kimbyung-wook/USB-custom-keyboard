@@ -6,12 +6,12 @@
 
 // What the LEDs show (docs/MANUAL.md "LED 색 요약"): locked = dark with a
 // short red blink every 3 s, pattern entry = solid red, blocked = red
-// blinking, open = blue, green for a moment on every key press (and while
-// typing), white flash after saving, purple before the bootloader. With an
+// blinking, open = blue, green while a key is down (at least 0.2 s, also
+// for a knob turn), white flash after saving, purple before the bootloader. With an
 // LED under every key (BOARD_KEY_LEDS) only the pressed key's LED turns
 // green, and in a pattern entry the pressed key's LED goes dark for a
 // moment; a knob action shows on all of them.
-// BOARD_LED_SELF_TEST: red, green, blue, white, off at power-up (0.3 s each).
+// BOARD_LED_SELF_TEST: a color wheel at power-up (src/core/led.c).
 
 // Colors: index into hal_palette
 #define COLOR_OFF 0

@@ -1,6 +1,6 @@
 # MacroKeyboard: CH552G 상용 매크로 키보드 펌웨어 개조 계획
 
-> 문서 성격: **역사 기록** (초기 계획, 2026-10). 현재 상태는 [README](../README.md), 보드는 [BOARDS.md](BOARDS.md)
+> 문서 성격: **역사 기록** (초기 계획, 2026-10). 현재 상태는 [README](../../README.md), 보드는 [BOARDS.md](../BOARDS.md)
 
 ## 목표
 
@@ -34,7 +34,7 @@
 
 ## 핀 매핑 (test_pinmap 펌웨어로 확정, 2026-10-25)
 
-> 보드별 핀 배치와 다이어그램: [docs/PINMAP.md](PINMAP.md) (MK6K1N, MK6K1NL)
+> 보드별 핀 배치와 다이어그램: [docs/PINMAP.md](../PINMAP.md) (MK6K1N, MK6K1NL)
 
 키 배치(윗면 기준):
 
@@ -180,7 +180,7 @@
 | **15** | 짧은 패턴, 입력 표시 | 펌웨어 v1.6.0 / GUI 1.6.0 | host_test·GUI 테스트 통과 (2026-10-31) |
 | **16** | 기능과 하드웨어 나누기 | 펌웨어 v1.6.0 그대로 | host_test 통과, MK6K1NL에 장입 (2026-10-31) |
 
-> 위의 "펌웨어 구조"와 "예상 Flash 배치"는 코드 Flash 저장을 전제로 한 초기 계획. v1.0의 실제 구성은 [firmware/macro_keyboard/README.md](../firmware/macro_keyboard/README.md) 참고.
+> 위의 "펌웨어 구조"와 "예상 Flash 배치"는 코드 Flash 저장을 전제로 한 초기 계획. v1.0의 실제 구성은 [firmware/macro_keyboard/README.md](../../firmware/macro_keyboard/README.md) 참고.
 
 ### 0~2단계: 하드웨어 파악, 부트로더 진입, HID 키보드
 
@@ -240,7 +240,7 @@
 
 ### 10단계: 보드 정보
 
-- 펌웨어 v1.3.0 / GUI 1.3.0 (2026-10-26) ([docs/BOARD_INFO.md](BOARD_INFO.md))
+- 펌웨어 v1.3.0 / GUI 1.3.0 (2026-10-26) ([docs/BOARD_INFO.md](../BOARD_INFO.md))
 - HELLO 바이트 17~35로 보드 정보 전달: 칩, 키/노브 수, 이름, 칩 고유 ID
 - hex에 식별 문자열 넣음
 - 핀 배치는 보드 파일 `src/boards/mk6k1n.h`로 분리

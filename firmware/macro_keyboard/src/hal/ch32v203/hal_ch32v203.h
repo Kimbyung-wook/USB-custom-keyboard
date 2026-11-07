@@ -48,9 +48,8 @@ extern volatile uint8_t USBFS_Endp_Busy[];
 void vendor_send(void);
 
 void hal_init(void);
-#define hal_boot_held() 0 // no knob; the bootloader needs the BOOT bridge
 void hal_usb_start(void);
-// No software entry to the ROM bootloader (docs/PORT_CH32V203.md): restarts
+// No software entry to the ROM bootloader (docs/old/PORT_CH32V203.md): restarts
 void hal_enter_bootloader(void);
 uint8_t hal_chip_uid(uint8_t i);
 
