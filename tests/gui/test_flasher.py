@@ -384,9 +384,9 @@ def make_hid_dialog(tmp_path, dev=None, board="3X3V_RGB", path=None, **kw):
             return []
         return [hidboot.Bootloader(dev).hello()]
 
-    def flash(image, progress):
+    def flash(image, progress, force=False):
         bl = hidboot.Bootloader(dev)
-        bl.flash(image, progress)
+        bl.flash(image, progress, force)
         bl.run()
 
     dlg = FirmwareDialog(lambda: "", lambda p: ["unused"], keyboard=nine.layout,
@@ -425,6 +425,33 @@ def test_dialog_ch32v203_without_bootloader_or_with_hex(qapp, tmp_path):
     # picking a CH552 board brings the vnproch55x flow back
     dlg.board_combo.setCurrentIndex(0)
     assert not dlg.spec.hidboot and "[업데이트 모드로 전환]" in dlg.hint.text()
+
+
+@pytest.mark.parametrize("fid, warning", [
+    (None, "식별 정보가 없는"),
+    ("MKFW1:2X4V_RGB:CH32V203:1.7.0", "다른 키보드(2X4V_RGB)용"),
+])
+def test_dialog_ch32v203_wrong_file_needs_forced_consent(qapp, tmp_path, fid, warning):
+    from gui.core import hidboot
+    dev = hidboot.MockBootloader()
+    dlg = make_hid_dialog(tmp_path, dev, path=make_bin(tmp_path / "x.bin", 2000, fid=fid))
+    assert warning in dlg.size_label.text() and "강제 동의" in dlg.size_label.text()
+    asked = []
+    dlg.confirm_force = lambda text: asked.append(text) or False   # [취소]
+    assert not dlg.start() and asked and warning in asked[0]
+    assert not dev.erased and dev.writes == 0                      # nothing touched
+
+    dlg.confirm_force = lambda text: True                          # [강제 장입]
+    assert dlg.start() and dlg.succeeded and dev.ran
+    image = (tmp_path / "x.bin").read_bytes()
+    assert bytes(dev.flash[:len(image)]) == image
+
+
+def test_dialog_ch32v203_right_file_asks_no_force(qapp, tmp_path):
+    from gui.core import hidboot
+    dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader())
+    dlg.confirm_force = lambda text: pytest.fail("asked to force a matching file")
+    assert dlg.start() and dlg.succeeded
 
 
 def test_dialog_ch32v203_other_board_and_flash_error(qapp, tmp_path):

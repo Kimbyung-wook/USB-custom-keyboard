@@ -66,17 +66,25 @@
   - 앱: `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin`
   - 전체: `firmware/bootloader_ch32v203/build/full-3X3V_RGB.bin` (부트로더 + 앱 + 앱 정보, 61200 B, `mkfull.py`)
 - 부트로더만: `firmware/bootloader_ch32v203`에서 `mingw32-make` (8 KB 넘으면 실패)
+- 헤더 의존성(`-MMD -MP`): `boot_layout.h`·보드 파일만 고쳐도 다시 빌드. `make full`은 `EXTRA_DEFS`(빌드 날짜)를 앱 빌드에 넘김
 
 ## 설치·업데이트
 
 - 아래는 9키 예(8키는 `-Board 2x4v_rgb`, 키 5). 단계별 사용자 절차는 [MANUAL 8장](MANUAL.md#처음-설치-공장-펌웨어)
-- 처음 한 번(공장 펌웨어 또는 부트로더 없음): BOOT 브리지 이은 채 꽂고 `tools\flash.ps1 -Board 3x3v_rgb -Full` → 브리지 떼고 다시 꽂기
-  - ⚠️ 설정도 지워짐: wchisp가 1 KB 단위로 61개(~0xF3FF) 지워 설정 영역 앞부분까지 지움 (확인함) → 먼저 GUI로 백업
+- 처음 한 번(공장 펌웨어 또는 부트로더 없음), 부트로더 교체: `tools\flash.ps1 -Board 3x3v_rgb -Full`
+  1. BOOT 브리지 이은 채 꽂기 → `wchisp info`로 칩 CH32V203C8U6, 보드 UID, 보호 없음 확인 → `yes`
+  2. wchisp가 `bootloader-<BOARD>.bin`(8 KB 이하)만 씀. wchisp는 최소 8섹터(0x0000~0x1FFF)를 지움. 부트로더 8 KB 영역 안이라 앱·설정은 그대로
+  3. 브리지 떼고 진입 키를 누른 채 다시 꽂기 → `hidboot`이 앱(`-Bin`)을 씀
+  - 설정: 우리 펌웨어가 있던 칩은 남음. 공장 펌웨어(읽기 보호)는 보호를 풀 때 전부 지워짐
+  - 매개변수: `-Bootloader`(부트로더 이미지, 기본 `bootloader-<BOARD>.bin`), `-Bin`(앱, 두 경우 모두)
+  - `full-<BOARD>.bin`(부트로더 + 앱 + 앱 정보)은 빌드가 계속 만들지만 `flash.ps1`은 안 씀
   - 자체 부트로더로 하는 업데이트는 앱 영역만 지움 → 설정 유지
+  - 9키 실측(2026-11-07): 부트로더 교체 → 키 7로 앱 1.7.0 장입 → `check_device` v1.7.0, 설정(슬롯 9개) 유지
 - 이후: 브리지 불필요
   - GUI 업데이트 창: [업데이트 모드로 전환] 또는 키 7 누른 채 꽂기 → 칩 표에 "자체 1.0" → [장입]
   - 스크립트: `tools\flash.ps1 -Board 3x3v_rgb` (키 7) 또는 `-Enter`(잠금 풀린 앱에 BOOT)
-  - CLI: `uv run python -m gui.core.hidboot info | flash <bin> | run [--enter]`
+  - CLI: `uv run python -m gui.core.hidboot info | flash <bin> [--force] | run [--enter]`
+- 보드 확인: HID 장입은 `.bin` 식별 문자열(`MKFW1:<보드>:...`)의 보드가 부트로더 HELLO의 보드와 같아야 함. 다르거나 식별 문자열이 없으면 지우기 전에 거부. 시험 펌웨어·다른 보드용은 `--force`(`tools\flash.ps1 -Force`)로만
 - 복구: 부트로더가 망가져도 BOOT 브리지 + `-Full`은 언제나 가능
 
 ## 위험과 대책
@@ -85,7 +93,7 @@
 |---|---|
 | 업데이트 중 USB 끊김 | 앱 정보를 마지막에 씀 → 부트로더에 머묾, 다시 장입 |
 | 부트로더 자신을 덮어씀 | 앱 영역 밖 쓰기 거부 |
-| 잘못된 보드의 펌웨어 | GUI: HELLO 보드 이름, .bin 안의 `MKFW1:` 보드 이름 확인 |
+| 잘못된 보드의 펌웨어 | `hidboot`: `.bin`의 `MKFW1:` 보드 ≠ HELLO 보드, 또는 식별 문자열 없음 → 지우기 전에 거부(`--force`로만). GUI: 빨간 경고 + "강제 장입" 확인 |
 | 키를 누른 채 꽂는 실수 | 보라 LED로 구분, 다시 꽂으면 앱 |
 | 부트로더 크기 초과 | 8 KB 넘으면 빌드 실패 |
 
@@ -98,10 +106,14 @@
 5. ✅ GUI [업데이트 모드로 전환] → 장입
 6. ✅ 장입 중 USB 뽑기 → 다시 꽂으면 부트로더 → 재장입
 7. ✅ 8키(2X4V_RGB): 키 5(PA5), 설치·진입·HID 장입 (2026-11-07)
+8. ✅ 1.7.0 `-Full`(부트로더 교체) → 키 7로 앱 1.7.0 장입, 설정(슬롯 9개) 유지 (2026-11-07)
 
 ## 이력
 
 - 2026-11-07: 구현, 3X3V_RGB 하드웨어 시험. 이어서 진입 키·LED 핀을 보드 파일에서 읽게 바꾸고 2X4V_RGB 추가
+- 2026-11-07 (1.7.0): `-Full`이 부트로더만 wchisp로 쓰고 앱은 HID로 (전에는 `full-<BOARD>.bin`을 wchisp로 써서 1 KB × 61페이지, ~0xF3FF까지 지워 설정도 지움)
+- 2026-11-07: 9키 실측 — wchisp는 최소 8섹터(0x0000~0x1FFF) 지움(전에 적은 약 6페이지는 틀림). 부트로더 교체 뒤 키 7로 앱 1.7.0 장입, 설정(슬롯 9개) 유지
+- 2026-11-07: HID 장입이 보드 불일치·식별 문자열 없는 `.bin`을 거부(`--force`/`-Force`로만)
 
 ### 시험 중 고친 문제 (2026-11-07)
 

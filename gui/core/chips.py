@@ -22,7 +22,7 @@ CHIPS = {c.chip_id: c for c in (
     Chip(0x54, "CH554", 14336, False, "확인하지 않은 칩"),
     # CH32V203C8: flash 64 KB, RAM 20 KB. Our bootloader takes the first 8 KB,
     # the app info 256 B and the config the last 4 KB (boot_layout.h): the app
-    # gets 52992 B. id 0x19 is unverified. Flashed by gui/core/hidboot.py (.bin)
+    # gets 52992 B. id 0x19 = the family byte of wchisp's CH32V203C8U6[0x3019] (chip 0x30; checked on 3X3V_RGB). Flashed by gui/core/hidboot.py (.bin)
     Chip(0x19, "CH32V203", 52992, False, "vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH32V203.md)"),
 )}
 

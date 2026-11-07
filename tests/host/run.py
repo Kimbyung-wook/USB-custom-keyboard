@@ -35,7 +35,7 @@ def build(out_dir: Path, board: str = "MK6K1N") -> Path:
         ["gcc", "-std=c99", "-Wall", "-DHAL_HOST", f"-DBOARD_{board}",
          "-I", str(HERE / "stub"), "-I", str(SRC),
          str(HERE / "host_test.c")] + [str(SRC / "core" / f) for f in
-                                       ("storage.c", "macro.c", "lock.c", "input.c", "led.c")]
+                                       ("storage.c", "macro.c", "lock.c", "input.c", "led.c", "protocol.c")]
         + ["-o", str(exe)],
         check=True)
     return exe
@@ -71,6 +71,74 @@ def check(name: str, got: str, want: str) -> None:
     ok = got == want
     failures += not ok
     print(f"{'PASS' if ok else 'FAIL'} {name}" + ("" if ok else f"\n   want: {want}\n   got:  {got}"))
+
+
+def board_names() -> list[str]:
+    """BOARD_NAME of every board file (src/boards/*.h; shared pin files have none)."""
+    names = []
+    for path in sorted((SRC / "boards").glob("*.h")):
+        m = re.search(r'^#define\s+BOARD_NAME\s+"([^"]+)"', path.read_text(encoding="utf-8"), re.M)
+        if m:
+            names.append(m.group(1))
+    return names
+
+
+def check_board(out: Path, name: str) -> None:
+    """HELLO, READ, WRITE, COMMIT through the firmware's protocol.c, parsed by
+    gui.core.protocol and compared with gui.core.boards; keys and LEDs."""
+    from gui.core import boards, version
+    spec = boards.find(name)
+    check(f"{name}: board file known to gui/core/boards.py", spec is not None, True)
+    if spec is None:
+        return
+    exe = build(out, name)
+    layout = spec.layout
+    letters = list("abcdefghi"[:layout.slot_count])
+    old = p.encode_blob(letters, board=layout)
+    new = p.encode_blob(["x" * 70] + letters[1:], board=layout)  # more than one chunk
+    reqs = [p.encode_request(p.Cmd.HELLO, 1),
+            p.encode_request(p.Cmd.READ, 2, p.read_args(0, p.MAX_CHUNK))]
+    chunks = range(0, len(new), p.MAX_CHUNK)
+    reqs += [p.encode_request(p.Cmd.WRITE, 3, p.write_args(o, new[o:o + p.MAX_CHUNK])) for o in chunks]
+    reqs.append(p.encode_request(p.Cmd.COMMIT, 4, p.commit_args(len(new), p.crc16_ccitt_false(new[8:]))))
+    reqs += [p.encode_request(p.Cmd.READ, 5, p.read_args(o, min(p.MAX_CHUNK, len(new) - o))) for o in chunks]
+    lines = [line.split() for line in run(exe, out, old, extra=["proto"] + [r.hex() for r in reqs])
+             if line.startswith("res ")]
+    res = [p.decode_response(bytes.fromhex(line[1])) for line in lines]
+    events = [int(line[3]) for line in lines]
+    check(f"{name}: every request answered OK, cmd and seq echoed",
+          [(r.cmd, r.seq, r.status) for r in res], [(q[0], q[1], 0) for q in reqs])
+
+    hello = p.parse_hello_result(res[0].result)
+    check(f"{name}: HELLO version = gui/core/version.py",
+          f"{hello.fw_major}.{hello.fw_minor}.{hello.fw_patch}", version.VERSION)
+    check(f"{name}: HELLO protocol, slots, capacity",
+          (hello.protocol_version, hello.slot_count, hello.capacity),
+          (p.PROTOCOL_VERSION, layout.slot_count, 4096 if spec.hidboot else 128))
+    board = hello.board_info
+    check(f"{name}: HELLO board info = gui/core/boards.py",
+          (board, board and board.name, board and board.chip_id), (layout, name, layout.chip_id))
+    check(f"{name}: HELLO features cover boards.py, with auto-lock, UID",
+          (board and board.features & layout.features == layout.features,
+           hello.supports_autolock, board and board.uid),
+          (True, True, bytes([0xA0, 0xA1, 0xA2, 0xA3])))
+    # 56 bytes: the blob, then erased bytes
+    check(f"{name}: READ returns the blob", p.parse_read_result(res[1].result),
+          (0, old.ljust(p.MAX_CHUNK, b"\xff")[:p.MAX_CHUNK]))
+    check(f"{name}: COMMIT reports a saved config", events[2 + len(chunks)], 2)  # PROTO_EVT_SAVED
+    check(f"{name}: READ after COMMIT returns the new blob",
+          b"".join(p.parse_read_result(r.result)[1] for r in res[3 + len(chunks):]), new)
+
+    blob = p.encode_blob(letters, board=layout)
+    for i in range(layout.keys):
+        text = " ".join(run(exe, out, blob, extra=["input", f"p{i}", "w30", f"r{i}", "w300"])[3:])
+        check(f"{name}: key {i + 1} types slot {i}",
+              " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)), keys((0, 0x04 + i)))
+    text = " ".join(run(exe, out, blob, extra=["input", "w6500"])[3:])
+    wheel = re.findall(r"C\d+\.\d+\.\d+", text)
+    check(f"{name}: color wheel 2 rounds, then off, then blue",
+          (sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b),
+           re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
 
 
 def main() -> int:
@@ -254,26 +322,40 @@ def main() -> int:
             key_leds = board == "MK6K1NL"
 
             def typed(blob: bytes, *steps: str) -> tuple[str, str]:
-                """(key reports, LED frames) of a run of input steps."""
-                text = " ".join(run(exe_b, out, blob, extra=["input", *steps])[3:])
+                """(key reports, LED frames) of a run of input steps, after the
+                power-up color wheel (6.3 s, BOARD_LED_SELF_TEST) and its off frame."""
+                text = " ".join(run(exe_b, out, blob, extra=["input", "w6500", *steps])[3:])
+                leds = re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)
                 return (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)),
-                        " ".join(re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)))
+                        " ".join(leds[1:] if leds[:1] == ["L0.00.0"] else leds))
 
+            text = " ".join(run(exe_b, out, letters, extra=["input", "w6500"])[3:])
+            check(f"{board}: power-up color wheel, then off, then blue",
+                  " ".join(re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)), "L0.00.0 L1.00.0")
+            wheel = re.findall(r"C\d+\.\d+\.\d+", text)
+            check(f"{board}: color wheel starts red and passes green and blue",
+                  (wheel[:1], "C0.40.0" in wheel, "C0.0.40" in wheel), (["C40.0.0"], True, True))
+            check(f"{board}: color wheel goes round 2 times",
+                  sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b), 2)
+            text = " ".join(run(exe_b, out, letters, extra=["input", "p2", "w30", "r2", "w300"])[3:])
+            check(f"{board}: a key types during the wheel, no key LED frame",
+                  (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)),
+                   re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)), (keys((0, 0x06)), []))
             reports, leds = typed(letters, "p2", "w30", "r2", "w300")
             check(f"{board}: key C types its slot", reports, keys((0, 0x06)))
             check(f"{board}: key C lights green, then blue again", leds,
-                  "L1.00.0 L1.04.2 L1.00.0" if key_leds else "L1.00.0 L2.00.0 L1.00.0")
+                  "L1.00.0 L0.04.2 L1.00.0" if key_leds else "L1.00.0 L2.00.0 L1.00.0")
             # Held 1 s: green from the press on, blue only after the release
-            steps = run(exe_b, out, letters, extra=["input", "p2", "w1000", "r2", "w30"])[3:]
+            steps = run(exe_b, out, letters, extra=["input", "w6500", "p2", "w1000", "r2", "w30"])[3:]
             held = {line.split(":", 1)[0]: re.findall(r"L\d\.[0-9a-f]{2}\.\d", line)
                     for line in steps}
             check(f"{board}: a held key stays green until its release",
                   (held["w1000"], held["w30"]),
-                  (["L1.04.2"] if key_leds else ["L2.00.0"], ["L1.00.0"]))
+                  (["L0.04.2"] if key_leds else ["L2.00.0"], ["L1.00.0"]))
             reports, leds = typed(letters, "e10", "e00", "e01", "e11", "w300")
             check(f"{board}: a clockwise detent types slot 6", reports, keys((0, 0x0a)))
             check(f"{board}: a knob action lights every key LED", leds,
-                  "L1.00.0 L1.3f.2 L1.00.0" if key_leds else "L1.00.0 L2.00.0 L1.00.0")
+                  "L1.00.0 L0.3f.2 L1.00.0" if key_leds else "L1.00.0 L2.00.0 L1.00.0")
             check(f"{board}: a counter-clockwise detent types slot 7",
                   typed(letters, "e01", "e00", "e10", "e11", "w300")[0], keys((0, 0x0b)))
             check(f"{board}: a detent with a missed sample still counts",
@@ -305,10 +387,10 @@ def main() -> int:
                   typed9(letters, f"p{i}", "w30", f"r{i}", "w300")[0], keys((0, 0x04 + i)))
         check("3X3V_RGB: key 9 press lights only key 9 green, then blue again",
               typed9(letters, "w6500", "p8", "w30", "r8", "w300")[1].split(" ", 1)[1],
-              "L1.00.0 L1.100.2 L1.00.0")
+              "L1.00.0 L0.100.2 L1.00.0")
         check("3X3V_RGB: key 1 press lights only key 1 green",
               typed9(letters, "w6500", "p0", "w30", "r0", "w300")[1].split(" ", 1)[1],
-              "L1.00.0 L1.01.2 L1.00.0")
+              "L1.00.0 L0.01.2 L1.00.0")
         _, power_leds, wheel = typed9(letters, "w6500")
         check("3X3V_RGB: power-up color wheel, then off, then blue",
               power_leds, "L0.00.0 L1.00.0")
@@ -362,6 +444,11 @@ def main() -> int:
         check("3X3V_RGB: 300-char slots commit", lines[2], "commit status 0")
         check("3X3V_RGB: 300-char slot types 300 chars",
               str(len(slot_lines(lines)[1].split())), "300")
+
+        # Every board file: the config channel (src/core/protocol.c) read with
+        # the GUI's parser, every key and the power-up color wheel
+        for name in board_names():
+            check_board(out, name)
 
     print("all passed" if failures == 0 else f"{failures} failed")
     return 1 if failures else 0

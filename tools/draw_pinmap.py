@@ -1,9 +1,11 @@
-"""Draw the pin maps and button maps used in docs/PINMAP.md (docs/images/).
+"""Draw the pin maps and button maps used in docs/board/BOARD_*.md (docs/images/).
 
 pinmap_*.svg: the CH552G (SOP-16) as seen from the top, pins 1-8 down the
 left side, 16-9 down the right side, each with what it is wired to.
 buttons_*.svg: the keyboard as seen from the top, each key and the knob
 with its GPIO, chip pin and slot (and LED, on boards with one per key).
+CH32V203 boards: buttons_<board>.svg (key pin, slot, anode, cathode group)
+and leds_<board>.svg (cathode lines x per-key anodes).
 
 Run from the repo root:  uv run python tools\\draw_pinmap.py
 """
@@ -226,9 +228,153 @@ def draw_buttons(board: str, title: str, key_leds: bool) -> str:
             + "".join(parts) + "</svg>\n")
 
 
+# CH32V203 boards (3X3V_RGB, 2X4V_RGB): firmware/macro_keyboard/src/boards/<board>.h.
+# Per key: (key pin, anode pin, cathode group). Keys in slot order, row-major.
+# Cathode groups: name -> (keys, red, green, blue); low = lit. Anode high = lit.
+RGB_BOARDS = {
+    "3X3V_RGB": {
+        "title": "3X3V_RGB", "desc": "9키, 노브 없음, CH32V203C8U6", "cols": 3, "boot": 6,
+        "keys": [("PB15", "PB3", 0), ("PA14", "PB4", 0), ("PA4", "PB9", 0),
+                 ("PB10", "PB14", 1), ("PA15", "PB5", 1), ("PA3", "PB8", 1),
+                 ("PB2", "PB13", 2), ("PB11", "PB12", 2), ("PB1", "PB0", 2)],
+        "groups": [("1줄", "1·2·3", "PA11", "PA12", "PA13"),
+                   ("2줄", "4·5·6", "PA8", "PA9", "PA10"),
+                   ("3줄", "7·8·9", "PA0", "PA1", "PA2")],
+    },
+    "2X4V_RGB": {
+        "title": "2X4V_RGB", "desc": "8키, 노브 없음, CH32V203C8U6", "cols": 4, "boot": 4,
+        "keys": [("PA6", "PB14", 0), ("PA15", "PB3", 0), ("PB5", "PB4", 0), ("PB9", "PB8", 2),
+                 ("PA5", "PB13", 1), ("PA7", "PB15", 1), ("PB0", "PB12", 1), ("PA4", "PB11", 2)],
+        "groups": [("묶음 1", "1·2·3", "PA11", "PA12", "PA13"),
+                   ("묶음 2", "5·6·7", "PA8", "PA9", "PA10"),
+                   ("묶음 3", "4·8", "PA0", "PA1", "PA2")],
+    },
+}
+LED_RGB = (("빨강", "#e53935"), ("초록", "#43a047"), ("파랑", "#1e88e5"))
+GROUP_TINT = ("#fff8e1", "#e0f7fa", "#f3e5f5")   # background per cathode group
+
+
+def svg_wrap(width: int, height: int, parts: list[str]) -> str:
+    led_stroke = COLORS["led"][1]
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}" font-family="{FONT}" fill="#212121">'
+            '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+            f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{led_stroke}"/></marker></defs>'
+            + "".join(parts) + "</svg>\n")
+
+
+def draw_rgb_buttons(board: str) -> str:
+    """CH32V203 keyboard seen from the top: each key with its pin, slot, anode and cathode group."""
+    b = RGB_BOARDS[board]
+    cols, keys = b["cols"], b["keys"]
+    rows = (len(keys) + cols - 1) // cols
+    kw, kh, gap = 168, 128, 22
+    pad_x, top = 50, 80
+    width = max(860, pad_x * 2 + cols * kw + (cols - 1) * gap)
+    body_h = rows * kh + (rows - 1) * gap + 48
+    height = top + body_h + 40 + 22 * len(b["groups"]) + 30
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        f'{escape(b["title"])} 키 배치 (윗면, {escape(b["desc"])})</text>',
+        f'<rect x="20" y="56" width="{width - 40}" height="{body_h}" rx="16" fill="#fafafa" '
+        'stroke="#9e9e9e" stroke-width="2"/>',
+    ]
+    x0 = (width - (cols * kw + (cols - 1) * gap)) / 2
+    for i, (pin, anode, group) in enumerate(keys):
+        kind = "boot" if i == b["boot"] else "key"
+        fill, stroke = COLORS[kind]
+        x = x0 + (i % cols) * (kw + gap)
+        y = top + (i // cols) * (kh + gap)
+        cx = x + kw / 2
+        parts.append(f'<rect x="{x}" y="{y}" width="{kw}" height="{kh}" rx="10" fill="{fill}" '
+                     f'stroke="{stroke}" stroke-width="2"/>')
+        parts.append(f'<text x="{cx}" y="{y + 32}" text-anchor="middle" font-size="24" font-weight="bold">'
+                     f'{chr(65 + i)}</text>')
+        parts.append(f'<text x="{x + 12}" y="{y + 24}" font-size="12" fill="#616161">키 {i + 1}</text>')
+        parts.append(f'<text x="{cx}" y="{y + 56}" text-anchor="middle" font-size="14">{pin} · 슬롯 {i}</text>')
+        note = "부트로더 진입 키" if kind == "boot" else ""
+        if note:
+            parts.append(f'<text x="{cx}" y="{y + 75}" text-anchor="middle" font-size="12" '
+                         f'fill="{stroke}" font-weight="bold">{note}</text>')
+        led_fill, led_stroke = COLORS["led"]
+        ly = y + kh - 22
+        parts.append(f'<rect x="{x + 12}" y="{ly - 11}" width="{kw - 24}" height="22" rx="11" '
+                     f'fill="{GROUP_TINT[group]}" stroke="{led_stroke}" stroke-width="1.5"/>')
+        parts.append(f'<text x="{cx}" y="{ly + 5}" text-anchor="middle" font-size="12">'
+                     f'LED 양극 {anode} · {escape(b["groups"][group][0])}</text>')
+    gy = top + body_h + 20
+    parts.append(f'<text x="44" y="{gy}" font-size="13" font-weight="bold">LED 음극(낮추면 켜짐, 색마다 핀 1개를 묶음 안의 키가 공유)</text>')
+    for j, (name, members, r, g, bl) in enumerate(b["groups"]):
+        y = gy + 22 * (j + 1)
+        parts.append(f'<rect x="44" y="{y - 12}" width="16" height="16" rx="3" fill="{GROUP_TINT[j]}" '
+                     f'stroke="{COLORS["led"][1]}"/>')
+        parts.append(f'<text x="68" y="{y + 1}" font-size="13">{escape(name)} (키 {members}): '
+                     f'<tspan fill="{LED_RGB[0][1]}">R {r}</tspan> · <tspan fill="{LED_RGB[1][1]}">G {g}</tspan> · '
+                     f'<tspan fill="{LED_RGB[2][1]}">B {bl}</tspan></text>')
+    parts.append(f'<text x="{width - 20}" y="{height - 14}" text-anchor="end" font-size="12" fill="#757575">'
+                 f'{board} · 윗면 · tools/draw_pinmap.py</text>')
+    parts.append(f'<text x="44" y="{height - 14}" font-size="12" fill="#616161">'
+                 '키: 누르면 낮음(내부 풀업) · 양극: 높이면 켜짐 · USB는 PB6/PB7(USBFS)</text>')
+    return svg_wrap(width, height, parts)
+
+
+def draw_rgb_leds(board: str) -> str:
+    """LED wiring as a grid: cathode lines (rows) x per-key anodes (columns)."""
+    b = RGB_BOARDS[board]
+    keys, groups = b["keys"], b["groups"]
+    cw, rh = 64, 34
+    left, top = 230, 120
+    width = left + cw * len(keys) + 40
+    height = top + rh * 3 * len(groups) + 70
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        f'{escape(b["title"])} LED 배선 (음극 × 키별 양극)</text>',
+        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#616161">'
+        '점 = 그 키의 LED 색. 음극(가로)을 낮추고 양극(세로)을 높이면 켜짐</text>',
+    ]
+    for i, (_, anode, _) in enumerate(keys):
+        cx = left + cw * i + cw / 2
+        kind = "boot" if i == b["boot"] else "key"
+        fill, stroke = COLORS[kind]
+        parts.append(f'<rect x="{cx - 26}" y="{top - 46}" width="52" height="22" rx="5" fill="{fill}" stroke="{stroke}"/>')
+        parts.append(f'<text x="{cx}" y="{top - 30}" text-anchor="middle" font-size="12" font-weight="bold">'
+                     f'키 {i + 1}</text>')
+        parts.append(f'<text x="{cx}" y="{top - 8}" text-anchor="middle" font-size="12">{anode}</text>')
+        parts.append(f'<line x1="{cx}" y1="{top}" x2="{cx}" y2="{top + rh * 3 * len(groups)}" '
+                     f'stroke="{COLORS["led"][1]}" stroke-width="1.5" stroke-dasharray="3 3"/>')
+    for gi, (name, members, *pins) in enumerate(groups):
+        gy = top + rh * 3 * gi
+        parts.append(f'<rect x="20" y="{gy}" width="{width - 40}" height="{rh * 3}" fill="{GROUP_TINT[gi]}" '
+                     'stroke="#e0e0e0"/>')
+        parts.append(f'<text x="32" y="{gy + rh * 1.5 + 5}" font-size="13" font-weight="bold">'
+                     f'{escape(name)}</text>')
+        parts.append(f'<text x="32" y="{gy + rh * 1.5 + 22}" font-size="11" fill="#616161">키 {members}</text>')
+        for ci, ((cname, color), pin) in enumerate(zip(LED_RGB, pins)):
+            y = gy + rh * ci + rh / 2
+            parts.append(f'<text x="{left - 14}" y="{y + 5}" text-anchor="end" font-size="13" fill="{color}">'
+                         f'{cname} {pin}</text>')
+            parts.append(f'<line x1="{left}" y1="{y}" x2="{left + cw * len(keys)}" y2="{y}" stroke="{color}" '
+                         'stroke-width="2"/>')
+            for ki, (_, _, g) in enumerate(keys):
+                if g == gi:
+                    cx = left + cw * ki + cw / 2
+                    parts.append(f'<circle cx="{cx}" cy="{y}" r="8" fill="{color}" stroke="#ffffff" stroke-width="2"/>')
+    parts.append(f'<text x="{width - 20}" y="{height - 14}" text-anchor="end" font-size="12" fill="#757575">'
+                 f'{board} · tools/draw_pinmap.py</text>')
+    parts.append(f'<text x="32" y="{height - 14}" font-size="12" fill="#616161">'
+                 '펌웨어: 색마다 차례로 켜고, 키별 양극으로 밝기 조절(64단계)</text>')
+    return svg_wrap(width, height, parts)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
+        "buttons_3x3v_rgb.svg": draw_rgb_buttons("3X3V_RGB"),
+        "leds_3x3v_rgb.svg": draw_rgb_leds("3X3V_RGB"),
+        "buttons_2x4v_rgb.svg": draw_rgb_buttons("2X4V_RGB"),
+        "leds_2x4v_rgb.svg": draw_rgb_leds("2X4V_RGB"),
         "pinmap_ch552g.svg": draw("MK6K1N · MK6K1NL", "CH552G 핀맵 (두 보드 공통)",
                                   "LED 데이터 (WS2812 체인)", None),
         "pinmap_mk6k1n.svg": draw("MK6K1N", "MK6K1N 핀맵 (6키 + 노브, LED 1개)",

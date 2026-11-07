@@ -34,7 +34,7 @@ Prepare = Callable[[], str]               # puts the keyboard in the bootloader;
 CommandFn = Callable[[Path], list[str]]   # hex path -> uploader command line
 ScanFn = Callable[[], list[bootloader.ChipInfo]]
 HidScanFn = Callable[[], list[hidboot.BootInfo]]
-HidFlashFn = Callable[[bytes, Callable[[int, int], None]], None]   # flash + run
+HidFlashFn = Callable[..., None]   # (image, progress, force=False): flash + run
 
 SCAN_INTERVAL_MS = 1000
 
@@ -243,6 +243,15 @@ class FirmwareDialog(QDialog):
     def confirm(self, title: str, text: str) -> bool:
         return QMessageBox.question(self, title, text) == QMessageBox.Yes
 
+    def confirm_force(self, text: str) -> bool:
+        """Explicit consent to write a file our bootloader refuses; [취소] is the default."""
+        box = QMessageBox(QMessageBox.Warning, "강제 장입", text, parent=self)
+        force_btn = box.addButton("강제 장입", QMessageBox.DestructiveRole)
+        cancel_btn = box.addButton("취소", QMessageBox.RejectRole)
+        box.setDefaultButton(cancel_btn)
+        box.exec()
+        return box.clickedButton() is force_btn
+
     # ------------------------------------------------------------ file
     def browse(self) -> None:
         path = self.choose_hex_path()
@@ -279,7 +288,11 @@ class FirmwareDialog(QDialog):
         warning = self.hex_warning
         if fid:
             text += f" · {fid.board}용 ({fid.chip}) v{fid.version}"
-        if warning:
+        if warning and self.spec.hidboot:
+            # Our bootloader refuses it (hidboot.board_mismatch) unless forced at [장입]
+            self.size_label.setText(f"⚠ {text} · {warning} · [장입]에서 강제 동의가 필요합니다")
+            self.size_label.setStyleSheet(f"color: {RED};")
+        elif warning:
             self.size_label.setText(f"⚠ {text} · {warning}")
             self.size_label.setStyleSheet(f"color: {ORANGE};")
         else:
@@ -409,15 +422,24 @@ class FirmwareDialog(QDialog):
             reasons.append(f"키보드를 식별하지 못했습니다. 고른 보드: {self.spec.name} ({self.spec.description})")
         elif self.other_board:
             reasons.append(f"연결되어 있던 키보드는 {self.keyboard.name}인데 {self.spec.name}를 골랐습니다")
-        if self.hex_warning:
+        # Our bootloader path refuses a file for another board (or without an ID)
+        # unless forced: a separate, explicit consent below instead of a reason here
+        force_needed = bool(self.spec.hidboot and self.hex_warning)
+        if self.hex_warning and not force_needed:
             reasons.append(f"{self.hex_warning}입니다")
         if reasons and not self.confirm(
                 "펌웨어 확인",
                 "\n".join(reasons) + "\n키보드에 맞지 않으면 키가 동작하지 않을 수 있습니다.\n"
                 f"그래도 장입할까요? (실패해도 {self.boot_hint} 꽂으면 다시 장입할 수 있습니다)"):
             return False
+        if force_needed and not self.confirm_force(
+                f"{self.hex_warning}입니다. {self.spec.name} 부트로더는 이 파일을 받지 않습니다.\n"
+                "시험 펌웨어처럼 일부러 쓰는 경우에만 강제로 장입하세요. "
+                "맞지 않으면 키가 동작하지 않을 수 있습니다\n"
+                f"(그래도 {self.boot_hint} 꽂으면 다시 장입할 수 있습니다)."):
+            return False
         if self.spec.hidboot:
-            return self._start_hidboot()
+            return self._start_hidboot(force=force_needed)
         try:
             command = self._command_fn(Path(self.path_edit.text()))
         except flasher.FlashError as e:
@@ -442,8 +464,9 @@ class FirmwareDialog(QDialog):
         self._refresh()
         return True
 
-    def _start_hidboot(self) -> bool:
-        """Erase, write, check and RUN through our bootloader; blocks (a few seconds)."""
+    def _start_hidboot(self, force: bool = False) -> bool:
+        """Erase, write, check and RUN through our bootloader; blocks (a few seconds).
+        ``force``: the user agreed to write a file the bootloader would refuse."""
         chip = self.target
         path = Path(self.path_edit.text())
         self.scan_timer.stop()
@@ -461,7 +484,7 @@ class FirmwareDialog(QDialog):
 
         try:
             image = path.read_bytes()
-            self._hid_flash_fn(image, progress)
+            self._hid_flash_fn(image, progress, force=force)
         except (hidboot.BootError, hidboot.TransportError, OSError) as e:
             self._append(f"✖ {e}")
             self.stage_label.setText(f"✖ 실패: {e}. 키보드를 뽑았다가 {self.boot_hint} 꽂고 다시 시도하세요 "

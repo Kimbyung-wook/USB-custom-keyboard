@@ -79,6 +79,12 @@ flowchart LR
 - LED가 체인의 몇 번째인지 확인 안 함 → 펌웨어는 같은 색을 **8자리에** 보냄(`BOARD_LED_COUNT 8`, `BOARD_KEY_LEDS 0`, [TROUBLESHOOTING 3-4](../TROUBLESHOOTING.md))
 - LED 하나가 키보드 전체 상태를 보여 줌([MANUAL LED 색 요약](../MANUAL.md#led-색-요약))
 
+- 꽂을 때 LED 점검: 색 바퀴(빨강→노랑→초록→청록→파랑→보라→빨강)를 한 바퀴 3초씩 2번 → 0.3초 꺼짐 → 파랑 (약 6.3초, `BOARD_LED_SELF_TEST`). 그동안 키 입력은 되지만 키 LED 표시는 없음
+
+**이력**
+
+- 2026-11-07 (1.7.0): 꽂을 때 색 바퀴 점검 (전에는 CH32V203 보드만)
+
 ## 4. 부팅·장입
 
 - WCH ROM 부트로더. 펌웨어를 올릴 때 진입 핀을 P1.5로 기록(`vnproch55x -c 1`) → **키 D를 누른 채 꽂으면** 업데이트 모드
@@ -102,10 +108,11 @@ flowchart LR
 
 ## 부록: 그림 다시 그리기
 
-- 이 문서와 [BOARD_MK6K1NL.md](BOARD_MK6K1NL.md)의 그림은 스크립트로 그림(`docs/images/`)
+- 모든 보드 문서의 그림은 스크립트로 그림(`docs/images/`)
   - 핀맵: `pinmap_ch552g.svg`, `pinmap_<보드>.svg`
   - 버튼 별 맵핑: `buttons_<보드>.svg`
 - 핀이나 연결이 바뀌면 `tools/draw_pinmap.py`의 `PINS`(칩 핀)와 `KEY_PINS`(키 → 칩 핀)를 고치고 다시 그림
+- CH32V203 보드(3X3V_RGB, 2X4V_RGB)의 `buttons_<보드>.svg`, `leds_<보드>.svg`: 같은 스크립트의 `RGB_BOARDS`(키 핀, 양극, 음극 묶음, 진입 키)를 고치고 다시 그림. 값의 근거는 `src/boards/<보드>.h`
 
 ```powershell
 uv run python tools\draw_pinmap.py

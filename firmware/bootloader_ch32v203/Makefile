@@ -31,7 +31,7 @@ DEFS := -DSYSCLK_FREQ_48MHz_HSI -include $(BOARD_FILE)
 ifeq ($(DIAG),1)
 DEFS += -DDIAG
 endif
-CFLAGS := $(ARCH) $(DEFS) -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter
+CFLAGS := $(ARCH) $(DEFS) -MMD -MP -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter
 ASFLAGS := $(ARCH) -x assembler-with-cpp
 USERD := $(EXAM)/USB/USBFS/DEVICE/CompositeKM/User # system_ch32v20x
 INCS := -I. -I$(APPDIR)/src/hal/ch32v203 -I$(EXAM)/SRC/Core -I$(EXAM)/SRC/Debug -I$(PERIPH)/inc -I$(USERD)
@@ -78,13 +78,16 @@ $(BUILD) $(BUILD)/src $(OBJDIR):
 > mkdir -p $@
 
 app:
-> $(MAKE) -C $(APPDIR) -f Makefile.ch32v203 BOARD=$(BOARD)
+> $(MAKE) -C $(APPDIR) -f Makefile.ch32v203 BOARD=$(BOARD) EXTRA_DEFS="$(EXTRA_DEFS)"
 
 full: $(BUILD)/$(TARGET).bin app
 > $(PYTHON) mkfull.py $(BUILD)/$(TARGET).bin $(APPBIN) $(BUILD)/full-$(BOARD).bin
 
 flash: full
 > $(WCHISP) flash $(BUILD)/full-$(BOARD).bin
+
+# Header dependencies (-MMD -MP): boot_layout.h and the board file rebuild their objects
+-include $(OBJS:.o=.d)
 
 clean:
 > rm -rf $(BUILD)

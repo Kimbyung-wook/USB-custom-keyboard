@@ -12,7 +12,7 @@
 
 ## 2. 키 배치
 
-(그림: 사용자가 추가)
+![2X4V_RGB 키 배치: 윗면에서 본 8키의 키 핀, 슬롯, LED 양극 핀, 음극 묶음, 부트로더 진입 키](../images/buttons_2x4v_rgb.svg)
 
 | 키 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |---|---|---|---|---|---|---|---|---|
@@ -26,7 +26,7 @@
 
 ## 3. LED
 
-(그림: 사용자가 추가)
+![2X4V_RGB LED 배선: 색별 음극 줄과 키별 양극 핀이 만나는 곳의 LED](../images/leds_2x4v_rgb.svg)
 
 | 묶음 (키) | 빨강 | 초록 | 파랑 |
 |---|---|---|---|
@@ -47,15 +47,19 @@
 ## 4. 부팅·장입
 
 - 평소 업데이트: 자체 HID 부트로더. **키 5를 누른 채 꽂기** 또는 GUI [업데이트 모드로 전환] → GUI 업데이트 창 (설정 유지)
-- 처음 설치·복구: **BOOT 브리지**(BOOT1 실크 아래 패드 2개, 9키와 같은 방식)를 이은 채 꽂고 `tools\flash.ps1 -Board 2x4v_rgb -Full` (wchisp, 설정도 지워짐)
+- 처음 설치·복구: **BOOT 브리지**(BOOT1 실크 아래 패드 2개, 9키와 같은 방식)를 이은 채 꽂고 `tools\flash.ps1 -Board 2x4v_rgb -Full` → wchisp로 부트로더만 쓴 뒤 브리지 떼고 **키 5**를 누른 채 다시 꽂으면 앱을 HID로 씀 (우리 펌웨어가 있던 칩은 설정 유지, 공장 펌웨어는 전부 지워짐). 절차: [MANUAL 8장](../MANUAL.md#처음-설치-공장-펌웨어)
 - 절차·플래시 배치: [BOOTLOADER_CH32V203.md](../BOOTLOADER_CH32V203.md)
 - ⚠️ 제조사 펌웨어는 읽기 보호(WRP도 일부 걸림). 보호 해제 때 지워짐(되돌릴 수 없음)
 
 ## 5. 본 펌웨어에서의 동작
 
-- 빌드: `tools\build_fw.ps1 -Board 2x4v_rgb` → 앱 `macro_keyboard-2X4V_RGB.bin`, 전체 이미지 `full-2X4V_RGB.bin`
+- 빌드: `tools\build_fw.ps1 -Board 2x4v_rgb` → 앱 `macro_keyboard-2X4V_RGB.bin`, 전체 이미지 `full-2X4V_RGB.bin`(`flash.ps1`은 안 씀)
 - 보드 파일: `firmware/macro_keyboard/src/boards/2x4v_rgb.h`
-- 잠금·LED·저장: 9키와 같음 ([BOARD_3X3V_RGB.md](BOARD_3X3V_RGB.md) "본 펌웨어에서의 동작"). 문자열 합계 최대 4072자
+- 잠금·LED·저장: 9키와 같음 ([BOARD_3X3V_RGB.md](BOARD_3X3V_RGB.md) "본 펌웨어에서의 동작"). 누르는 동안 누른 키만 초록, 나머지는 꺼짐. 문자열 합계 최대 4072자
+
+**이력**
+
+- 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
 
 ## 6. 확인 결과 (2026-11-07)
 

@@ -9,6 +9,7 @@
 // to 8 positions (as test_pinmap did)
 #define BOARD_LED_COUNT 8
 #define BOARD_KEY_LEDS 0 // 1: LED i sits under key i
+#define BOARD_LED_SELF_TEST 1 // color wheel 2 x 3 s, then off 0.3 s at power-up (src/core/led.c)
 
 #include "ch552_6k1n.h"
 

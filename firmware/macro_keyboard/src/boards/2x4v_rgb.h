@@ -11,7 +11,7 @@
 #define BOARD_NAME "2X4V_RGB"
 #define BOARD_HAL_CH32V20X 1
 #define BOARD_CHIP "CH32V203"
-#define BOARD_CHIP_ID 0x19 // WCH chip id of the CH32V20x family (as 3X3V_RGB)
+#define BOARD_CHIP_ID 0x19 // CH32V20x family byte, as 3X3V_RGB
 #define BOARD_KEYS 8
 #define BOARD_KNOBS 0
 #define BOARD_ROWS 2
@@ -41,6 +41,6 @@
   {1, 14}, {1, 3}, {1, 4}, {1, 8}, {1, 13}, {1, 15}, {1, 12}, {1, 11}
 #define BOARD_LED_COUNT 8
 #define BOARD_KEY_LEDS 1 // only the pressed key's LED turns green
-#define BOARD_LED_SELF_TEST 1 // R, G, B, white, off at power-up (src/core/led.c)
+#define BOARD_LED_SELF_TEST 1 // color wheel 2 x 3 s, then off 0.3 s at power-up (src/core/led.c)
 
 #endif

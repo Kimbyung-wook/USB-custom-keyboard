@@ -45,8 +45,44 @@ uint8_t hal_encoder(void) {
 #define NUM_LEDS BOARD_LED_COUNT
 static __xdata uint8_t ledData[NUM_LEDS * 3];
 
+#if !BOARD_KEY_LEDS || BOARD_LED_SELF_TEST
+static void fillLeds(uint8_t r, uint8_t g, uint8_t b) {
+  // Walked with a pointer (set_pixel_for_GRB_LED multiplies i * 3)
+  __xdata uint8_t *p = ledData;
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    *p++ = g;
+    *p++ = r;
+    *p++ = b;
+  }
+}
+#endif
+
+#if BOARD_LED_SELF_TEST
+// The last hal_leds_rgb color; wheelR = 0xff (never a color) after any other frame
+static __idata uint8_t wheelR = 0xff, wheelG, wheelB;
+#define WHEEL_FORGET() (wheelR = 0xff)
+
+// Every LED in one R, G, B (palette units 0..40, sent as they are): the
+// power-up color wheel (src/core/led.c). The wheel changes about every 12 ms,
+// but led_task calls this every 1 ms loop: the same color is not sent again,
+// as a frame keeps interrupts off (about 0.25 ms for 8 LEDs)
+void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
+  if (r == wheelR && g == wheelG && b == wheelB) {
+    return;
+  }
+  wheelR = r;
+  wheelG = g;
+  wheelB = b;
+  fillLeds(r, g, b);
+  neopixel_show_P3_4(ledData, NUM_LEDS * 3);
+}
+#else
+#define WHEEL_FORGET()
+#endif
+
 #if BOARD_KEY_LEDS
 void hal_leds(uint8_t color, uint8_t mask, uint8_t maskColor) {
+  WHEEL_FORGET();
   // Walked with a pointer (set_pixel_for_GRB_LED multiplies i * 3)
   __xdata uint8_t *p = ledData;
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
@@ -59,17 +95,8 @@ void hal_leds(uint8_t color, uint8_t mask, uint8_t maskColor) {
   neopixel_show_P3_4(ledData, NUM_LEDS * 3);
 }
 #else
-static void fillLeds(uint8_t r, uint8_t g, uint8_t b) {
-  // Walked with a pointer (set_pixel_for_GRB_LED multiplies i * 3)
-  __xdata uint8_t *p = ledData;
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    *p++ = g;
-    *p++ = r;
-    *p++ = b;
-  }
-}
-
 void hal_leds_all(uint8_t color) {
+  WHEEL_FORGET();
   fillLeds(hal_palette[color][0], hal_palette[color][1], hal_palette[color][2]);
   neopixel_show_P3_4(ledData, NUM_LEDS * 3);
 }

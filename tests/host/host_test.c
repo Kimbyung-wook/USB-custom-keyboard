@@ -1,10 +1,11 @@
-// Host test driver for firmware/macro_keyboard/src/{storage,macro,lock,
-// input,led}.c, built against the host HAL (stub/hal_host.h).
+// Host test driver for firmware/macro_keyboard/src/core/{storage,macro,lock,
+// input,led,protocol}.c, built against the host HAL (stub/hal_host.h).
 // Usage: host_test <blob.bin> [caps]
 //        host_test <blob.bin> lock <inputs>...
 //        host_test <blob.bin> tail <blob2.bin>
 //        host_test <blob.bin> stall|reset <n>
 //        host_test <blob.bin> input <steps>...
+//        host_test <blob.bin> proto <request hex>...
 // Stages and commits the blob in 56-byte chunks, then types every slot and
 // prints the key reports, e.g. "slot 0: 02:0b 00:08 D50 ...".
 // "lock": each argument is a sequence of input numbers (0-8) entered on the
@@ -23,6 +24,8 @@
 // e10), "w<ms>" wait; a first step "s<AB>" sets the lines at
 // power-up. Each step prints one line: "<step>:" then the key reports and
 // the LED frames sent, "L<color>.<mask>.<maskColor>" (only changes).
+// "proto": runs each request (hex) through src/core/protocol.c and prints
+// the response, "res <hex> evt <n>".
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,6 +102,34 @@ uint8_t kb_send(uint8_t modifiers, uint8_t keycode) {
     pressed = 1;
   }
   return 1;
+}
+
+// Config channel: one request at a time (runProto)
+uint8_t hal_req[64], hal_res[64];
+static uint8_t hasRequest = 0;
+uint8_t vendor_has_request(void) { return hasRequest; }
+uint8_t vendor_in_busy(void) { return 0; }
+void vendor_send(void) { hasRequest = 0; }
+uint8_t hal_chip_uid(uint8_t i) { return (uint8_t)(0xA0 + i); }
+
+// Each argument is a request in hex (up to 64 bytes, zero padded); prints
+// "res <64 bytes hex> evt <PROTO_EVT_*>" per request
+static void runProto(int count, char **reqs) {
+  lock_init();
+  for (int i = 0; i < count; i++) {
+    const char *h = reqs[i];
+    memset(hal_req, 0, sizeof(hal_req));
+    for (size_t j = 0; j < sizeof(hal_req) && h[2 * j] && h[2 * j + 1]; j++) {
+      char byte[3] = {h[2 * j], h[2 * j + 1], 0};
+      hal_req[j] = (uint8_t)strtol(byte, NULL, 16);
+    }
+    hasRequest = 1;
+    uint8_t evt = protocol_poll();
+    if (hasRequest) { printf("!no-response\n"); errors++; }
+    printf("res ");
+    for (size_t j = 0; j < sizeof(hal_res); j++) printf("%02x", hal_res[j]);
+    printf(" evt %u\n", evt);
+  }
 }
 
 static size_t readFile(const char *path, uint8_t *buf, size_t size) {
@@ -248,6 +279,10 @@ int main(int argc, char **argv) {
 
   if (argc > 2 && !strcmp(argv[2], "lock")) {
     runLock(argc - 3, argv + 3);
+    return 0;
+  }
+  if (argc > 2 && !strcmp(argv[2], "proto")) {
+    runProto(argc - 3, argv + 3);
     return 0;
   }
   if (argc > 2 && !strcmp(argv[2], "input")) {

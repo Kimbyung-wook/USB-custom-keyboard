@@ -6,6 +6,8 @@ CLI (from the repo root):
   uv run python -m gui.core.hidboot run
 ``--enter`` first sends BOOT (0x06) to a running keyboard app so it restarts
 into the bootloader (no key needed).
+``--force`` writes an image made for another board, or one without a firmware
+ID (test firmware such as tests/hw/ch32v203/test_ch32v203); refused otherwise.
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import zlib
 from dataclasses import dataclass
 from typing import Callable
 
+from . import boards, flasher
 from . import protocol as p
 from .transport import HidTransport, Transport, TransportError
 
@@ -41,6 +44,10 @@ INFO_ADDR = 0x0800EF00
 APP_MAX = INFO_ADDR - APP_ADDR
 PAGE_SIZE = 256
 INFO_MAGIC = 0x31505041
+
+# The boot key of every board with this bootloader (gui/core/boards.py), e.g. "9키 7, 8키 5"
+NOT_FOUND = ("부트로더를 찾을 수 없습니다 (왼쪽 아래 키를 누른 채 USB를 꽂으세요: "
+             + ", ".join(f"{b.description.split()[0]} {b.boot_key}" for b in boards.BOARDS if b.hidboot) + ")")
 
 
 class BootError(Exception):
@@ -110,11 +117,19 @@ class Bootloader:
         self.info = BootInfo.parse(self.request(CMD_HELLO))
         return self.info
 
-    def flash(self, image: bytes, progress: Callable[[int, int], None] | None = None) -> None:
-        """Erase, write and check ``image`` (an app .bin linked at 0x08002000)."""
+    def flash(self, image: bytes, progress: Callable[[int, int], None] | None = None,
+              force: bool = False) -> None:
+        """Erase, write and check ``image`` (an app .bin linked at 0x08002000).
+
+        The image's firmware ID must name the board the bootloader reports;
+        ``force`` skips that check (another board's or test firmware)."""
         info = self.info or self.hello()
         if not 8 <= len(image) <= info.app_max:
             raise BootError(f"펌웨어 크기 {len(image)} B (최대 {info.app_max} B)")
+        if not force:
+            problem = board_mismatch(image, info.board)
+            if problem:
+                raise BootError(f"{problem}. 그래도 쓰려면 --force (tools\\flash.ps1 -Force)")
         self.request(CMD_ERASE, timeout_ms=ERASE_TIMEOUT_MS)
         done = 0
         for addr, part in chunks(image, info.app_addr, info.write_max, info.page_size):
@@ -127,6 +142,17 @@ class Bootloader:
 
     def run(self) -> None:
         self.request(CMD_RUN)
+
+
+def board_mismatch(image: bytes, board: str) -> str:
+    """Why ``image`` is not firmware for ``board`` ("" when it is): its firmware
+    ID (MKFW1:<board>:<chip>:<version>) is missing or names another board."""
+    fid = flasher.firmware_id(image)
+    if fid is None:
+        return "펌웨어 식별 정보(MKFW1)가 없습니다 (시험 펌웨어이거나 다른 펌웨어)"
+    if fid.board != board:
+        return f"{fid.board}용 펌웨어입니다 (부트로더의 보드: {board})"
+    return ""
 
 
 def scan() -> list[BootInfo]:
@@ -146,11 +172,12 @@ def scan() -> list[BootInfo]:
     return found
 
 
-def flash_first(image: bytes, progress: Callable[[int, int], None] | None = None) -> None:
+def flash_first(image: bytes, progress: Callable[[int, int], None] | None = None,
+                force: bool = False) -> None:
     """Flash and start the app on the one bootloader that is plugged in."""
     bl = open_first()
     try:
-        bl.flash(image, progress)
+        bl.flash(image, progress, force)
         bl.run()
     finally:
         bl.close()
@@ -174,13 +201,13 @@ def wait_for_bootloader(wait_s: float) -> bytes:
         if paths:
             return paths[0]
         time.sleep(0.2)
-    raise BootError("부트로더를 찾을 수 없습니다 (왼쪽 아래 키를 누른 채 USB를 꽂으세요: 9키 7, 8키 5)")
+    raise BootError(NOT_FOUND)
 
 
 def open_first(wait_s: float = 0.0) -> Bootloader:
     paths = find_paths() if wait_s <= 0 else [wait_for_bootloader(wait_s)]
     if not paths:
-        raise BootError("부트로더를 찾을 수 없습니다 (왼쪽 아래 키를 누른 채 USB를 꽂으세요: 9키 7, 8키 5)")
+        raise BootError(NOT_FOUND)
     return Bootloader(HidTransport(paths[0]))
 
 
@@ -250,7 +277,7 @@ class MockBootloader(Transport):
 # ------------------------------------------------------------------ CLI
 
 def main(argv: list[str]) -> int:
-    args = [a for a in argv if a != "--enter"]
+    args = [a for a in argv if a not in ("--enter", "--force")]
     if not args or args[0] not in ("info", "flash", "run") or (args[0] == "flash") != (len(args) == 2):
         print(__doc__)
         return 2
@@ -264,7 +291,8 @@ def main(argv: list[str]) -> int:
                   f"UID {info.uid.hex('-').upper()}, 앱 {'있음' if info.app_valid else '없음'}")
             if args[0] == "flash":
                 image = open(args[1], "rb").read()
-                bl.flash(image, lambda d, n: print(f"\r쓰는 중 {d * 100 // n}%", end=""))
+                bl.flash(image, lambda d, n: print(f"\r쓰는 중 {d * 100 // n}%", end=""),
+                         force="--force" in argv)
                 print(f"\n확인 완료 ({len(image)} B, CRC32 {zlib.crc32(image):08X})")
             if args[0] in ("flash", "run"):
                 bl.run()

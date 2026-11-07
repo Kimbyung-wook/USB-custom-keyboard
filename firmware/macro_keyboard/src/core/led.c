@@ -19,7 +19,7 @@
 #if BOARD_LED_SELF_TEST
 // At power-up every LED runs a smooth color wheel (red, yellow, green, cyan,
 // blue, purple, red) SELF_TEST_CYCLES times (2 x 3 s), then goes off for a moment, so a dead color
-// or LED is seen at once. Needs hal_leds_rgb (CH32V203 HAL).
+// or LED is seen at once. Needs hal_leds_rgb (CH32V203 and CH552 HALs).
 #ifndef SELF_TEST_CYCLE_MS
 #define SELF_TEST_CYCLE_MS 3000 // one turn of the wheel (-D to try others; chosen 2026-11-07)
 #endif
@@ -204,7 +204,8 @@ void led_task(void) {
       green |= flashKeys;
     }
     if (green) {
-      showLeds(COLOR_IDLE, green, COLOR_TYPING);
+      // The other LEDs go dark, so the green key stands out (black keycaps)
+      showLeds(COLOR_OFF, green, COLOR_TYPING);
     } else {
       showColor(COLOR_IDLE);
     }

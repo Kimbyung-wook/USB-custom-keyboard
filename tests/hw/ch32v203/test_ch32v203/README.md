@@ -29,6 +29,7 @@
 - **KEYS에서 키를 1번부터 차례로 한 번씩 누를 것**: FIND·ANODE는 눌러 본 핀을 건드리지 않음. 안 누른 키 핀은 구동될 수 있음 → FIND·ANODE 중에는 모드 넘기는 길게 누르기 말고 키를 누르지 않기
 - 제외 핀: PA11·PA12(USBD), PB6·PB7(USBFS D−/D+, 이 펌웨어의 USB). `STUCK` 핀은 ANODE에서 제외
 - 펌웨어 위치 0x08000000: 자체 부트로더도 덮어씀 → 시험 뒤 `tools\flash.ps1 -Board … -Full`로 다시 설치
+- 식별 문자열(`MKFW1:`)이 없음 → 자체 부트로더(`hidboot`, GUI)는 거부. `--force`(`tools\flash.ps1 -Force`)로만 HID 장입 가능. 이 시험 펌웨어는 0x08000000용이므로 장입은 아래 wchisp(BOOT 브리지)로
 
 **이력**
 
@@ -50,6 +51,7 @@ mingw32-make
   - `#define SYSCLK_FREQ_96MHz_HSE` 주석 처리 (켜져 있으면 `-DSYSCLK_FREQ_48MHz_HSI`를 덮어써 USB가 안 잡힘)
   - `NVIC_SystemReset()` 앞에서 예외 원인을 RAM(0x20001800)에 기록 → 다음 부팅에 `FLT …` 입력
 - Makefile을 고친 뒤에는 `rm -rf build` 후 빌드 (make가 `build/src/*.c`를 지움)
+  - 본 펌웨어(`Makefile.ch32v203`)·부트로더 Makefile은 헤더 의존성(`-MMD -MP`)이 있어 헤더만 고치면 다시 빌드됨. Makefile을 고쳤을 때는 둘 다 `rm -rf build`
 - QingKe V4는 즉시값 CSR 명령(`csrrci` 등)이 없음 → 전역 인터럽트는 CSR 0x800으로 제어
 
 ## 장입 방법

@@ -5,7 +5,7 @@
 
 // Firmware version reported by HELLO and the USB device descriptor
 #define FW_MAJOR 1
-#define FW_MINOR 6
+#define FW_MINOR 7
 #define FW_PATCH 0
 
 // Build date reported by HELLO, passed in by tools/build_fw.ps1
@@ -52,6 +52,13 @@
 #include "boards/2x4v_rgb.h"
 #else
 #include "boards/mk6k1n.h"
+#endif
+// BOARD_NAME fills HELLO's 8-byte name field: at most 8 characters. A
+// negative array size stops the build. Not under SDCC: there the typedef
+// costs 72 bytes of code (the string is emitted); tests/host builds every
+// board with gcc, so a CH552 board name is still checked
+#ifndef __SDCC
+typedef char board_name_fits[sizeof(BOARD_NAME) <= 9 ? 1 : -1];
 #endif
 
 // Slots (docs/BOARD_INFO.md 1): keys, then CW, CCW, PRESS of the knob (if any)

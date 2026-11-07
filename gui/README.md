@@ -76,11 +76,14 @@ uv run pytest
 
 - 저장소 루트에서 실행. 테스트 위치는 `tests/gui/` (pyproject `[tool.pytest.ini_options]`)
 - UI 테스트는 화면 없이(`QT_QPA_PLATFORM=offscreen`) 실행됨
-- 펌웨어의 저장·문자열 입력·잠금 코드는 PC에서 gcc로 검사 (저장소 루트에서, gcc 필요)
-
-```powershell
-uv run python tests\host\run.py
-```
+- **이 한 명령이 전체 검증** (지금 246개)
+  - GUI 테스트 (`tests/gui/`)
+  - host 테스트: `test_host_firmware.py`가 `tests/host/run.py`를 실행. 펌웨어 기능 코드와 `protocol.c`를 gcc로 PC에서 빌드해 HELLO·READ·WRITE·COMMIT을 GUI 파서로 검증, `src/boards`의 모든 보드. gcc가 PATH에 없으면 skip
+  - 교차 검사 `test_consistency.py`: 여러 파일에 같은 값이 있는지
+    - 플래시 배치 상수: `boot_layout.h`, 두 Makefile, `mkfull.py`, `hidboot.py`, `chips.py`, `flash.ps1`
+    - 보드 헤더 ↔ `boards.py`, `config.h` 보드 선택, `build_fw.ps1`·`flash.ps1` 보드 목록
+    - 버전: `config.h`, `version.py`, `pyproject.toml`
+- host 테스트만 따로: `uv run python tests\host\run.py`
 
 ## 실행 파일(exe) 빌드
 
@@ -97,8 +100,8 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 ### 버전과 빌드 일자
 
 - 표시 위치
-  - 창 제목: `v1.6.0`
-  - 상태 표시줄 오른쪽: `GUI v1.6.0 · 빌드 2026-10-31 12:44`
+  - 창 제목: `v1.7.0`
+  - 상태 표시줄 오른쪽: `GUI v1.7.0 · 빌드 2026-11-07 12:44`
 - **버전**: `gui/core/version.py`의 `VERSION`을 직접 고침
 - **빌드 일자**: `tools/build_gui.ps1`이 빌드 순간의 시각을 `gui/_build_info.py`에 써서 exe에 넣고, 빌드 후 이 파일을 지움
   - 소스에서 바로 실행하면 `개발 실행 (빌드 전)`으로 표시
@@ -194,10 +197,12 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   - 창에 `⚠ 연결된 키보드를 식별할 수 없습니다`와 그 보드의 처음 설치 방법(`factory_boot`, [BOARDS.md](../docs/BOARDS.md)) 표시
   - [장입] 시 고른 보드가 맞는지 한 번 물음. 식별된 키보드와 다른 보드를 골랐을 때도 물음
 - 파일 크기 검사: 칩 용량(CH552 14,336바이트, CH32V203 앱 영역 52,992바이트)을 넘으면 올리지 않음
-- **식별 문자열** (예: `MKFW1:MK6K1N:CH552:1.6.0`)
+- **식별 문자열** (예: `MKFW1:MK6K1N:CH552:1.7.0`)
   - hex 안에서 읽어 어느 보드·칩·버전용인지 표시
   - 칩이 다르면 올리지 않음
-  - 보드가 다르거나 식별 문자열이 없으면(옛 펌웨어, 다른 펌웨어) 한 번 더 물음
+  - 보드가 다르거나 식별 문자열이 없으면(옛 펌웨어, 다른 펌웨어)
+    - CH552 보드: 주황 경고, [장입] 때 한 번 더 물음
+    - CH32V203 보드: 빨간 경고. [장입] 때 "강제 장입" 확인 상자(기본 단추 취소, `confirm_force`). 동의하면 `hidboot` `force=True`. `hidboot`은 동의 없이는 지우기 전에 거부(`board_mismatch`)
 - 처음 고르는 파일: `firmware/macro_keyboard/build/macro_keyboard-<보드>.hex`(`tools/build_fw.ps1`이 만듦), 없으면 `macro_keyboard.ino.hex`
   - CH32V203 보드: `build/ch32v203/macro_keyboard-<보드>.bin` (`.bin`만, 식별 문자열 확인은 같음)
 - 업데이트 모드 칩의 고유 ID가 연결되어 있던 키보드의 것(HELLO 32~35)과 같으면 "방금 연결된 키보드"로 표시
@@ -221,7 +226,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - GUI 1.3: 보드 정보로 화면 구성, 펌웨어 식별 문자열 확인 (펌웨어 1.2.x 이하는 보드 정보·식별 문자열 없음)
 - GUI 1.4: 자동 잠금 (펌웨어 1.4.0 이상)
 - GUI 1.6.0: 장입할 보드 선택, 패턴 2단계부터 (펌웨어 1.6.0 이상, 그 전은 4단계)
-- 2026-11-07: CH32V203 보드, 자체 HID 부트로더 장입(`hidboot`)
+- GUI 1.7.0 (2026-11-07): CH32V203 보드, 자체 HID 부트로더 장입(`hidboot`). 맞지 않는 `.bin`은 빨간 경고 + 강제 장입 확인
 
 ## 매크로 문법 요약
 

@@ -73,9 +73,16 @@ if ($boardChips[$Board] -eq 'ch32v203') {
     }
     # The Makefile recipes use sh, sed and wc: Git for Windows has them
     $env:PATH = "$GccBin;C:\Program Files\Git\usr\bin;$env:PATH"
-    # Fresh build so the new date (and any Makefile change) is used
+    # Fresh build of this board only, so the new date (and any Makefile
+    # change) is used; the other boards' files stay
     $chOut = Join-Path $outDir 'ch32v203'
-    if (Test-Path $chOut) { Remove-Item -Recurse -Force $chOut }
+    foreach ($old in @((Join-Path $chOut "obj-$boardName"), (Join-Path $chOut "macro_keyboard-$boardName.bin"))) {
+        if (Test-Path $old) { Remove-Item -Recurse -Force $old }
+    }
+    # Objects of the old layout (before obj-<BOARD>) sat right in $chOut
+    Get-ChildItem $chOut -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -in @('src', 'link.ld') -or $_.Extension -in @('.o', '.elf', '.map') } |
+        Remove-Item -Recurse -Force
     Push-Location $sketch
     try {
         & mingw32-make -f Makefile.ch32v203 "BOARD=$boardName" "SDK=$Sdk" "EXTRA_DEFS=$dateFlags"
@@ -92,7 +99,8 @@ if ($boardChips[$Board] -eq 'ch32v203') {
     $blDir = Join-Path (Split-Path $sketch -Parent) 'bootloader_ch32v203'
     Push-Location $blDir
     try {
-        & mingw32-make full "BOARD=$boardName" "SDK=$Sdk"
+        # Same EXTRA_DEFS as above: the app stays up to date instead of rebuilding without the date
+        & mingw32-make full "BOARD=$boardName" "SDK=$Sdk" "EXTRA_DEFS=$dateFlags"
         $code = $LASTEXITCODE
     } finally {
         Pop-Location

@@ -12,13 +12,12 @@
 
 | 항목 | 버전 | 위치 |
 |---|---|---|
-| 본 펌웨어 (모든 보드) | **1.6.0** | `firmware/macro_keyboard/src/config.h` (`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`) |
-| GUI | **1.6.0** | `gui/core/version.py` (`VERSION`) |
+| 본 펌웨어 (모든 보드) | **1.7.0** | `firmware/macro_keyboard/src/config.h` (`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`) |
+| GUI | **1.7.0** | `gui/core/version.py` (`VERSION`) |
 | 자체 부트로더 (CH32V203) | **1.0** | `firmware/bootloader_ch32v203/main.c` (`BL_VER_MAJOR`/`BL_VER_MINOR`) |
 | 설정 통신 규격 | **v2** | [docs/PROTOCOL.md](docs/PROTOCOL.md) |
 
 - 지원 보드: MK6K1N, MK6K1NL (CH552G) / 3X3V_RGB, 2X4V_RGB (CH32V203C8U6)
-- 아래 표·문서의 "v1.7"은 CH32V203 이식 때 붙인 예정 번호. 코드의 번호는 아직 1.6.0 (올리지 않음)
 
 ## 핵심 요구사항
 
@@ -44,7 +43,7 @@
 | 패턴 암호 (잠금) | ✅ 2~8단계, 노브(노브 없는 보드는 아무 키) 2초로 입력 시작, 다시 잠그기, 자동 잠금 N분 ([잠금 상태도](#잠금-상태도)). 확인 절차: [firmware/macro_keyboard/README.md](firmware/macro_keyboard/README.md#4-잠금-확인) |
 | 보드 정보 | ✅ HELLO로 칩·키/노브 수·보드 이름을 알리고 GUI가 그 배치로 화면 구성 ([docs/BOARD_INFO.md](docs/BOARD_INFO.md)) |
 | 펌웨어 업데이트 | ✅ GUI 업데이트 창: 장입할 보드 선택, 파일 식별 문자열 확인, 식별 못 한 키보드(공장 펌웨어 등)도 확인 후 장입. CH32V203 보드는 **자체 HID 부트로더**로 브리지 없이 업데이트(처음 한 번만 BOOT 브리지, [docs/BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md)) |
-| 키별 LED | ✅ MK6K1NL·3X3V_RGB·2X4V_RGB: 누른 키만 초록 |
+| 키별 LED | ✅ MK6K1NL·3X3V_RGB·2X4V_RGB: 누르는 동안 누른 키만 초록, 나머지는 꺼짐 |
 
 ### 이력
 
@@ -54,7 +53,7 @@
 - 2026-10-27 (v1.4): 자동 잠금
 - 2026-10-31 (v1.5): MK6K1NL(키마다 LED)
 - v1.6: 패턴 2단계부터(전에는 4단계), 입력 표시, 장입할 보드 고르기
-- 2026-11-07 ("v1.7" 예정, 코드는 1.6.0): CH32V203 보드 3X3V_RGB·2X4V_RGB, 자체 HID 부트로더, 노브 없는 보드는 키를 누를 때 입력
+- 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴). 3X3V_RGB·2X4V_RGB, 자체 HID 부트로더, 노브 없는 보드는 키를 누를 때 입력
 
 ## 잠금 상태도
 
@@ -113,7 +112,7 @@ stateDiagram-v2
 | 해제 입력 중 / 재잠금 입력 중 | 빨강 solid |
 | 차단 (해제 실패 5회) | 빨강 계속 깜빡임 (약 0.5초 간격) |
 | 풀림 | 파랑 solid |
-| 풀림에서 키를 누름 | 누르는 동안 초록, 떼면 바로 파랑 (짧게 눌러도 최소 0.2초, 노브 회전은 0.2초). 긴 문자열은 뗀 뒤에도 파랑인 채 계속 입력 |
+| 풀림에서 키를 누름 | 누르는 동안 초록, 떼면 바로 파랑 (짧게 눌러도 최소 0.2초, 노브 회전은 0.2초). 긴 문자열은 뗀 뒤에도 파랑인 채 계속 입력. 키마다 LED인 보드는 누른 키만 초록, 나머지는 꺼짐(노브는 모두 초록) |
 | 설정 저장 완료 | 흰색 0.3초 |
 | 부트로더 진입 | 보라 |
 
@@ -140,6 +139,7 @@ stateDiagram-v2
 - v1.2: 지금 상태도의 기본 동작. v1.3.1: 노브 3초 → 2초. v1.4: 자동 잠금. v1.6: 패턴 2~8단계
 - 2026-11-07: 노브 없는 보드는 키를 누를 때 입력(전에는 뗄 때)
 - 2026-11-07: 초록 = 키를 누르는 동안(전에는 출력하는 동안)
+- 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
 
 ## 하드웨어 요약
 
@@ -156,6 +156,7 @@ stateDiagram-v2
 | 공통 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실제로 겪은 문제와 해결 방법(빌드 오류, 업로드 실패와 복구 등) |
 | 공통 | [PROTOCOL.md](docs/PROTOCOL.md) | 펌웨어와 GUI가 공유하는 Vendor HID 설정 통신 규격 |
 | 보드 요약 | [BOARDS.md](docs/BOARDS.md) | **보드마다 다른 점 한 표**: 칩, 키/노브, LED, 저장 용량, 부트로더·진입 키, 처음 설치, 펌웨어 파일 |
+| 보드 추가 | [NEW_BOARD.md](docs/NEW_BOARD.md) | 새 키보드를 이 펌웨어로 바꾸는 절차: 식별, 안전, 진입 방법, 핀 찾기, 보드 파일, 설치·확인, 문서화 |
 | 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. CH552G 핀, 노브 신호, 핀 그림 |
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. LED 체인 |
 | 보드 세부 | [board/BOARD_3X3V_RGB.md](docs/board/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 핀, LED, 부팅, 확인 결과 |
@@ -182,7 +183,7 @@ stateDiagram-v2
 
 | tools/ 파일 | 용도 |
 |---|---|
-| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Hex`: CH552, `-Board 3x3v_rgb`/`2x4v_rgb`: 자체 부트로더로 장입, `-Full`: 처음 설치(wchisp, BOOT 브리지) |
+| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Hex`: CH552, `-Board 3x3v_rgb`/`2x4v_rgb`: 자체 부트로더로 장입, `-Full`: 처음 설치(BOOT 브리지, wchisp로 부트로더만 → 진입 키로 앱) |
 | `usb_monitor.ps1` | USB 장치 감지 기록 |
 | `build_fw.ps1` | 펌웨어 빌드, `-Board`로 보드 선택, 빌드 일자 기록 |
 | `build_gui.ps1` | GUI exe 빌드, 빌드 일자 기록 |

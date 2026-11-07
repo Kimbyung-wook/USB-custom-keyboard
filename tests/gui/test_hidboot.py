@@ -28,10 +28,18 @@ def test_hello_parse():
     assert info.write_max == 56
 
 
+NINE_ID = b"MKFW1:3X3V_RGB:CH32V203:1.7.0\0"
+
+
+def app(size: int, fid: bytes | None = NINE_ID) -> bytes:
+    """An app image of ``size`` bytes carrying ``fid`` (None: no firmware ID)."""
+    return ((fid or b"") + bytes((i * 7) & 0xFF for i in range(size)))[:size]
+
+
 def test_flash_writes_image_and_info():
     dev = h.MockBootloader()
     bl = h.Bootloader(dev)
-    image = bytes((i * 7) & 0xFF for i in range(11928))
+    image = app(11928)
     seen = []
     bl.flash(image, lambda d, n: seen.append(d))
     assert bytes(dev.flash[:len(image)]) == image
@@ -50,7 +58,37 @@ def test_flash_too_big():
 def test_flash_error_reported():
     bl = h.Bootloader(h.MockBootloader(flash_error=True))
     with pytest.raises(h.BootError, match="플래시"):
-        bl.flash(b"\1" * 100)
+        bl.flash(app(100))
+
+
+@pytest.mark.parametrize("fid, force, problem", [
+    (NINE_ID, False, None),                                   # same board
+    (b"MKFW1:2X4V_RGB:CH32V203:1.7.0\0", False, "2X4V_RGB용"),  # another board
+    (None, False, "식별 정보"),                                 # test firmware, no ID
+    (b"MKFW1:2X4V_RGB:CH32V203:1.7.0\0", True, None),          # forced
+    (None, True, None),
+])
+def test_flash_checks_the_board(fid, force, problem):
+    dev = h.MockBootloader(board="3X3V_RGB")
+    bl = h.Bootloader(dev)
+    image = app(2000, fid)
+    if problem:
+        with pytest.raises(h.BootError, match=problem) as e:
+            bl.flash(image, force=force)
+        assert "--force" in str(e.value) and "-Force" in str(e.value)
+        assert not dev.erased and dev.writes == 0 and dev.info is None   # refused before ERASE
+    else:
+        bl.flash(image, force=force)
+        assert dev.info == (len(image), zlib.crc32(image))
+
+
+def test_cli_force_flag(tmp_path, monkeypatch):
+    dev = h.MockBootloader()
+    monkeypatch.setattr(h, "open_first", lambda wait_s=0.0: h.Bootloader(dev))
+    path = tmp_path / "test.bin"
+    path.write_bytes(app(500, None))
+    assert h.main(["flash", str(path)]) == 1 and dev.info is None
+    assert h.main(["flash", str(path), "--force"]) == 0 and dev.info is not None and dev.ran
 
 
 def test_write_without_erase_rejected():

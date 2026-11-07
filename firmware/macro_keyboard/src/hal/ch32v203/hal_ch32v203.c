@@ -215,7 +215,10 @@ static void ledInit(void) {
 // uses the defaults. The Makefile keeps the image below STORE_BASE.
 #define FLASH_END 0x08010000u // CH32V203C8: 64 KB code flash
 #define PAGE_SIZE 256u        // fast erase/program page
-#define STORE_BASE (FLASH_END - BLOB_CAPACITY)
+#define STORE_BASE BOOT_STORE_ADDR // boot_layout.h, shared with the bootloader
+#if BOOT_STORE_ADDR + BLOB_CAPACITY != FLASH_END
+#error the config store must fill the flash end (BLOB_CAPACITY, boot_layout.h)
+#endif
 #if BLOB_CAPACITY % 256
 #error BLOB_CAPACITY must be whole 256-byte pages
 #endif

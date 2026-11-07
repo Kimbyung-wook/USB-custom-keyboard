@@ -1,4 +1,4 @@
-# macro_keyboard: 본 펌웨어 v1.6
+# macro_keyboard: 본 펌웨어 v1.7
 
 - 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: 3X3V_RGB, 2X4V_RGB). 보드별 핀은 `docs/board/BOARD_<보드>.md`
 - 이 문서의 예시는 MK6K1N 기준
@@ -25,7 +25,7 @@
 | 빨강 (계속 켜짐) | 패턴 입력 중 (풀기 또는 다시 잠그기) |
 | 빨강 깜빡임 (약 0.5초 간격) | 풀기를 5번 틀려서 입력 막음. 다시 꽂아야 함 |
 | 파랑 | 풀림 (패턴 암호가 없을 때도) |
-| 초록 | 키를 누르는 동안 (짧게 눌러도 최소 0.2초, 노브 회전은 0.2초). 떼면 바로 파랑, 남은 문자열은 파랑인 채 계속 입력 |
+| 초록 | 키를 누르는 동안 (짧게 눌러도 최소 0.2초, 노브 회전은 0.2초). 떼면 바로 파랑, 남은 문자열은 파랑인 채 계속 입력. 키마다 LED인 보드는 누른 키만 초록, 나머지는 꺼짐 |
 | 흰색 (0.3초) | 설정 저장 완료 |
 | 보라 | 부트로더로 들어가는 중 |
 
@@ -80,6 +80,8 @@
 - v1.4: 자동 잠금. v1.6: 패턴 2단계부터(전에는 4단계)
 - 2026-11-07: 노브 없는 보드는 키를 누를 때 입력(전에는 뗄 때). CH552 보드의 "노브를 누른 채 꽂기" 진입 삭제
 - 2026-11-07: 초록 = 키를 누르는 동안(전에는 출력하는 동안)
+- 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
+- 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴)
 
 ## 빌드
 
@@ -87,6 +89,9 @@
   (경로·주의점은 [PORT_CH32V203](../../docs/old/PORT_CH32V203.md), [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
   - `BOOTLOADER ?= 1`(기본): 자체 부트로더용. 앱 시작 0x08002000, 최대 52992 B. `BOOTLOADER=0`은 부트로더 없는 배치(바꾸면 `rm -rf build`)
   - 보통은 `tools\build_fw.ps1 -Board 3x3v_rgb` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
+  - 목적 파일: 보드별 `build/ch32v203/obj-<BOARD>/`. `.bin`은 `build/ch32v203/macro_keyboard-<BOARD>.bin`. `build_fw.ps1`은 그 보드의 파일만 지우고 다시 빌드
+  - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
+  - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요
@@ -114,15 +119,15 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 ### 버전과 빌드 날짜
 
-- **버전**: `src/config.h`의 `FW_MAJOR`, `FW_MINOR`, `FW_PATCH`를 직접 고침(지금 `1.6.0`)
+- **버전**: `src/config.h`의 `FW_MAJOR`, `FW_MINOR`, `FW_PATCH`를 직접 고침(지금 `1.7.0`)
   - USB 장치 정보(bcdDevice)에도 같은 값이 들어감
 - **빌드 날짜**: `tools/build_fw.ps1`이 빌드 순간의 시각을 컴파일 옵션(`-DFW_BUILD_YEAR=2026` 등)으로 넘김
   - 컴파일러의 `__DATE__`를 안 쓰는 이유: Arduino는 바뀌지 않은 파일을 다시 컴파일하지 않아 예전 날짜가 남음
-- GUI 연결 막대 표시: `펌웨어 v1.6.0 (빌드 2026-10-31 12:44)` 형식
+- GUI 연결 막대 표시: `펌웨어 v1.7.0 (빌드 2026-11-07 12:44)` 형식
 
 ### 크기
 
-- 현재(1.6.0): MK6K1N 8,726바이트, MK6K1NL 8,949바이트 (CH552 최대 14,336바이트)
+- 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). 3X3V_RGB 앱 12,304바이트, 2X4V_RGB 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
 
 **이력 (크기)**
 
@@ -134,7 +139,8 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 | MK6K1NL | 8915바이트(62%) | 358바이트 | 120바이트 | 키별 LED 표시. 나누기 전 8795바이트 |
 
 - HAL 분리([코드 구조](#코드-구조))로 모듈 사이 호출이 늘어 84~120바이트 커짐
-- 2026-11-07: "노브를 누른 채 꽂기" 진입 삭제 → 위 현재 크기
+- 2026-11-07 (1.7.0): 색 바퀴 점검(CH552도), 초록 LED 변경 → 위 현재 크기
+- 2026-11-07: "노브를 누른 채 꽂기" 진입 삭제 → MK6K1N 8,726, MK6K1NL 8,949바이트
 - 그 전 버전(MK6K1N 기준, 변화는 바로 아래 버전 대비):
 
 | 버전 | 크기 | 변화 |
@@ -153,7 +159,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 | 보드 파일 | 보드 | LED | 하드웨어 확인 |
 |---|---|---|---|
 | `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [BOARD_MK6K1N](../../docs/board/BOARD_MK6K1N.md) |
-| `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누른 키만 초록, 나머지는 파랑. 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
+| `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
 | `3x3v_rgb.h` | 3X3V_RGB: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_3X3V_RGB](../../docs/board/BOARD_3X3V_RGB.md) |
 | `2x4v_rgb.h` | 2X4V_RGB: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_2X4V_RGB](../../docs/board/BOARD_2X4V_RGB.md) |
 
@@ -170,7 +176,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|
 | `tools/build_fw.ps1 -Board mk6k1n` | `-DBOARD_MK6K1N` | `build/macro_keyboard-MK6K1N.hex` |
 | `tools/build_fw.ps1 -Board mk6k1nl` | `-DBOARD_MK6K1NL` | `build/macro_keyboard-MK6K1NL.hex` |
-| `tools/build_fw.ps1 -Board 3x3v_rgb` / `2x4v_rgb` | `BOARD=3X3V_RGB` / `2X4V_RGB` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`, 전체 이미지 `full-<보드>.bin` |
+| `tools/build_fw.ps1 -Board 3x3v_rgb` / `2x4v_rgb` | `BOARD=3X3V_RGB` / `2X4V_RGB` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
 | `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1n` | – |
 
 - `macro_keyboard-<보드>.hex`는 GUI 펌웨어 업데이트 창이 먼저 고르는 파일
@@ -211,7 +217,7 @@ powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex firmware\macro_key
 ### 1. 연결 확인
 
 1. GUI 실행: `uv run python -m gui`
-2. 상단에 `● 연결됨 - …`, `MK6K1N (키 6 + 노브 1) / 용량 128바이트`, `펌웨어 v1.6.0 (빌드 …)` 표시되면 설정 통신 정상
+2. 상단에 `● 연결됨 - …`, `MK6K1N (키 6 + 노브 1) / 용량 128바이트`, `펌웨어 v1.7.0 (빌드 …)` 표시되면 설정 통신 정상
    - 빌드 날짜가 방금 빌드한 시각인지 확인(새 펌웨어가 올라갔다는 표시)
 3. 처음에는 "설정 없음"으로 빈 슬롯 9개 표시
 
@@ -338,13 +344,17 @@ flowchart TB
 
 ### PC 검사 (tests/host)
 
-- `tests/host/run.py`로 기능 코드(`src/core`의 `storage.c`, `macro.c`, `lock.c`, `input.c`, `led.c`)를 PC(gcc)에서 검사함
+- `tests/host/run.py`로 기능 코드(`src/core`의 `storage.c`, `macro.c`, `lock.c`, `input.c`, `led.c`, `protocol.c`)를 PC(gcc)에서 검사함
+- `src/boards`의 **모든 보드**를 빌드해 돎
+- 보통은 `uv run pytest` 한 번으로 실행됨(`tests/gui/test_host_firmware.py` 래퍼, gcc 없으면 skip). 교차 검사(`test_consistency.py`)도 함께
 - 하드웨어 대신 `tests/host/stub/hal_host.h` 사용
 - 확인 항목:
   - GUI 인코더로 만든 블롭 저장
   - 각 슬롯이 보내는 HID 키 코드
   - 패턴 암호 판정
-  - 가짜 스위치·노브 선을 넣었을 때의 입력과 LED 표시(두 보드 모두)
+  - 가짜 스위치·노브 선을 넣었을 때의 입력과 LED 표시
+  - `protocol.c`의 HELLO·READ·WRITE·COMMIT 응답을 GUI 파서로 해석
+  - 보드 이름 8자 검사(gcc에서만, SDCC는 코드 크기 때문에 끔)
 
 ```powershell
 uv run python tests\host\run.py

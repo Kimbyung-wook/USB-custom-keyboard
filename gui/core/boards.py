@@ -70,7 +70,7 @@ BOARDS = (
     # (docs/BOOTLOADER_CH32V203.md): key 7 at power-up, or BOOT from the app. It goes
     # on once through the ROM bootloader (BOOT bridge, wchisp: flash_text).
     # Without a knob, holding any key starts the lock pattern entry.
-    BoardSpec("3X3V_RGB", "9키 (3x3), 노브 없음, 줄별 RGB LED (CH32V203)",
+    BoardSpec("3X3V_RGB", "9키 (3x3), 노브 없음, 키별 RGB LED (CH32V203)",
               Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
                     features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
               boot_config=0, boot_key="7", hidboot=True,

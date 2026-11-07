@@ -1,5 +1,5 @@
 # CH32V203 build of the macro keyboard (board 3X3V_RGB): RISC-V GCC (xPack) + WCH EVT SDK.
-#   mingw32-make -f Makefile.ch32v203            -> build/macro_keyboard-3X3V_RGB.bin
+#   mingw32-make -f Makefile.ch32v203            -> build/ch32v203/macro_keyboard-3X3V_RGB.bin (objects: build/ch32v203/obj-3X3V_RGB)
 #   mingw32-make -f Makefile.ch32v203 flash      -> wchisp flash (BOOT bridge, BOOTLOADER=0 only)
 # BOOTLOADER=1 (default): app at 0x08002000 behind firmware/bootloader_ch32v203
 #   (install: that folder's `make flash` once, then gui/core/hidboot.py).
@@ -26,7 +26,11 @@ LD_SED :=
 endif
 
 TARGET := macro_keyboard-$(BOARD)
-BUILD := build/ch32v203
+# The .bin of every board sits in OUT; objects per board in OUT/obj-<BOARD>,
+# so building one board leaves the others' files alone
+OUT := build/ch32v203
+BUILD := $(OUT)/obj-$(BOARD)
+BIN := $(OUT)/$(TARGET).bin
 PREFIX ?= riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
@@ -35,7 +39,7 @@ WCHISP ?= wchisp
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8
 DEFS := -DSYSCLK_FREQ_48MHz_HSI -DBOARD_$(BOARD) -DBLOB_CAPACITY=$(STORE_SIZE) -DBOOTLOADER=$(BOOTLOADER) $(EXTRA_DEFS)
-CFLAGS := $(ARCH) $(DEFS) -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter -Wno-unterminated-string-initialization
+CFLAGS := $(ARCH) $(DEFS) -MMD -MP -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter -Wno-unterminated-string-initialization
 ASFLAGS := $(ARCH) -x assembler-with-cpp
 USBD := src/hal/ch32v203/usb
 USERD := $(EXAM)/USB/USBFS/DEVICE/CompositeKM/User # system_ch32v20x, ch32v20x_it (USB files are patched in $(USBD))
@@ -54,7 +58,7 @@ VPATH := src/core src/hal/ch32v203 $(USBD) $(EXAM)/SRC/Startup $(EXAM)/SRC/Core 
 OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
 
 
-all: $(BUILD)/$(TARGET).bin
+all: $(BIN)
 
 # RAM ends 16 bytes early: the bootloader RAM mark sits above the stack
 $(LDSCRIPT): $(SDK_LD) Makefile.ch32v203 | $(BUILD)
@@ -64,7 +68,7 @@ $(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
 > $(CC) $(LDFLAGS) -o $@ $(OBJS) -lc -lgcc
 > $(SIZE) $@
 
-$(BUILD)/$(TARGET).bin: $(BUILD)/$(TARGET).elf
+$(BIN): $(BUILD)/$(TARGET).elf
 > $(OBJCOPY) -O binary $< $@
 # The last STORE_SIZE bytes of flash hold the config: the image must end before them
 > @n=$$(wc -c < $@); if [ $$n -gt $(IMAGE_MAX) ]; then echo "ERROR: image $$n bytes overlaps the config ($(STORE_SIZE) bytes at the flash end)"; rm -f $@; exit 1; fi
@@ -87,11 +91,14 @@ $(BUILD)/%.o: $(BUILD)/src/%.S | $(BUILD)
 $(BUILD) $(BUILD)/src:
 > mkdir -p $@
 
-flash: $(BUILD)/$(TARGET).bin
+flash: $(BIN)
 > @if [ "$(BOOTLOADER)" = 1 ]; then echo "BOOTLOADER=1: use firmware/bootloader_ch32v203 (make flash) or hidboot"; exit 1; fi
 > $(WCHISP) flash $<
 
+# Header dependencies (-MMD -MP): a changed header rebuilds its objects
+-include $(OBJS:.o=.d)
+
 clean:
-> rm -rf $(BUILD)
+> rm -rf $(BUILD) $(BIN)
 
 .PHONY: all flash clean

@@ -37,4 +37,14 @@ uint8_t kb_send(uint8_t modifiers, uint8_t keycode);
 void kb_cancel(void);
 uint8_t kb_caps_lock(void);
 
+// Config channel (src/core/protocol.c): host_test puts one request in
+// hal_req and sets vendor_has_request(); vendor_send() takes the response
+extern uint8_t hal_req[64], hal_res[64];
+#define HAL_REQ hal_req
+#define HAL_RES hal_res
+uint8_t vendor_has_request(void);
+uint8_t vendor_in_busy(void);
+void vendor_send(void);
+uint8_t hal_chip_uid(uint8_t i); // 0xA0 + i
+
 #endif

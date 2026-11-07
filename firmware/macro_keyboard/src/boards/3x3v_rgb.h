@@ -10,7 +10,9 @@
 #define BOARD_NAME "3X3V_RGB"
 #define BOARD_HAL_CH32V20X 1
 #define BOARD_CHIP "CH32V203"
-#define BOARD_CHIP_ID 0x19 // unverified: WCH chip id of the CH32V20x family
+// wchisp info (2026-11-08): CH32V203C8U6[0x3019] = chip 0x30, family 0x19. HELLO
+// and gui/core/chips.py use the family byte (CH55x: the chip, 0x52)
+#define BOARD_CHIP_ID 0x19
 #define BOARD_KEYS 9
 #define BOARD_KNOBS 0
 #define BOARD_ROWS 3
@@ -39,6 +41,6 @@
   {1, 3}, {1, 4}, {1, 9}, {1, 14}, {1, 5}, {1, 8}, {1, 13}, {1, 12}, {1, 0}
 #define BOARD_LED_COUNT 9
 #define BOARD_KEY_LEDS 1 // only the pressed key's LED turns green
-#define BOARD_LED_SELF_TEST 1 // R, G, B, white, off at power-up (src/core/led.c)
+#define BOARD_LED_SELF_TEST 1 // color wheel 2 x 3 s, then off 0.3 s at power-up (src/core/led.c)
 
 #endif
