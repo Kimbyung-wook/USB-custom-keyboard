@@ -36,8 +36,9 @@ param(
     [ValidateSet('mk6k1n', 'mk6k1nl', '3x3v_rgb', '2x4v_rgb')]
     [string]$Board = 'mk6k1n',
     # CH32V203 only
-    [string]$GccBin = 'C:\Users\user\tools\gcc\xpack-riscv-none-elf-gcc-15.2.0-1\bin',
-    [string]$Sdk = 'C:/Users/user/tools/sdk/EVT'
+    # environment MK_RISCV_BIN / MK_EVT_SDK first (as the Makefiles), else these defaults
+    [string]$GccBin = $(if ($env:MK_RISCV_BIN) { $env:MK_RISCV_BIN } else { 'C:\Users\user\tools\gcc\xpack-riscv-none-elf-gcc-15.2.0-1\bin' }),
+    [string]$Sdk = $(if ($env:MK_EVT_SDK) { $env:MK_EVT_SDK } else { 'C:/Users/user/tools/sdk/EVT' })
 )
 
 # The chip of each board file (BOARD_CHIP), and the build options of each

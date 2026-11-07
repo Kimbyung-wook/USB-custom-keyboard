@@ -82,6 +82,20 @@ def test_flash_checks_the_board(fid, force, problem):
         assert dev.info == (len(image), zlib.crc32(image))
 
 
+@pytest.mark.parametrize("force", [False, True])
+def test_other_bootloader_major_refused_even_forced(force):
+    dev = h.MockBootloader(version=(2, 0))
+    with pytest.raises(h.BootError, match="부트로더 2.0"):
+        h.Bootloader(dev).flash(app(500), force=force)
+    assert not dev.erased and dev.writes == 0
+
+
+@pytest.mark.parametrize("reported, used", [(0, h.WRITE_MAX), (32, 32), (56, 56), (200, h.WRITE_MAX)])
+def test_write_max(reported, used):
+    info = h.Bootloader(h.MockBootloader(write_max=reported)).hello()
+    assert info.write_max == used and h.WRITE_MAX == 56
+
+
 def test_cli_force_flag(tmp_path, monkeypatch):
     dev = h.MockBootloader()
     monkeypatch.setattr(h, "open_first", lambda wait_s=0.0: h.Bootloader(dev))

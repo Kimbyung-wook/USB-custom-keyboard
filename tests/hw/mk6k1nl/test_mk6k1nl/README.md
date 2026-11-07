@@ -7,6 +7,7 @@
   - **LED가 몇 개이고 어느 순서로 이어져 있는지**
   - 키 핀([test_pinmap](../../mk6k1n/test_pinmap/README.md)처럼)
 - 본 펌웨어의 보드 파일: `firmware/macro_keyboard/src/boards/mk6k1nl.h`
+- `src/userUsbHidKeyboard/`(USB 파일)는 test_pinmap의 것과 같은 복사본. 고치면 둘 다
 
 | 보드 | 생김새 | 테스트 펌웨어 |
 |---|---|---|

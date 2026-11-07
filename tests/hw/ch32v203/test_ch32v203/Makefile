@@ -4,7 +4,10 @@
 #   mingw32-make flash      -> wchisp flash (only after `wchisp probe` works)
 .RECIPEPREFIX = >
 
-SDK ?= C:/Users/user/tools/sdk/EVT
+# Tool paths: environment MK_EVT_SDK, MK_RISCV_BIN (folder of riscv-none-elf-gcc,
+# else PATH), MK_WCHISP; otherwise these defaults (same in tools/*.ps1)
+MK_EVT_SDK ?= C:/Users/user/tools/sdk/EVT
+SDK ?= $(MK_EVT_SDK)
 EXAM := $(SDK)/EXAM
 PERIPH := $(EXAM)/SRC/Peripheral
 USBDIR := $(EXAM)/USB/USBFS/DEVICE/CompositeKM/User
@@ -12,11 +15,11 @@ LDSCRIPT := $(EXAM)/SRC/Ld/Link.ld
 
 TARGET := test_ch32v203
 BUILD := build
-PREFIX ?= riscv-none-elf-
+PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
 SIZE := $(PREFIX)size
-WCHISP ?= wchisp
+WCHISP ?= $(or $(MK_WCHISP),wchisp)
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8
 DEFS := -DSYSCLK_FREQ_48MHz_HSI

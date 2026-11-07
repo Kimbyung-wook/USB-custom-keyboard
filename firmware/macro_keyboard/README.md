@@ -92,6 +92,7 @@
   - 목적 파일: 보드별 `build/ch32v203/obj-<BOARD>/`. `.bin`은 `build/ch32v203/macro_keyboard-<BOARD>.bin`. `build_fw.ps1`은 그 보드의 파일만 지우고 다시 빌드
   - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
   - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
+  - 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요

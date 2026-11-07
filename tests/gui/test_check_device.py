@@ -26,8 +26,26 @@ def test_check_passes_for_expected_board():
 
 
 def test_check_flags_wrong_board():
-    code, text = run(MockDevice(board=p.DEFAULT_BOARD))
+    code, text = run(MockDevice(board=p.DEFAULT_BOARD), "--board", "3X3V_RGB")   # named board wins
     assert code == 1 and "다름" in text
+
+
+def test_check_compares_with_the_board_hello_names():
+    for spec in boards.BOARDS:
+        code, text = run(MockDevice(capacity=4096 if spec.hidboot else 128, board=spec.layout))
+        assert code == 0 and f"{spec.name}와 같음" in text, text
+
+
+def test_check_fails_for_an_unknown_board():
+    other = p.Board(keys=4, knobs=0, rows=1, name="MK4K", chip_id=0x52)
+    code, text = run(MockDevice(board=other))
+    assert code == 1 and "모르는 보드: MK4K" in text
+
+
+def test_check_flags_missing_features():
+    nine = p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19, features=p.BOARD_FEATURE_LOCK)
+    code, text = run(MockDevice(capacity=4096, board=nine))
+    assert code == 1 and "기능" in text
 
 
 def test_check_flags_missing_board_info():

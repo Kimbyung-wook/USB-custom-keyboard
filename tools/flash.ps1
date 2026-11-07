@@ -49,7 +49,8 @@ param(
     [string]$Bootloader, # -Full: the bootloader image (default: bootloader-<BOARD>.bin)
     [switch]$Enter,    # send BOOT to the running app instead of holding the boot key
     [switch]$Force,    # write a .bin for another board or without a firmware ID (hidboot --force)
-    [string]$Wchisp = 'C:\Users\user\tools\wchisp\wchisp-win-x64\wchisp.exe'
+    # environment MK_WCHISP first, else this default
+    [string]$Wchisp = $(if ($env:MK_WCHISP) { $env:MK_WCHISP } else { 'C:\Users\user\tools\wchisp\wchisp-win-x64\wchisp.exe' })
 )
 
 $ErrorActionPreference = 'Stop'

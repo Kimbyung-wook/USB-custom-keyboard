@@ -1,0 +1,28 @@
+# Line endings in the repository: LF; the working copy follows the OS,
+# except where a tool needs one kind
+* text=auto
+
+# Windows PowerShell 5.1 scripts
+*.ps1 eol=crlf
+# make recipes run through sh (Git for Windows): no CR in recipes or variables
+Makefile* eol=lf
+
+# Text formats kept in the repo (LF in the index)
+*.c text
+*.h text
+*.ino text
+*.py text
+*.md text
+*.toml text
+*.lock text
+*.svg text
+
+# Binary: never touched
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.bin binary
+*.hex binary
+*.elf binary
+*.exe binary

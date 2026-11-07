@@ -1,10 +1,13 @@
 # Diagnostic build: blink PC13, no USB. Same toolchain and SDK startup as ../Makefile.
 .RECIPEPREFIX = >
 
-SDK ?= C:/Users/user/tools/sdk/EVT
+# Tool paths: environment MK_EVT_SDK, MK_RISCV_BIN (folder of riscv-none-elf-gcc,
+# else PATH), MK_WCHISP; otherwise these defaults (same in tools/*.ps1)
+MK_EVT_SDK ?= C:/Users/user/tools/sdk/EVT
+SDK ?= $(MK_EVT_SDK)
 EXAM := $(SDK)/EXAM
 LDSCRIPT := $(EXAM)/SRC/Ld/Link.ld
-PREFIX ?= riscv-none-elf-
+PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8

@@ -407,6 +407,8 @@ class FirmwareDialog(QDialog):
         self.browse_btn.setEnabled(not busy)
         self.boot_btn.setEnabled(not busy and self.window_flash)
         self.scan_btn.setEnabled(not busy)
+        # Changing the board mid-flash would swap the file and the target
+        self.board_combo.setEnabled(not busy)
         self.close_btn.setText("취소" if busy else "닫기")
 
     # ------------------------------------------------------------ upload
@@ -569,6 +571,13 @@ class FirmwareDialog(QDialog):
             return
         self.scan_timer.stop()
         super().closeEvent(event)
+
+    def reject(self) -> None:
+        # hidboot flashing runs in this thread with processEvents: nothing may
+        # close the window under it (the uploader process has [취소] instead)
+        if self.running:
+            return
+        super().reject()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key_Escape and self.running:

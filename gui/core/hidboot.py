@@ -38,6 +38,13 @@ STATUS_TEXT = {ST_BAD_CMD: "알 수 없는 명령", ST_BAD_ARG: "인수 오류",
 TIMEOUT_MS = 1000
 ERASE_TIMEOUT_MS = 5000
 
+# HELLO [3] major: the command set this module speaks. Another major is refused
+# even with --force (that only skips the image's board check)
+BOOT_MAJOR = 1
+# Data bytes per WRITE: 64-byte report - 8 bytes of header. HELLO [44] says
+# what the bootloader takes; 0 (not given) means this, and more never fits
+WRITE_MAX = 56
+
 # Flash layout (src/hal/ch32v203/boot_layout.h)
 APP_ADDR = 0x08002000
 INFO_ADDR = 0x0800EF00
@@ -71,7 +78,7 @@ class BootInfo:
         app_addr, app_max = struct.unpack_from("<II", r, 33)
         page = struct.unpack_from("<H", r, 41)[0]
         return cls((r[3], r[4]), board, bytes(r[21:33]), app_addr, app_max,
-                   page, bool(r[43]), r[44] or 48)
+                   page, bool(r[43]), min(r[44] or WRITE_MAX, WRITE_MAX))
 
 
 def find_paths() -> list[bytes]:
@@ -124,6 +131,9 @@ class Bootloader:
         The image's firmware ID must name the board the bootloader reports;
         ``force`` skips that check (another board's or test firmware)."""
         info = self.info or self.hello()
+        if info.version[0] != BOOT_MAJOR:
+            raise BootError(f"부트로더 {info.version[0]}.{info.version[1]}은 지원하지 않습니다 "
+                            f"(지원: {BOOT_MAJOR}.x). GUI를 새 버전으로 바꾸세요")
         if not 8 <= len(image) <= info.app_max:
             raise BootError(f"펌웨어 크기 {len(image)} B (최대 {info.app_max} B)")
         if not force:
@@ -216,8 +226,11 @@ def open_first(wait_s: float = 0.0) -> Bootloader:
 class MockBootloader(Transport):
     """Simulates firmware/bootloader_ch32v203/main.c for tests."""
 
-    def __init__(self, board: str = "3X3V_RGB", flash_error: bool = False):
+    def __init__(self, board: str = "3X3V_RGB", flash_error: bool = False,
+                 version: tuple[int, int] = (1, 0), write_max: int = 56):
         self.board = board
+        self.version = version
+        self.write_max = write_max
         self.flash_error = flash_error
         self.flash = bytearray(b"\xff" * APP_MAX)
         self.info: tuple[int, int] | None = None  # (length, crc)
@@ -233,8 +246,9 @@ class MockBootloader(Transport):
         rq = bytes(report)
         cmd = rq[0]
         if cmd == CMD_HELLO:
-            body = bytes([1, 0]) + self.board.encode().ljust(16, b"\x00") + bytes(range(12))
-            body += struct.pack("<IIHBB", APP_ADDR, APP_MAX, PAGE_SIZE, self.info is not None, 56)
+            body = bytes(self.version) + self.board.encode().ljust(16, b"\x00") + bytes(range(12))
+            body += struct.pack("<IIHBB", APP_ADDR, APP_MAX, PAGE_SIZE, self.info is not None,
+                                self.write_max)
             self._reply(rq, ST_OK, body)
         elif cmd == CMD_ERASE:
             self.flash[:] = b"\xff" * APP_MAX

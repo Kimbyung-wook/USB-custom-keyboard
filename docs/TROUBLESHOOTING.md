@@ -18,6 +18,7 @@
 | MK6K1NL 제조사 펌웨어에서 업데이트 모드 진입 안 됨 | [3-7](#3-7-mk6k1nl-제조사-펌웨어에서-업데이트-모드로-들어가지-않음) |
 | CH32V203 보드(9키, 8키): GUI 업데이트 창에 칩이 안 나타남, `wchisp`가 장치를 못 찾음 | [2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp) |
 | 9키(3X3V_RGB): 1줄 LED가 파랑 외에는 안 켜짐 | [3-8](#3-8-9키3x3v_rgb-1줄-led가-파랑만-켜짐) |
+| 꽂았더니 설정이 비어 있음 | [3-9](#3-9-꽂았더니-설정이-비어-있음) |
 | LED가 꺼져 있거나(가끔 빨강) 빨강이고, 키를 눌러도 아무것도 입력되지 않음 | 고장 아님. 잠금 상태(꺼짐 + 가끔 빨강) 또는 패턴 입력 중(빨강, 노브 2초 누르기 뒤. 노브 없는 보드는 아무 키 2초). [macro_keyboard README의 "잠금"](../firmware/macro_keyboard/README.md#잠금) |
 
 ## 진단 도구
@@ -28,7 +29,7 @@
 | `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. 9키 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
 | `tools/flash.ps1 -Board 3x3v_rgb` | CH32V203 보드를 자체 부트로더로 장입 (8키는 `2x4v_rgb`). `-Full`: BOOT 브리지로 wchisp가 부트로더만 쓴 뒤, 진입 키를 누른 채 다시 꽂으면 앱을 HID로 |
-| `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행) |
+| `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행). `--board` 생략: 키보드가 HELLO로 알린 보드를 `boards.py`에서 찾아 비교(모르는 보드면 실패). `--board none`: 비교 안 함. 기능은 `boards.py`에 적힌 기능을 모두 가졌는지로 비교 |
 
 - PowerShell 스크립트 실행이 막혀 있으면: `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex ...`
 
@@ -334,4 +335,22 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 **해결**
 
 - 최신 펌웨어로 업데이트 ([2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp))
+
+### 3-9. 꽂았더니 설정이 비어 있음
+
+**증상**
+
+- 키를 눌러도 아무것도 입력되지 않고, GUI [장치에서 읽기]가 빈 슬롯
+
+**원인**
+
+- CH32V203 보드: 설정 저장 도중 전원이 끊김(뽑기 등) → 다음 전원에서 CRC 불일치 → 빈 설정으로 시작
+  - 엉뚱한 문자열이 입력되지는 않음. 이중 저장(예비본)은 없음
+  - host 테스트 `torn` 모드로 확인
+- 그 밖: 처음 장입한 키보드(제조사 펌웨어 설정은 형식이 달라 안 읽음)
+
+**해결**
+
+- GUI에서 백업(JSON)을 불러와 다시 저장 ([MANUAL](MANUAL.md#백업-json-내보내기--불러오기))
+- 예방: 저장 중(흰색 LED)에는 뽑지 않음
 

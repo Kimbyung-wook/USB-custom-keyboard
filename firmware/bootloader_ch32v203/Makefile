@@ -6,7 +6,10 @@
 # After editing this file run `rm -rf build`.
 .RECIPEPREFIX = >
 
-SDK ?= C:/Users/user/tools/sdk/EVT
+# Tool paths: environment MK_EVT_SDK, MK_RISCV_BIN (folder of riscv-none-elf-gcc,
+# else PATH), MK_WCHISP; otherwise these defaults (same in tools/*.ps1)
+MK_EVT_SDK ?= C:/Users/user/tools/sdk/EVT
+SDK ?= $(MK_EVT_SDK)
 EXAM := $(SDK)/EXAM
 PERIPH := $(EXAM)/SRC/Peripheral
 BOARD ?= 3X3V_RGB
@@ -16,11 +19,11 @@ APPBIN := $(APPDIR)/build/ch32v203/macro_keyboard-$(BOARD).bin
 
 TARGET := bootloader-$(BOARD)
 BUILD := build
-PREFIX ?= riscv-none-elf-
+PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
 SIZE := $(PREFIX)size
-WCHISP ?= wchisp
+WCHISP ?= $(or $(MK_WCHISP),wchisp)
 PYTHON ?= python
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8

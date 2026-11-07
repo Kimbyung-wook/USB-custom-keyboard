@@ -445,6 +445,29 @@ def main() -> int:
         check("3X3V_RGB: 300-char slot types 300 chars",
               str(len(slot_lines(lines)[1].split())), "300")
 
+        # Power lost while hal_store_flush (CH32V) rewrites the pages of a new
+        # config: the next power-up must find the CRC wrong and start blank,
+        # never type a mix of the old and new texts
+        old_cfg = p.encode_blob(list("abcdefghi"))                          # page 0
+        new_cfg = p.encode_blob([long_text(600), "y" * 600] + list("cdefghi"))  # pages 0-4
+        new_path = out / "new_cfg.bin"
+        new_path.write_bytes(new_cfg)
+        last = (len(new_cfg) - 1) // 256
+        for page in range(last + 1):
+            for erased in (1, 0):
+                if page == last and not erased:
+                    continue          # that is the whole new config
+                lines = run(exe9, out, old_cfg, extra=["torn", str(new_path), str(page), str(erased)])
+                slots = slot_lines(lines)
+                check(f"3X3V_RGB: power lost at page {page} ({'erased' if erased else 'written'}) "
+                      "starts blank",
+                      ([line for line in lines if line.startswith("torn ")],
+                       set(slots.values()), lines[-1]),
+                      ([f"torn page {page} erased {erased}: slot0 len 0"], {"(empty)"}, "errors 0"))
+        lines = run(exe9, out, old_cfg, extra=["torn", str(new_path), str(last + 1), "0"])
+        check("3X3V_RGB: a finished flush types the new config",
+              (len(slot_lines(lines)[0].split()), len(slot_lines(lines)[1].split())), (600, 600))
+
         # Every board file: the config channel (src/core/protocol.c) read with
         # the GUI's parser, every key and the power-up color wheel
         for name in board_names():

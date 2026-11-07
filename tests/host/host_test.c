@@ -6,6 +6,7 @@
 //        host_test <blob.bin> stall|reset <n>
 //        host_test <blob.bin> input <steps>...
 //        host_test <blob.bin> proto <request hex>...
+//        host_test <blob.bin> torn <blob2.bin> <page> <erased>
 // Stages and commits the blob in 56-byte chunks, then types every slot and
 // prints the key reports, e.g. "slot 0: 02:0b 00:08 D50 ...".
 // "lock": each argument is a sequence of input numbers (0-8) entered on the
@@ -292,6 +293,27 @@ int main(int argc, char **argv) {
   if (argc > 3 && (!strcmp(argv[2], "stall") || !strcmp(argv[2], "reset"))) {
     runStall(!strcmp(argv[2], "reset"), atoi(argv[3]));
     return 0;
+  }
+  if (argc > 5 && !strcmp(argv[2], "torn")) {
+    // Power lost in the CH32V hal_store_flush of blob2: it erases and programs
+    // the changed 256-byte pages from the lowest up. Pages before <page> hold
+    // blob2, <page> is erased (erase=1, reads 0xE339E339) or already blob2
+    // (erase=0), the pages after it still hold the old blob. Then a power-up.
+    static uint8_t old[BLOB_CAPACITY], blob2[8192];
+    size_t n2 = readFile(argv[3], blob2, sizeof(blob2));
+    size_t page = (size_t)atoi(argv[4]) * 256, erased = (size_t)atoi(argv[5]);
+    memcpy(old, eeprom, sizeof(old));
+    writeBlob(blob2, n2);
+    if (page < sizeof(eeprom)) {
+      size_t keep = page + 256; // the old blob from the next page on
+      if (erased) {
+        for (size_t i = page; i < page + 256 && i < sizeof(eeprom); i++) eeprom[i] = i & 1 ? 0xE3 : 0x39;
+      }
+      if (keep < sizeof(eeprom)) memcpy(eeprom + keep, old + keep, sizeof(eeprom) - keep);
+    }
+    storage_init();
+    printf("torn page %d erased %d: slot0 len %u\n", atoi(argv[4]), (int)erased, storage_slot_len(0));
+    argc = 2; // type every slot below
   }
   if (argc > 3 && !strcmp(argv[2], "tail")) {
     static uint8_t blob2[8192];

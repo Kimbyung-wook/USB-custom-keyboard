@@ -76,7 +76,7 @@ uv run pytest
 
 - 저장소 루트에서 실행. 테스트 위치는 `tests/gui/` (pyproject `[tool.pytest.ini_options]`)
 - UI 테스트는 화면 없이(`QT_QPA_PLATFORM=offscreen`) 실행됨
-- **이 한 명령이 전체 검증** (지금 246개)
+- **이 한 명령이 전체 검증** (지금 257개, host 검사 198개 포함)
   - GUI 테스트 (`tests/gui/`)
   - host 테스트: `test_host_firmware.py`가 `tests/host/run.py`를 실행. 펌웨어 기능 코드와 `protocol.c`를 gcc로 PC에서 빌드해 HELLO·READ·WRITE·COMMIT을 GUI 파서로 검증, `src/boards`의 모든 보드. gcc가 PATH에 없으면 skip
   - 교차 검사 `test_consistency.py`: 여러 파일에 같은 값이 있는지

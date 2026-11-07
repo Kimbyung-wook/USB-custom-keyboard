@@ -121,6 +121,7 @@
 1. **빌드**: `powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board <보드>`
    - CH552: `firmware\macro_keyboard\build\macro_keyboard-<보드>.hex`
    - CH32V203: 앱 `build\ch32v203\macro_keyboard-<보드>.bin`(목적 파일은 보드별 `build\ch32v203\obj-<보드>`), 부트로더 `firmware\bootloader_ch32v203\build\bootloader-<보드>.bin`
+   - CH32V203 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
 2. **처음 설치** (장입은 사용자 확인 뒤)
    - CH552: `tools\flash.ps1 -Hex <파일>` 실행 → 3단계 방법으로 업데이트 모드에 넣음. 또는 GUI 업데이트 창에서 **장입할 보드**를 골라 장입
    - CH32V203: `tools\flash.ps1 -Board <보드> -Full` ([MANUAL 8장](MANUAL.md#처음-설치-공장-펌웨어))
@@ -132,7 +133,8 @@
      - 우리 펌웨어가 있던 칩은 설정이 남음. 공장 펌웨어(읽기 보호)는 전부 지워짐
      - 새 보드는 `tools/flash.ps1`의 UID 표에도 추가 (진입 키는 보드 파일에서 읽음)
 3. **확인**
-   - `uv run python tools\check_device.py --board <보드>`: USB, HELLO(보드 이름, 키/노브 수, 칩), 설정 읽기
+   - `uv run python tools\check_device.py`: USB, HELLO(보드 이름, 키/노브 수, 칩), 설정 읽기
+     - `--board` 생략: 키보드가 HELLO로 알린 보드를 `boards.py`에서 찾아 비교(모르는 보드면 실패). `--board none`: 비교 안 함. 기능은 `boards.py`에 적힌 기능을 모두 가졌는지로 비교. 새 보드는 먼저 `boards.py`에 추가해야 통과
    - 저장 유지: `--write` → USB 다시 꽂기 → `--verify` → `--restore <백업>`
    - GUI: 보드 이름·키 배치가 자동으로 맞는지
 

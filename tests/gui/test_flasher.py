@@ -447,6 +447,36 @@ def test_dialog_ch32v203_wrong_file_needs_forced_consent(qapp, tmp_path, fid, wa
     assert bytes(dev.flash[:len(image)]) == image
 
 
+def test_dialog_ch32v203_blocks_reentry_while_flashing(qapp, tmp_path):
+    """Clicks and closing during the processEvents of hidboot flashing do nothing."""
+    from gui.core import hidboot
+    dev = hidboot.MockBootloader()
+    seen = []
+
+    def flash(image, progress, force=False):
+        bl = hidboot.Bootloader(dev)
+        bl.flash(image, progress, force)
+        # what a user could do between two progress updates
+        dlg.start_btn.click()
+        dlg.close_btn.click()
+        dlg.close()
+        dlg.reject()
+        seen.append((dlg.start(), dlg.isVisible(), dlg.start_btn.isEnabled(),
+                     dlg.board_combo.isEnabled(), dlg.browse_btn.isEnabled(), dev.writes))
+        bl.run()
+
+    dlg = make_hid_dialog(tmp_path, dev)
+    dlg._hid_flash_fn = flash
+    dlg.show()
+    assert dlg.start() and dlg.succeeded
+    started, visible, start_on, combo_on, browse_on, writes = seen[0]
+    assert (started, visible, start_on, combo_on, browse_on) == (False, True, False, False, False)
+    assert dev.ran and writes == dev.writes          # no second flash started
+    assert dlg.isVisible() and dlg.start_btn.isEnabled() and dlg.board_combo.isEnabled()
+    dlg.close_btn.click()                            # after it: closes normally
+    assert not dlg.isVisible()
+
+
 def test_dialog_ch32v203_right_file_asks_no_force(qapp, tmp_path):
     from gui.core import hidboot
     dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader())

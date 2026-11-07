@@ -7,7 +7,9 @@ Run from the repo root with the GUI venv:
   uv run python tools\\check_device.py --verify        # 4: test config survived the replug
   uv run python tools\\check_device.py --restore FILE  # put the backup back
 
---board NAME picks the expected board (default 3X3V_RGB), --long N puts an
+--board NAME picks the expected board (default: the board the keyboard's HELLO
+names, looked up in gui/core/boards.py; an unknown one fails; none = no
+comparison), --long N puts an
 N-character string on key 1 (확인할 것 5: press key 1 in Notepad).
 """
 from __future__ import annotations
@@ -37,7 +39,9 @@ def test_slots(board: p.Board, long_len: int = 0) -> list[str]:
     return slots
 
 
-def check(client: DeviceClient, spec: boards.BoardSpec | None, out: Callable[[str], None]) -> bool:
+def check(client: DeviceClient, spec: boards.BoardSpec | None, out: Callable[[str], None],
+          auto: bool = False) -> bool:
+    """``auto``: compare with the boards.py entry of the board HELLO names."""
     ok = True
     info = client.hello()
     b = info.board
@@ -48,6 +52,11 @@ def check(client: DeviceClient, spec: boards.BoardSpec | None, out: Callable[[st
         ok = False
     out(f"     보드 {b.name}: {b.summary}, {b.rows}줄, 칩 0x{b.chip_id:02X} ({chips.name_of(b.chip_id)}), "
         f"기능 0x{b.features:02X}, UID {b.uid.hex() or '없음'}")
+    if auto and info.board_info is not None:
+        spec = boards.find(b.name)
+        if spec is None:
+            out(f"[!!] 모르는 보드: {b.name} (gui/core/boards.py: {', '.join(s.name for s in boards.BOARDS)})")
+            ok = False
     if spec is not None:
         exp = spec.layout
         if b != exp:
@@ -55,8 +64,10 @@ def check(client: DeviceClient, spec: boards.BoardSpec | None, out: Callable[[st
             ok = False
         else:
             out(f"[OK] 보드 배치가 {spec.name}와 같음")
-        if b.features != exp.features:
-            out(f"[!!] 기능 0x{b.features:02X}, 기대 0x{exp.features:02X}")
+        # boards.py lists what a board needs; newer firmware may add features
+        # (CH552 boards report auto-lock since 1.4.0)
+        if b.features & exp.features != exp.features:
+            out(f"[!!] 기능 0x{b.features:02X}, 기대 0x{exp.features:02X} 이상")
             ok = False
     cfg = client.read_config()
     if cfg.valid:
@@ -111,7 +122,8 @@ def main(argv: list[str] | None = None,
          connect: Callable[[], Transport] = HidTransport.open_first,
          out: Callable[[str], None] = print) -> int:
     ap = argparse.ArgumentParser(description="장입 직후 키보드 점검")
-    ap.add_argument("--board", default="3X3V_RGB", help="기대하는 보드 이름 (none = 비교 안 함)")
+    ap.add_argument("--board", default=None,
+                    help="기대하는 보드 이름 (기본: 키보드가 알린 보드, none = 비교 안 함)")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--write", action="store_true", help="시험 설정 저장 (기존 설정은 백업)")
     g.add_argument("--verify", action="store_true", help="재연결 후 시험 설정 확인")
@@ -121,7 +133,8 @@ def main(argv: list[str] | None = None,
     args = ap.parse_args(argv)
 
     spec = None
-    if args.board.lower() != "none":
+    auto = args.board is None
+    if not auto and args.board.lower() != "none":
         spec = boards.find(args.board)
         if spec is None:
             out(f"알 수 없는 보드: {args.board} (목록: {', '.join(s.name for s in boards.BOARDS)})")
@@ -144,7 +157,7 @@ def main(argv: list[str] | None = None,
         elif args.restore:
             ok = restore(client, args.restore, out)
         else:
-            ok = check(client, spec, out)
+            ok = check(client, spec, out, auto)
     except (DeviceError, TransportError, backup.BackupError, OSError) as e:
         out(f"[!!] {e}")
         ok = False

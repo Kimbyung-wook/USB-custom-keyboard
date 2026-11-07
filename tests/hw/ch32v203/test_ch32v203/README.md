@@ -39,6 +39,9 @@
 
 필요: xPack `riscv-none-elf-gcc` 15.x, `mingw32-make`, WCH EVT SDK(기본 경로 `C:/Users/user/tools/sdk/EVT`, `make SDK=...`로 변경 가능)
 
+- 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
+  - `MK_RISCV_BIN`을 주면 아래 `PATH` 설정 불필요
+
 ```bash
 export PATH=/c/Users/user/tools/gcc/xpack-riscv-none-elf-gcc-15.2.0-1/bin:$PATH
 cd tests/hw/ch32v203/test_ch32v203

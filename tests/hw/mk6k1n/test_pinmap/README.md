@@ -6,6 +6,7 @@
 - **확인 항목**: 핀 매핑, LED
 - **쓰는 때**: **비슷한 장치를 새로 구했을 때**, 본 펌웨어를 올리기 전에 먼저 확인
 - 키마다 LED가 있는 **MK6K1NL**은 [test_mk6k1nl](../../mk6k1nl/test_mk6k1nl/README.md)로 확인
+- `src/userUsbHidKeyboard/`(USB 파일)는 test_mk6k1nl의 것과 같은 복사본. 고치면 둘 다
 
 ## 새 장치 점검 절차
 

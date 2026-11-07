@@ -187,6 +187,36 @@ def test_flash_ps1_boards():
     assert "BOARD_BOOT_KEY" in src
 
 
+# ---- tool paths -------------------------------------------------------------
+
+TOOL_FILES = [FW / "Makefile.ch32v203", BL / "Makefile",
+              ROOT / "tests" / "hw" / "ch32v203" / "test_ch32v203" / "Makefile",
+              ROOT / "tests" / "hw" / "ch32v203" / "test_ch32v203" / "diag" / "Makefile",
+              ROOT / "tools" / "build_fw.ps1", ROOT / "tools" / "flash.ps1"]
+TOOL_PATH = re.compile(r"C:[/\\]Users[/\\]user[/\\]tools[/\\][^'\"\s)]+")
+
+
+def test_tool_default_paths_agree():
+    """Every default under C:/Users/user/tools names the same folder per tool,
+    and each file lets the environment (MK_EVT_SDK, MK_RISCV_BIN, MK_WCHISP) win."""
+    seen: dict[str, set[str]] = {}
+    for path in TOOL_FILES:
+        src = text(path)
+        for found in TOOL_PATH.findall(src):
+            p_ = found.replace("\\", "/")
+            tool = p_.split("/")[4]                 # sdk, gcc, wchisp
+            seen.setdefault(tool, set()).add(p_)
+        if path.suffix == ".ps1":
+            for var in re.findall(r"\$env:(MK_\w+)", src):
+                assert var in ("MK_EVT_SDK", "MK_RISCV_BIN", "MK_WCHISP")
+        else:
+            assert "MK_EVT_SDK ?=" in src and "SDK ?= $(MK_EVT_SDK)" in src and "MK_RISCV_BIN" in src
+    assert set(seen) == {"sdk", "gcc", "wchisp"}
+    assert all(len(v) == 1 for v in seen.values()), seen
+    ps = text(ROOT / "tools" / "build_fw.ps1") + text(ROOT / "tools" / "flash.ps1")
+    assert all(f"$env:{v}" in ps for v in ("MK_EVT_SDK", "MK_RISCV_BIN", "MK_WCHISP"))
+
+
 # ---- (d) version ------------------------------------------------------------
 
 def test_firmware_version_is_gui_version():
