@@ -82,7 +82,7 @@ mingw32-make
 | 2 | 4·5·6 | PA8 | PA9 | PA10 |
 | 3 | 7·8·9 | PA0 | PA1 | PA2 |
 
-- PA11·PA12는 USB 핀과 같음 → 최종 펌웨어에서 USB와 LED를 같이 쓸 수 있는지 **미확인**
+- PA11·PA12는 USBD 핀일 뿐, 이 펌웨어의 USB(USBFS)는 PB6/PB7 → LED로 사용 가능 (자료표, 2026-11-07. PB6 낮음 = USB D−)
 - 키 핀과 LED 핀이 겹치지 않음(PA14·PA15는 키, PA13은 LED)
 
 ### 2X4V_RGB (8키)

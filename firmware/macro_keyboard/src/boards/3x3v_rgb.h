@@ -22,11 +22,11 @@
   {1, 15}, {0, 14}, {0, 4}, {1, 10}, {0, 15}, {0, 3}, {1, 2}, {1, 11}, {1, 1}
 
 // LED lines per row {red, green, blue} as {port, bit}; low = lit.
-// Row 1 red/green are PA11/PA12 = USB D-/D+: unused (port 0xFF) until USB+LED
-// sharing is checked, so row 1 shows blue only.
+// Row 1 red/green are PA11/PA12, the pins of the USBD controller (unused). USB
+// runs on USBFS = PB6/PB7 (datasheet 48-pin table; PB6 reads low = D- idle).
 #define BOARD_LED_ROWS 3
 #define BOARD_LED_PINS                                                         \
-  {{0xFF, 0}, {0xFF, 0}, {0, 13}},                                                 \
+  {{0, 11}, {0, 12}, {0, 13}},                                                 \
   {{0, 8}, {0, 9}, {0, 10}},                                                   \
   {{0, 0}, {0, 1}, {0, 2}}
 #define BOARD_KEY_LEDS 0 // LEDs are per row, not per key

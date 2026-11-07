@@ -53,15 +53,24 @@ hal_sw_t hal_switches(void) {
 #define PWM_STEPS 16
 #define PALETTE_FULL 40
 static const uint8_t fullDuty[3] = {12, 3, 8}; // R, G, B at palette value 40
+// A row's R, G and B seem to share one resistor: lit together, only red shows
+// (lowest forward voltage). A mixed color (white, purple) therefore lights
+// one color at a time, each in its own 16-tick phase (1/3 brightness each).
+// A row with a single usable color line is never time-shared.
 static volatile uint8_t duty[3];
+static uint8_t rowShared[BOARD_LED_ROWS]; // row has more than one color line
+static volatile uint8_t mixed; // more than one color on
 static uint8_t tick;
+static uint8_t phase; // color allowed to light while mixed
 
 void TIM3_IRQHandler(void) __attribute__((interrupt("machine")));
 void TIM3_IRQHandler(void) {
   uint8_t t = tick;
+  uint8_t mix = mixed;
 
   TIM3->INTFR = (uint16_t)~TIM_IT_Update;
   for (uint8_t row = 0; row < BOARD_LED_ROWS; row++) {
+    uint8_t shared = mix && rowShared[row];
     for (uint8_t c = 0; c < 3; c++) {
       uint8_t port = ledPins[row][c][0];
       uint32_t m;
@@ -69,7 +78,7 @@ void TIM3_IRQHandler(void) {
         continue;
       }
       m = 1u << ledPins[row][c][1];
-      if (t < duty[c]) {
+      if (t < duty[c] && (!shared || c == phase)) {
         portPtr(port)->BCR = m; // lit
       } else {
         portPtr(port)->BSHR = m;
@@ -77,12 +86,18 @@ void TIM3_IRQHandler(void) {
     }
   }
   tick = (uint8_t)((t + 1) & (PWM_STEPS - 1));
+  if (tick == 0) {
+    phase = phase == 2 ? 0 : (uint8_t)(phase + 1);
+  }
 }
 
 void hal_leds_all(uint8_t color) {
+  uint8_t on = 0;
   for (uint8_t c = 0; c < 3; c++) {
     duty[c] = (uint8_t)((hal_palette[color][c] * fullDuty[c] + PALETTE_FULL / 2) / PALETTE_FULL);
+    on += duty[c] != 0;
   }
+  mixed = on > 1;
 }
 
 static void ledInit(void) {
@@ -90,12 +105,15 @@ static void ledInit(void) {
   NVIC_InitTypeDef nv;
 
   for (uint8_t row = 0; row < BOARD_LED_ROWS; row++) {
+    uint8_t lines = 0;
     for (uint8_t c = 0; c < 3; c++) {
       if (ledPins[row][c][0] != NO_PORT) {
+        lines++;
         GPIO_WriteBit(portPtr(ledPins[row][c][0]), (uint16_t)(1u << ledPins[row][c][1]), Bit_SET);
         pinMode(ledPins[row][c][0], ledPins[row][c][1], GPIO_Mode_Out_PP);
       }
     }
+    rowShared[row] = lines > 1;
   }
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   tb.TIM_Period = 62 - 1; // 1 MHz / 62 = 16 kHz
@@ -198,6 +216,18 @@ void hal_init(void) {
 
   Delay_Init(); // the USB driver uses Delay_Us/Delay_Ms
 
+  // Every free pin pulled up first, as in tests/hw/ch32v203: with the free pins
+  // left floating the LEDs stay dark (some free pin seems to switch the LED
+  // power; which one is unknown). Pull-ups only, never driven.
+  for (uint8_t bit = 0; bit < 16; bit++) {
+    pinMode(0, bit, GPIO_Mode_IPU);
+    if (bit != 6 && bit != 7) { // PB6/PB7: USBFS D-/D+
+      pinMode(1, bit, GPIO_Mode_IPU);
+    }
+    if (bit >= 13) {
+      pinMode(2, bit, GPIO_Mode_IPU);
+    }
+  }
   for (uint8_t i = 0; i < BOARD_KEYS; i++) {
     pinMode(keyPins[i][0], keyPins[i][1], GPIO_Mode_IPU);
   }
