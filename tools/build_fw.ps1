@@ -20,8 +20,10 @@
 
   CH32V203 boards (3x3v_rgb) build with Makefile.ch32v203 instead (xPack
   riscv-none-elf-gcc, mingw32-make, WCH EVT SDK; paths in -GccBin, -Sdk).
-  Result: firmware\macro_keyboard\build\ch32v203\macro_keyboard-<BOARD>.bin,
-  flashed with tools\flash.ps1 -Board 3x3v_rgb (wchisp, BOOT bridge).
+  Result: firmware\macro_keyboard\build\ch32v203\macro_keyboard-<BOARD>.bin (app
+  at 0x08002000, flashed with tools\flash.ps1 -Board 3x3v_rgb or the GUI: key 7),
+  plus firmware\bootloader_ch32v203\build\full-<BOARD>.bin (bootloader + app,
+  first install: tools\flash.ps1 -Board 3x3v_rgb -Full, BOOT bridge).
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
@@ -85,8 +87,22 @@ if ($boardChips[$Board] -eq 'ch32v203') {
         exit $code
     }
     $bin = Join-Path $chOut "macro_keyboard-$boardName.bin"
+    # Bootloader + the full image for the first install (the app is up to date)
+    $blDir = Join-Path (Split-Path $sketch -Parent) 'bootloader_ch32v203'
+    Push-Location $blDir
+    try {
+        & mingw32-make full "BOARD=$boardName" "SDK=$Sdk"
+        $code = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($code -ne 0) {
+        Write-Host "Bootloader build failed (exit code $code)"
+        exit $code
+    }
     Write-Host ""
     Write-Host "Built $boardName with build date $($now.ToString('yyyy-MM-dd HH:mm')) -> $bin ($((Get-Item $bin).Length) bytes)"
+    Write-Host "Full image (bootloader + app): $(Join-Path $blDir "build\full-$boardName.bin")"
     exit 0
 }
 

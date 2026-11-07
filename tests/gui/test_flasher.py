@@ -364,18 +364,75 @@ def test_main_window_locked_device_needs_key_d(qapp, tmp_path):
     w.close()
 
 
-def test_dialog_ch32v203_board_points_to_wchisp(qapp, tmp_path):
-    # The update window cannot flash the CH32V203: it shows the wchisp way instead
-    from gui.core import boards
-    nine = boards.find("3X3V_RGB")
-    dlg = make_dialog(tmp_path, [], keyboard=nine.layout)
-    assert dlg.spec.name == "3X3V_RGB" and not dlg.window_flash
-    assert r"tools\flash.ps1 -Board 3x3v_rgb" in dlg.hint.text()
-    assert "BOOT 브리지" in dlg.hint.text()
-    assert "이 창으로는" in dlg.size_label.text()
-    assert not dlg.boot_btn.isEnabled() and not dlg.start_btn.isEnabled()
+NINE_ID = "MKFW1:3X3V_RGB:CH32V203:1.4.0"
 
-    # picking a CH552 board brings the normal flow back
+
+def make_bin(path: Path, size: int, fid: str | None = NINE_ID) -> Path:
+    data = (fid.encode() + bytes(1) if fid else b"") + bytes((i * 7) & 0xFF for i in range(size))
+    path.write_bytes(data[:size])
+    return path
+
+
+def make_hid_dialog(tmp_path, dev=None, board="3X3V_RGB", path=None, **kw):
+    """Update window for the 9-key board with a MockBootloader plugged in (dev=None: none)."""
+    from gui.core import hidboot
+    from gui.ui.flash_dialog import FirmwareDialog
+    nine = boards.find("3X3V_RGB")
+
+    def scan():
+        if dev is None:
+            return []
+        return [hidboot.Bootloader(dev).hello()]
+
+    def flash(image, progress):
+        bl = hidboot.Bootloader(dev)
+        bl.flash(image, progress)
+        bl.run()
+
+    dlg = FirmwareDialog(lambda: "", lambda p: ["unused"], keyboard=nine.layout,
+                         hex_path=path or make_bin(tmp_path / "fw.bin", 11928),
+                         auto_scan=False, hid_scan_fn=scan, hid_flash_fn=flash, **kw)
+    dlg.confirm = lambda title, text: True
+    return dlg
+
+
+def test_dialog_ch32v203_flashes_through_own_bootloader(qapp, tmp_path):
+    from gui.core import hidboot
+    dev = hidboot.MockBootloader()
+    dlg = make_hid_dialog(tmp_path, dev)
+    assert dlg.spec.hidboot and dlg.window_flash and dlg.boot_btn.isEnabled()
+    assert "키 7을 누른 채" in dlg.hint.text() and "보라색" in dlg.hint.text()
+    assert r"tools\flash.ps1 -Board 3x3v_rgb -Full" in dlg.hint.text()   # first install
+    assert "✔" in dlg.size_label.text() and "52992" in dlg.size_label.text()
+    assert dlg.chip_table.rowCount() == 1 and dlg.chip_table.item(0, 3).text() == "자체 1.0"
+    assert dlg.start_btn.isEnabled()
+
+    assert dlg.start() and dlg.succeeded
+    image = (tmp_path / "fw.bin").read_bytes()
+    assert bytes(dev.flash[:len(image)]) == image and dev.ran
+    assert dlg.bar.value() == 100 and "장입 완료" in dlg.stage_label.text()
+    assert not dlg.running
+
+
+def test_dialog_ch32v203_without_bootloader_or_with_hex(qapp, tmp_path):
+    dlg = make_hid_dialog(tmp_path, None)
+    assert "업데이트 모드인 칩이 없습니다" in dlg.chip_status.text()
+    assert not dlg.start_btn.isEnabled()
+
+    dlg.set_hex(make_hex(tmp_path / "fw.hex", 100, fid=NINE_ID))
+    assert ".bin" in dlg.size_label.text() and dlg.hex is None
+
+    # picking a CH552 board brings the vnproch55x flow back
     dlg.board_combo.setCurrentIndex(0)
-    assert dlg.window_flash and dlg.boot_btn.isEnabled()
-    assert "[업데이트 모드로 전환]" in dlg.hint.text()
+    assert not dlg.spec.hidboot and "[업데이트 모드로 전환]" in dlg.hint.text()
+
+
+def test_dialog_ch32v203_other_board_and_flash_error(qapp, tmp_path):
+    from gui.core import hidboot
+    dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader(board="2X4V_RGB"))
+    assert "2X4V_RGB" in dlg.chip_status.text() and not dlg.start_btn.isEnabled()
+
+    dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader(flash_error=True))
+    assert not dlg.start() and not dlg.succeeded
+    assert "플래시" in dlg.stage_label.text() and "키 7을 누른 채" in dlg.stage_label.text()
+    assert dlg.start_btn.isEnabled()                      # try again

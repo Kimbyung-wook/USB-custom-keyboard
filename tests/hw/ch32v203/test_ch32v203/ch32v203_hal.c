@@ -262,20 +262,23 @@ void hal_reset(void) {
   while (1) {}
 }
 
-// Leave the application and start the WCH ISP bootloader in system flash (0x1FFF8000).
-// Not documented for CH32V20x: this is an experiment. USB is dropped first so the host
-// sees a disconnect, then clocks and peripherals are put back to the reset state.
-void hal_jump_bootloader(void) {
-  uint32_t i;
-
+// ---- bootloader entry experiments (no BOOT bridge, BOOT mode) ----
+// Drop USB so the host sees a disconnect; interrupts off
+static void usbDrop(void) {
   __asm__ volatile("csrc 0x800, %0" ::"r"(0x88)); // global interrupts off
   USBFSD->BASE_CTRL = 0;
   USBFSD->UDEV_CTRL = 0;
-  hal_gpio_output(0, 11);
-  hal_gpio_output(0, 12);
-  hal_gpio_write(0, 11, 0);
-  hal_gpio_write(0, 12, 0);
-  hal_delay_ms(100); // host sees the device go away
+  hal_delay_ms(100);
+}
+
+// A: jump to system flash (0x1FFF8000) from the application, with interrupts,
+// peripherals and clocks back to the reset state. main now runs in machine mode
+// (Makefile): the first try faulted on the bootloader's machine CSR write (0xbc0)
+// because the SDK startup entered main in user mode (mstatus 0x88, MPP = 0).
+void hal_jump_bootloader(void) {
+  uint32_t i;
+
+  usbDrop();
   for (i = 0; i < 8; i++) {
     NVIC->IRER[i] = 0xFFFFFFFFu;
   }
@@ -287,4 +290,30 @@ void hal_jump_bootloader(void) {
   RCC->CTLR = 0x00000083u; // HSION, reset trim
   __asm__ volatile("li t0, 0x1FFF8000\n\tjr t0");
   while (1) {}
+}
+
+// B: mark RAM and reset; the reset handler sees the mark and jumps to system
+// flash before touching anything (boot_check.inc, added by the Makefile)
+#define BOOT_MARK ((volatile uint32_t *)0x20001810u)
+void hal_reset_to_bootloader(void) {
+  usbDrop();
+  *BOOT_MARK = 0xB0075EEDu;
+  hal_reset();
+}
+
+// C: FLASH_STATR bit 14 (BOOT_MODE on other WCH chips: boot area after a
+// software reset), unlocked with KEYR and MODEKEYR. Undocumented for CH32V20x.
+uint32_t hal_flash_boot_mode(uint32_t *before) {
+  *before = FLASH->STATR;
+  FLASH->KEYR = 0x45670123u;
+  FLASH->KEYR = 0xCDEF89ABu;
+  FLASH->MODEKEYR = 0x45670123u;
+  FLASH->MODEKEYR = 0xCDEF89ABu;
+  FLASH->STATR = (1u << 14); // other bits are read-only or write-1-to-clear
+  return FLASH->STATR;
+}
+
+void hal_flash_boot_reset(void) {
+  usbDrop();
+  hal_reset();
 }

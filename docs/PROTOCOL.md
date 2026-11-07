@@ -21,7 +21,7 @@
 | 인터페이스 0 | HID 키보드 (Boot keyboard, 문자열 출력) |
 | 인터페이스 1 | **Vendor HID**: Usage Page `0xFF00`, Usage `0x01`, 설정 통신 |
 | 리포트 | Report ID 없음, IN/OUT 각 **64바이트** 고정 |
-| 부트로더 모드 VID / PID | `0x4348` / `0x55E0` (WCH ROM 부트로더, HID 아님) |
+| 부트로더 모드 VID / PID | `0x4348` / `0x55E0` (CH552: WCH ROM 부트로더, HID 아님), `0x1209` / `0xC55E` (CH32V203: 자체 HID 부트로더, [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md)) |
 
 - GUI는 `hidapi`로 VID/PID 일치 + `usage_page == 0xFF00`인 인터페이스를 엶
 - Windows에서는 인터페이스마다 장치 경로가 따로 나옴
@@ -165,6 +165,7 @@
 - 부트로더로 재시작 (펌웨어 업데이트용)
 - 요청 인수: 없음
 - 장치는 `OK` 응답 후 USB 연결을 끊고 부트로더로 점프 → `4348:55E0` 장치가 나타남
+- CH32V203: RAM 표시를 남기고 재시작 → 자체 부트로더 `1209:C55E`가 나타남 (보라 LED)
 - 잠겨 있으면 `LOCKED`
 
 ## 설정 블롭 형식 (v1)

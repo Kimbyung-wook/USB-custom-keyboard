@@ -1,5 +1,8 @@
 """Firmware update dialog: pick a .hex, find the chip in the bootloader, then flash.
 
+CH552 boards: WCH ROM bootloader, vnproch55x (.hex) in a QProcess. Boards with
+our own HID bootloader (spec.hidboot, CH32V203): gui/core/hidboot.py (.bin).
+
 What to flash with comes from the board list (gui/core/boards.py): the board
 picked in the window gives the chip, the uploader options and how to reach
 the bootloader. It starts at the keyboard that was connected last (its HELLO
@@ -12,14 +15,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QProcess, Qt, QTimer
+from PySide6.QtCore import QCoreApplication, QProcess, Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from ..core import boards, bootloader, chips, flasher
+from ..core import boards, bootloader, chips, flasher, hidboot
 from ..core import protocol as p
 
 # Repo build output (tools/build_fw.ps1): the board's own file first, then
@@ -30,6 +33,8 @@ DEFAULT_HEX = BUILD_DIR / "macro_keyboard.ino.hex"
 Prepare = Callable[[], str]               # puts the keyboard in the bootloader; returns a hint
 CommandFn = Callable[[Path], list[str]]   # hex path -> uploader command line
 ScanFn = Callable[[], list[bootloader.ChipInfo]]
+HidScanFn = Callable[[], list[hidboot.BootInfo]]
+HidFlashFn = Callable[[bytes, Callable[[int, int], None]], None]   # flash + run
 
 SCAN_INTERVAL_MS = 1000
 
@@ -37,7 +42,8 @@ RED, GREEN, GREY, ORANGE = "#c62828", "#2e7d32", "#757575", "#e65100"
 
 
 def default_hex(spec: boards.BoardSpec | None) -> Path | None:
-    for path in ([BUILD_DIR / spec.firmware_file] if spec else []) + [DEFAULT_HEX]:
+    fallback = [] if spec and spec.hidboot else [DEFAULT_HEX]
+    for path in ([BUILD_DIR / spec.firmware_file] if spec else []) + fallback:
         if path.is_file():
             return path
     return None
@@ -47,13 +53,18 @@ class FirmwareDialog(QDialog):
     def __init__(self, prepare: Prepare, command_fn: CommandFn | None = None,
                  parent: QWidget | None = None, hex_path: str | Path | None = None,
                  scan_fn: ScanFn | None = None, auto_scan: bool = True,
-                 keyboard: p.Board = p.DEFAULT_BOARD, identified: bool = True):
+                 keyboard: p.Board = p.DEFAULT_BOARD, identified: bool = True,
+                 hid_scan_fn: HidScanFn | None = None, hid_flash_fn: HidFlashFn | None = None):
         super().__init__(parent)
         self.setWindowTitle("펌웨어 업데이트")
         self.resize(640, 560)
         self._prepare = prepare
         self._command_fn = command_fn or self._default_command
         self._scan_fn = scan_fn or bootloader.scan
+        self._hid_scan_fn = hid_scan_fn or hidboot.scan
+        self._hid_flash_fn = hid_flash_fn or hidboot.flash_first
+        self.hid_busy = False              # hidboot flashing (in this thread)
+        self.boot_boards: list[str] = []   # board names our bootloaders reported
         self.progress = flasher.FlashProgress()
         self.process: QProcess | None = None
         self.succeeded = False
@@ -80,7 +91,7 @@ class FirmwareDialog(QDialog):
 
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
-        self.path_edit.setPlaceholderText("펌웨어 파일(.hex)을 고르세요")
+        self.path_edit.setPlaceholderText("펌웨어 파일(.hex / .bin)을 고르세요")
         self.browse_btn = QPushButton("파일 선택…")
         self.browse_btn.clicked.connect(self.browse)
         row = QHBoxLayout()
@@ -175,7 +186,7 @@ class FirmwareDialog(QDialog):
     @property
     def window_flash(self) -> bool:
         """This window can flash the picked board's chip."""
-        return self.chip is not None and self.chip.supported
+        return self.chip is not None and (self.chip.supported or self.spec.hidboot)
 
     @property
     def other_board(self) -> bool:
@@ -206,7 +217,11 @@ class FirmwareDialog(QDialog):
             return
         hint = ("키보드가 연결되어 있고 잠금이 풀려 있으면 [업데이트 모드로 전환]을 누르세요. "
                 f"잠겨 있거나 연결되어 있지 않으면 키보드를 뽑았다가 <b>{self.boot_hint}</b> 다시 꽂으세요. ")
-        if not self.identified and self.spec.factory_boot:
+        if self.spec.hidboot:
+            hint += "업데이트 모드에서는 LED가 보라색입니다. "
+            if self.spec.factory_boot:
+                hint += f"{self.spec.factory_boot}. "
+        elif not self.identified and self.spec.factory_boot:
             hint += f"처음 설치(공장 펌웨어)라면: {self.spec.factory_boot}. "
         self.hint.setText(hint + "칩이 목록에 나타나면 [장입]을 누릅니다. 키별 문자열과 패턴 암호는 그대로 남습니다.")
 
@@ -221,7 +236,8 @@ class FirmwareDialog(QDialog):
     # ------------------------------------------------------------ dialogs (overridable in tests)
     def choose_hex_path(self) -> str:
         start = self.path_edit.text() or str(BUILD_DIR if BUILD_DIR.is_dir() else "")
-        path, _ = QFileDialog.getOpenFileName(self, "펌웨어 파일 선택", start, "Intel HEX (*.hex)")
+        kind = "펌웨어 (*.bin)" if self.spec.hidboot else "Intel HEX (*.hex)"
+        path, _ = QFileDialog.getOpenFileName(self, "펌웨어 파일 선택", start, kind)
         return path
 
     def confirm(self, title: str, text: str) -> bool:
@@ -241,9 +257,12 @@ class FirmwareDialog(QDialog):
         try:
             if self.chip is None:
                 raise flasher.FlashError(f"{self.spec.name}의 칩({self.spec.chip_name})을 모릅니다")
-            if not self.chip.supported:
+            if self.spec.hidboot:
+                info = flasher.check_bin(path, self.chip)
+            elif not self.chip.supported:
                 raise flasher.FlashError(f"{self.chip.name}: {self.chip.note}")
-            info = flasher.check_hex(path, self.chip)
+            else:
+                info = flasher.check_hex(path, self.chip)
             fid = info.firmware_id
             if fid and fid.chip != self.chip.name:
                 raise flasher.FlashError(
@@ -290,7 +309,7 @@ class FirmwareDialog(QDialog):
         if self.running:
             return              # the uploader owns the device now
         try:
-            chips_now = self._scan_fn()
+            chips_now = self._hid_scan() if self.spec.hidboot else self._scan_fn()
             self.scan_error = ""
         except flasher.FlashError as e:
             chips_now = []
@@ -302,9 +321,20 @@ class FirmwareDialog(QDialog):
             self._show_chips()
         self._refresh()
 
+    def _hid_scan(self) -> list[bootloader.ChipInfo]:
+        """Our bootloaders as rows of the chip table (HELLO gives the 12-byte UID)."""
+        try:
+            infos = self._hid_scan_fn()
+        except hidboot.TransportError as e:
+            raise flasher.FlashError(str(e)) from e
+        self.boot_boards = [i.board for i in infos]
+        return [bootloader.ChipInfo(n, self.chip.chip_id, 0, f"자체 {i.version[0]}.{i.version[1]}", i.uid)
+                for n, i in enumerate(infos)]
+
     def is_this_keyboard(self, chip: bootloader.ChipInfo) -> bool:
-        """The chip's unique ID is the one the connected keyboard reported."""
-        return bool(self.keyboard.uid) and chip.uid == self.keyboard.uid
+        """The chip's unique ID is the one the connected keyboard reported (the
+        app reports only the first 4 bytes)."""
+        return bool(self.keyboard.uid) and chip.uid.startswith(self.keyboard.uid)
 
     def _show_chips(self) -> None:
         self.chip_table.setRowCount(len(self.chips))
@@ -336,8 +366,10 @@ class FirmwareDialog(QDialog):
         found = self.chips[0]
         if self.chip is None or found.chip_id != self.chip.chip_id:
             return f"{found.part}는 고른 보드({self.spec.name}, {self.spec.chip_name})의 칩이 아닙니다"
-        if not self.chip.supported:
+        if not self.window_flash:
             return f"{self.chip.name}: {self.chip.note}"
+        if self.spec.hidboot and self.boot_boards and self.boot_boards[0] != self.spec.name:
+            return f"부트로더가 {self.boot_boards[0]} 보드라고 알립니다 (고른 보드: {self.spec.name})"
         return None
 
     def _chip_message(self) -> tuple[str, str]:
@@ -351,7 +383,7 @@ class FirmwareDialog(QDialog):
     # ------------------------------------------------------------ state
     @property
     def running(self) -> bool:
-        return self.process is not None and self.process.state() != QProcess.NotRunning
+        return self.hid_busy or (self.process is not None and self.process.state() != QProcess.NotRunning)
 
     def _refresh(self) -> None:
         text, color = self._chip_message()
@@ -384,6 +416,8 @@ class FirmwareDialog(QDialog):
                 "\n".join(reasons) + "\n키보드에 맞지 않으면 키가 동작하지 않을 수 있습니다.\n"
                 f"그래도 장입할까요? (실패해도 {self.boot_hint} 꽂으면 다시 장입할 수 있습니다)"):
             return False
+        if self.spec.hidboot:
+            return self._start_hidboot()
         try:
             command = self._command_fn(Path(self.path_edit.text()))
         except flasher.FlashError as e:
@@ -407,6 +441,44 @@ class FirmwareDialog(QDialog):
         self.process.start(command[0], command[1:])
         self._refresh()
         return True
+
+    def _start_hidboot(self) -> bool:
+        """Erase, write, check and RUN through our bootloader; blocks (a few seconds)."""
+        chip = self.target
+        path = Path(self.path_edit.text())
+        self.scan_timer.stop()
+        self.succeeded = False
+        self.hid_busy = True
+        self.bar.setValue(0)
+        self.stage_label.setStyleSheet("font-weight: bold;")
+        self._append(f"장입 시작: {chip.part} · ID {chip.serial} ← {path.name}")
+        self.stage_label.setText(flasher.STAGE_TEXT_KO[flasher.STAGE_WRITING])
+        self._refresh()
+
+        def progress(done: int, total: int) -> None:
+            self.bar.setValue(done * 100 // total)
+            QCoreApplication.processEvents()
+
+        try:
+            image = path.read_bytes()
+            self._hid_flash_fn(image, progress)
+        except (hidboot.BootError, hidboot.TransportError, OSError) as e:
+            self._append(f"✖ {e}")
+            self.stage_label.setText(f"✖ 실패: {e}. 키보드를 뽑았다가 {self.boot_hint} 꽂고 다시 시도하세요 "
+                                     "(앱이 지워졌어도 업데이트 모드로 들어갑니다)")
+            self.stage_label.setStyleSheet(f"font-weight: bold; color: {RED};")
+        else:
+            self.succeeded = True
+            self.bar.setValue(100)
+            self._append(f"검증 완료 ({len(image)}바이트), 새 펌웨어를 시작합니다")
+            self.stage_label.setText(f"✔ 장입 완료 ({len(image)}바이트). 키보드가 새 펌웨어로 다시 시작합니다")
+            self.stage_label.setStyleSheet(f"font-weight: bold; color: {GREEN};")
+        finally:
+            self.hid_busy = False
+        self.scan()
+        self.scan_timer.start()
+        self._refresh()
+        return self.succeeded
 
     def _append(self, line: str) -> None:
         self.log.appendPlainText(line)
@@ -458,6 +530,8 @@ class FirmwareDialog(QDialog):
 
     # ------------------------------------------------------------ closing
     def cancel_or_close(self) -> None:
+        if self.hid_busy:
+            return              # a few seconds; [취소] waits for it
         if self.running:
             self.process.kill()
             self.process.waitForFinished(2000)

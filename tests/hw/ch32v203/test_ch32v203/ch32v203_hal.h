@@ -10,7 +10,11 @@ void hal_init(void);                // 48 MHz clock, TIM2 time base, USB full sp
 uint32_t hal_millis(void);          // ms since hal_init (TIM2; call at least every 65 ms)
 void hal_delay_ms(uint32_t ms);
 void hal_reset(void);               // restart the chip
-void hal_jump_bootloader(void);     // experiment: start the ISP bootloader from the application
+// Experiments: start the ISP bootloader without the BOOT bridge (BOOT mode)
+void hal_jump_bootloader(void);                 // A: jump to system flash from the application
+void hal_reset_to_bootloader(void);             // B: mark RAM, reset, the reset handler jumps
+uint32_t hal_flash_boot_mode(uint32_t *before); // C: set FLASH_STATR bit 14, returns STATR after
+void hal_flash_boot_reset(void);                // C: drop USB and reset
 // Reset cause flags (cleared on read): 1 pin, 2 power-on, 4 software (fault), 8 IWDG, 16 WWDG, 32 low power
 uint8_t hal_reset_cause(void);
 // Last CPU exception before a fault reset: out = mcause, mepc, mtval. Returns 1 once, then clears.

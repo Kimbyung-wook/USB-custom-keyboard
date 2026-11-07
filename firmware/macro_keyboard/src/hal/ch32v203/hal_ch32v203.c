@@ -8,6 +8,7 @@
 #include "ch32v20x_misc.h"
 #include "ch32v20x_tim.h"
 #include "ch32v20x_flash.h"
+#include "boot_layout.h"
 #include "debug.h"
 #include "ch32v20x_usbfs_device.h"
 #include "hal/hal.h"
@@ -278,10 +279,25 @@ void hal_usb_start(void) {
   USBFS_Device_Init(ENABLE);
 }
 
+// BOOT command: with our bootloader (BOOTLOADER=1) leave the RAM mark so it
+// stays after the reset (docs/BOOTLOADER_CH32V203.md). Without it only resets:
+// the WCH ROM bootloader needs the BOOT bridge.
 void hal_enter_bootloader(void) {
   uint16_t t0 = hal_ms();
-  while ((uint16_t)(hal_ms() - t0) < 300) {
+  while ((uint16_t)(hal_ms() - t0) < 300) { // let the reply go out
   }
+  // Detach (pull-up off) long enough for the host to see the device leave:
+  // a bare reset is too short, the host keeps the old device and the
+  // bootloader never gets enumerated (2026-11-07)
+  NVIC_DisableIRQ(USBFS_IRQn);
+  USBFSD->BASE_CTRL = USBFS_UC_RESET_SIE | USBFS_UC_CLR_ALL;
+  USBFSD->UDEV_CTRL = 0;
+  t0 = hal_ms();
+  while ((uint16_t)(hal_ms() - t0) < 200) {
+  }
+#if BOOTLOADER
+  *(volatile uint32_t *)BOOT_MARK_ADDR = BOOT_MARK_ENTER;
+#endif
   *(volatile uint32_t *)0xE000E048u = 0xBEEF0080u; // PFIC CFGR: key + SYSRESET
   while (1) {
   }

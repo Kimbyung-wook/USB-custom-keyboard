@@ -26,7 +26,7 @@
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
 | `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능 |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
-| `tools/flash.ps1 -Board 3x3v_rgb` | 9키(CH32V203)를 wchisp로 장입 (BOOT 브리지 필요) |
+| `tools/flash.ps1 -Board 3x3v_rgb` | 9키(CH32V203)를 자체 부트로더로 장입 (키 7). `-Full`: 부트로더째 wchisp로 (BOOT 브리지) |
 | `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행) |
 
 - PowerShell 스크립트 실행이 막혀 있으면: `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex ...`
@@ -203,10 +203,14 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 **원인·조치**
 
-- CH32V203은 GUI 창으로 장입 불가(창이 안내만 표시). 펌웨어로 업데이트 모드 진입도 불가(부트로더 점프 시 예외)
-- 진입은 **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 꽂는 방법뿐
-- `wchisp`가 못 찾으면: 브리지 접촉 확인, 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
-- 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 업데이트 모드)
+- 업데이트 모드는 두 가지
+  - **자체 부트로더**(보통): 키 7 누른 채 꽂기 또는 [업데이트 모드로 전환]. LED 보라, `1209:C55E` HID(드라이버 불필요)
+  - **ROM 부트로더**(처음 설치·복구): BOOT 브리지(BOOT1 실크 아래 패드 2개) 이은 채 꽂기. wchisp, `-Full`
+- 보라가 안 켜짐: 부트로더가 아직 없음(공장 펌웨어, 예전 펌웨어) → `tools\flash.ps1 -Board 3x3v_rgb -Full`
+- 보라인데 칩 표에 없음: `uv run python -m gui.core.hidboot info`로 확인. 다른 HID 프로그램 닫기
+- 키 7을 안 눌러도 보라: 앱 정보가 없거나 틀림(장입이 끊김) → 다시 장입
+- `wchisp`가 못 찾으면: 브리지 접촉 확인, ROM 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
+- 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 ROM 부트로더)
 - ⚠️ 제조사 펌웨어는 읽기 보호: 장입하면 지워지고 되돌릴 수 없음
 
 ## 3. 동작

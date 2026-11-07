@@ -26,7 +26,8 @@ class BoardSpec:
     boot_key: str = ""     # the key on the entry pin, e.g. "D" (BOOT_P15)
     factory_boot: str = "" # how to reach the bootloader on the factory firmware
     boot_text: str = ""    # boot_hint when it is not a key (e.g. a bridge on the board)
-    flash_text: str = ""   # how to flash it outside the update window (chip not supported there)
+    flash_text: str = ""   # how to flash it outside the update window (first install)
+    hidboot: bool = False  # our own HID bootloader (gui/core/hidboot.py), .bin files
 
     @property
     def chip(self) -> chips.Chip | None:
@@ -39,6 +40,8 @@ class BoardSpec:
     @property
     def firmware_file(self) -> str:
         """What tools/build_fw.ps1 writes for this board."""
+        if self.hidboot:
+            return f"ch32v203/macro_keyboard-{self.name}.bin"
         return f"macro_keyboard-{self.name}.hex"
 
     @property
@@ -48,8 +51,8 @@ class BoardSpec:
             return self.boot_text
         if not self.boot_key:
             return "업데이트 모드 단추를 누른 채"
-        # L, M, N, R end in a consonant when read aloud (엘, 엠, 엔, 알)
-        return f"키 {self.boot_key}{'을' if self.boot_key[-1] in 'LMNR' else '를'} 누른 채"
+        # L, M, N, R, 1, 3, 6, 7, 8, 0 end in a consonant when read aloud (엘, 엠, 일, 칠, ...)
+        return f"키 {self.boot_key}{'을' if self.boot_key[-1] in 'LMNR136780' else '를'} 누른 채"
 
 
 BOARDS = (
@@ -63,15 +66,17 @@ BOARDS = (
               boot_config=BOOT_P15, boot_key="D",
               factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
                            "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
-    # CH32V203C8U6, 9 keys, no knob (docs/PORT_CH32V203.md). The ROM bootloader needs
-    # the BOOT bridge; there is no software entry. Without a knob, holding any
-    # key starts the lock pattern entry.
+    # CH32V203C8U6, 9 keys, no knob (docs/PORT_CH32V203.md). Our own HID bootloader
+    # (docs/BOOTLOADER_CH32V203.md): key 7 at power-up, or BOOT from the app. It goes
+    # on once through the ROM bootloader (BOOT bridge, wchisp: flash_text).
+    # Without a knob, holding any key starts the lock pattern entry.
     BoardSpec("3X3V_RGB", "9키 (3x3), 노브 없음, 줄별 RGB LED (CH32V203)",
               Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
                     features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
-              boot_config=0, boot_text="BOOT 브리지(BOOT1 아래 패드 2개)를 이은 채",
-              factory_boot="BOOT 브리지를 이은 채 꽂으세요",
-              flash_text=r"tools\flash.ps1 -Board 3x3v_rgb"),
+              boot_config=0, boot_key="7", hidboot=True,
+              factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) BOOT 브리지(BOOT1 아래 패드 2개)를 "
+                           r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board 3x3v_rgb -Full을 실행하세요 (wchisp)",
+              flash_text=r"tools\flash.ps1 -Board 3x3v_rgb -Full"),
 )
 
 

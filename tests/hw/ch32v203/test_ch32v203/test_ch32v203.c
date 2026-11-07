@@ -9,7 +9,10 @@
 
   A short press is a press released within 1 s; holding any key for 1 s is a
   long press. Every mode change is typed as "MODE: ...":
-                     KEYS -> PWR -> FIND -> DUMP -> BOOT (jumps to the ISP bootloader) ...
+                     KEYS -> PWR -> FIND -> DUMP -> BOOT -> KEYS ...
+      BOOT : ISP bootloader without the BOOT bridge. Press key 1: jump
+             from the application, key 2: RAM mark + reset, the reset handler
+             jumps, key 3: FLASH_STATR bit 14 + reset ("FLASH before after").
       KEYS : (start) every press types the pin name, "PA0", and every release
              "PA0 up". Press every key once here first: FIND skips those pins.
       PWR  : (3X3V_RGB) looks for the pins that power the LEDs. Every row is
@@ -259,10 +262,32 @@ static void setMode(uint8_t m) {
     dumpWords(0x1FFFAC80u, 32);
     hal_hid_print("END\n");
   } else if (m == MODE_BOOT) {
-    // Experiment: start the ISP bootloader without the BOOT bridge
+    // Experiments: start the ISP bootloader without the BOOT bridge, one per key
+    hal_hid_print("1 JUMP, 2 RESET, 3 FLASH\n");
+  }
+}
+
+// BOOT mode, press of key 1/2/3 (3X3V_RGB pins PB15, PA14, PA4)
+static void bootTry(uint8_t i) {
+  uint8_t port = pinPort[i], bit = pinBit[i];
+
+  if (port == 1 && bit == 15) {
     hal_hid_print("JUMP\n");
     hal_delay_ms(300);
     hal_jump_bootloader();
+  } else if (port == 0 && bit == 14) {
+    hal_hid_print("RESET\n");
+    hal_delay_ms(300);
+    hal_reset_to_bootloader();
+  } else if (port == 0 && bit == 4) {
+    uint32_t before, after = hal_flash_boot_mode(&before);
+    hal_hid_print("FLASH ");
+    typeHex(before);
+    hal_hid_write(' ');
+    typeHex(after);
+    hal_hid_write('\n');
+    hal_delay_ms(300);
+    hal_flash_boot_reset();
   }
 }
 
@@ -334,6 +359,9 @@ static void scanInputs(void) {
       heldIndex = i;
       heldAt = now;
       heldLong = 0;
+      if (mode == MODE_BOOT) {
+        bootTry(i); // on press: keys 1-3 leave the mode at once, 4-9 still go on by a long press
+      }
     } else if (!pressed && i == heldIndex) {
       heldIndex = NO_PIN;
     }

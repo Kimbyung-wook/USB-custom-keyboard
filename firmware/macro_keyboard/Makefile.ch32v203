@@ -1,6 +1,9 @@
 # CH32V203 build of the macro keyboard (board 3X3V_RGB): RISC-V GCC (xPack) + WCH EVT SDK.
 #   mingw32-make -f Makefile.ch32v203            -> build/macro_keyboard-3X3V_RGB.bin
-#   mingw32-make -f Makefile.ch32v203 flash      -> wchisp flash (BOOT bridge connected)
+#   mingw32-make -f Makefile.ch32v203 flash      -> wchisp flash (BOOT bridge, BOOTLOADER=0 only)
+# BOOTLOADER=1 (default): app at 0x08002000 behind firmware/bootloader_ch32v203
+#   (install: that folder's `make flash` once, then gui/core/hidboot.py).
+# BOOTLOADER=0: app at 0x08000000 without a bootloader (old layout, wchisp only).
 # After editing this file run `rm -rf build` (make removes build/src/*.c).
 # Sources are copied flat into build/src: -Isrc/core resolves core's "../hal/hal.h"
 .RECIPEPREFIX = >
@@ -8,11 +11,19 @@
 SDK ?= C:/Users/user/tools/sdk/EVT
 EXAM := $(SDK)/EXAM
 PERIPH := $(EXAM)/SRC/Peripheral
-LDSCRIPT := $(EXAM)/SRC/Ld/Link.ld
+SDK_LD := $(EXAM)/SRC/Ld/Link.ld
 BOARD ?= 3X3V_RGB
+BOOTLOADER ?= 1
 # Config storage at the end of the 64 KB flash (src/config.h BLOB_CAPACITY)
 STORE_SIZE := 4096
+ifeq ($(BOOTLOADER),1)
+# 0x2000..0xEEFF; app info page at 0xEF00 (src/hal/ch32v203/boot_layout.h)
+IMAGE_MAX := 52992
+LD_SED := -e 's/ORIGIN = 0x00000000, LENGTH = 64K/ORIGIN = 0x00002000, LENGTH = 52992/'
+else
 IMAGE_MAX := $(shell expr 65536 - $(STORE_SIZE))
+LD_SED :=
+endif
 
 TARGET := macro_keyboard-$(BOARD)
 BUILD := build/ch32v203
@@ -23,12 +34,13 @@ SIZE := $(PREFIX)size
 WCHISP ?= wchisp
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8
-DEFS := -DSYSCLK_FREQ_48MHz_HSI -DBOARD_$(BOARD) -DBLOB_CAPACITY=$(STORE_SIZE) $(EXTRA_DEFS)
+DEFS := -DSYSCLK_FREQ_48MHz_HSI -DBOARD_$(BOARD) -DBLOB_CAPACITY=$(STORE_SIZE) -DBOOTLOADER=$(BOOTLOADER) $(EXTRA_DEFS)
 CFLAGS := $(ARCH) $(DEFS) -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter -Wno-unterminated-string-initialization
 ASFLAGS := $(ARCH) -x assembler-with-cpp
 USBD := src/hal/ch32v203/usb
 USERD := $(EXAM)/USB/USBFS/DEVICE/CompositeKM/User # system_ch32v20x, ch32v20x_it (USB files are patched in $(USBD))
-INCS := -Isrc -Isrc/core -I$(USBD) -I$(EXAM)/SRC/Core -I$(PERIPH)/inc -I$(EXAM)/SRC/Debug -I$(USERD)
+INCS := -Isrc -Isrc/core -Isrc/hal/ch32v203 -I$(USBD) -I$(EXAM)/SRC/Core -I$(PERIPH)/inc -I$(EXAM)/SRC/Debug -I$(USERD)
+LDSCRIPT := $(BUILD)/link.ld
 LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map
 
 SRCS_ASM := startup_ch32v20x_D6.S
@@ -41,7 +53,12 @@ SRCS_C := app.c input.c led.c lock.c macro.c protocol.c storage.c \
 VPATH := src/core src/hal/ch32v203 $(USBD) $(EXAM)/SRC/Startup $(EXAM)/SRC/Core $(EXAM)/SRC/Debug $(PERIPH)/src $(USERD)
 OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
 
+
 all: $(BUILD)/$(TARGET).bin
+
+# RAM ends 16 bytes early: the bootloader RAM mark sits above the stack
+$(LDSCRIPT): $(SDK_LD) Makefile.ch32v203 | $(BUILD)
+> sed $(LD_SED) -e 's/LENGTH = 20K/LENGTH = 0x4FF0/' $< > $@
 
 $(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
 > $(CC) $(LDFLAGS) -o $@ $(OBJS) -lc -lgcc
@@ -71,6 +88,7 @@ $(BUILD) $(BUILD)/src:
 > mkdir -p $@
 
 flash: $(BUILD)/$(TARGET).bin
+> @if [ "$(BOOTLOADER)" = 1 ]; then echo "BOOTLOADER=1: use firmware/bootloader_ch32v203 (make flash) or hidboot"; exit 1; fi
 > $(WCHISP) flash $<
 
 clean:

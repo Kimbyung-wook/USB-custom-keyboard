@@ -444,7 +444,7 @@
 | 패턴 암호·자동 잠금 | 있음. 노브 2초로 입력 시작 | 있음. **아무 키 2초**로 입력 시작, 단계는 키만. 키는 누를 때 입력 |
 | LED | 1개 또는 키마다 | 줄(키 3개)마다 같은 색 |
 | 저장 용량 | 128바이트 (합계 최대 102자) | **4096바이트** (합계 최대 **4070자**, 플래시 끝 4 KB) |
-| 펌웨어 업데이트 | GUI 업데이트 창 | **GUI 창으로 불가**. BOOT 브리지 + `tools\flash.ps1 -Board 3x3v_rgb` |
+| 펌웨어 업데이트 | GUI 업데이트 창 | GUI 업데이트 창 (**키 7**을 누른 채 꽂기). 처음 한 번만 BOOT 브리지 + `-Full` |
 
 ### LED
 
@@ -453,14 +453,26 @@
 
 ### 펌웨어 올리기
 
-1. 빌드: `powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board 3x3v_rgb`
-2. 키보드 뒷면을 열고 **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 USB 연결
-3. `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Board 3x3v_rgb`
+- 빌드: `powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board 3x3v_rgb` (앱 + 부트로더 + 전체 이미지)
+- 자체 부트로더: [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md). 업데이트 모드에서는 LED 전체 **보라**
+
+**처음 한 번 (부트로더 설치, 공장 펌웨어 포함)**
+
+1. 키보드 뒷면을 열고 **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 USB 연결
+2. `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Board 3x3v_rgb -Full`
    - `wchisp info` 결과를 보여 준 뒤 `yes`를 입력해야 장입
    - ⚠️ 제조사 펌웨어가 든 키보드는 장입 때 **제조사 펌웨어가 지워짐**(되돌릴 수 없음)
-4. 브리지를 떼고 USB를 다시 연결 (브리지가 있으면 매번 업데이트 모드로 들어감)
-5. 점검: `uv run python tools\check_device.py`
+   - ⚠️ 저장된 설정도 지워짐 → 미리 GUI로 백업, 장입 뒤 복원
+3. 브리지를 떼고 USB를 다시 연결 (브리지가 있으면 매번 ROM 부트로더로 들어감)
+4. 점검: `uv run python tools\check_device.py`
    - 설정 저장 확인: `--write` → USB 다시 연결 → `--verify` → `--restore <백업 파일>`
 
-- 저장된 설정이 지워질 수 있으므로 올리기 전에 GUI로 백업
+**이후 업데이트 (브리지 불필요, 설정 유지)**
+
+1. GUI [펌웨어 업데이트] → [업데이트 모드로 전환] (잠겨 있으면 뽑았다가 **키 7을 누른 채** 꽂기)
+2. 칩 표에 `CH32V203 · 자체 1.0`이 나타나면 [장입] → 키보드가 새 펌웨어로 다시 시작
+- 스크립트: `tools\flash.ps1 -Board 3x3v_rgb` (키 7) 또는 `-Enter`(잠금 풀린 키보드)
+- 장입이 끊기면 다음에 꽂을 때 키 없이도 보라 LED(업데이트 모드) → 다시 장입
+
+- 만일에 대비해 올리기 전에 GUI로 백업
 

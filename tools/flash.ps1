@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Flashes a keyboard: CH552 boards with vnproch55x (.hex), CH32V203 boards with wchisp (.bin).
+  Flashes a keyboard: CH552 boards with vnproch55x (.hex), CH32V203 boards with our HID bootloader or wchisp (.bin).
 
 .DESCRIPTION
   CH552 (default, -Hex): waits for the ROM bootloader (4348:55E0) and flashes a
@@ -14,9 +14,13 @@
     P15 (default) = hold key D (P1.5) while plugging in
     P36           = D+ pull-up (1.5-2 kOhm between chip pin 12 and pin 16)
 
-  CH32V203 (-Board 3x3v_rgb): plug in with the BOOT bridge connected, then the
-  script runs `wchisp info`, asks for "yes" and runs `wchisp flash`. -Bin defaults
-  to the tools\build_fw.ps1 result. Afterwards remove the bridge and replug.
+  CH32V203 (-Board 3x3v_rgb): our own HID bootloader (docs/BOOTLOADER_CH32V203.md).
+  Plug in while holding key 7 (purple LEDs), or pass -Enter when the keyboard runs
+  unlocked; then gui\core\hidboot.py writes -Bin (default: the tools\build_fw.ps1
+  result, linked at 0x08002000) and starts it. The settings stay.
+  -Full: first install through the ROM bootloader. Connect the BOOT bridge, plug in,
+  and wchisp writes bootloader + app (firmware\bootloader_ch32v203\build\full-<BOARD>.bin,
+  `mingw32-make full` there). Afterwards remove the bridge and replug.
   A keyboard with the factory firmware is read-protected: flashing removes the
   protection and ERASES the factory firmware for good. Never on a reference keyboard.
 
@@ -24,6 +28,8 @@
   .\tools\flash.ps1 -Hex tests\hw\mk6k1n\test_pinmap\build\CH55xDuino.mcs51.ch552\test_pinmap.ino.hex
 .EXAMPLE
   .\tools\flash.ps1 -Board 3x3v_rgb
+.EXAMPLE
+  .\tools\flash.ps1 -Board 3x3v_rgb -Full
 #>
 param(
     [string]$Hex,
@@ -32,6 +38,8 @@ param(
     # CH32V203 boards
     [ValidateSet('', '3x3v_rgb')][string]$Board = '',
     [string]$Bin,
+    [switch]$Full,     # bootloader + app with wchisp (BOOT bridge), first install
+    [switch]$Enter,    # send BOOT to the running app instead of holding key 7
     [string]$Wchisp = 'C:\Users\user\tools\wchisp\wchisp-win-x64\wchisp.exe'
 )
 
@@ -39,14 +47,42 @@ $ErrorActionPreference = 'Stop'
 
 if ($Board) {
     $root = Split-Path $PSScriptRoot -Parent
-    if (-not $Bin) {
-        $Bin = Join-Path $root "firmware\macro_keyboard\build\ch32v203\macro_keyboard-$($Board.ToUpper()).bin"
+    $name = $Board.ToUpper()
+    if (-not $Full) {
+        if (-not $Bin) { $Bin = Join-Path $root "firmware\macro_keyboard\build\ch32v203\macro_keyboard-$name.bin" }
+        if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: tools\build_fw.ps1 -Board $Board)" }
+        $binPath = (Resolve-Path $Bin).Path
+        Write-Host "bin : $binPath ($((Get-Item $binPath).Length) bytes)"
+        if ($Enter) {
+            $extra = @('--enter')
+        } else {
+            $extra = @()
+            Write-Host "1. Unplug the keyboard, hold key 7 and plug it in (all LEDs purple)."
+            Read-Host "   Press Enter when the LEDs are purple" | Out-Null
+        }
+        Push-Location $root
+        try {
+            & uv run python -m gui.core.hidboot flash $binPath @extra
+            $code = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        if ($code -ne 0) {
+            Write-Host "Failed (exit code $code). No bootloader yet? First install: -Full"
+        }
+        exit $code
     }
-    if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: tools\build_fw.ps1 -Board $Board)" }
+
+    if (-not $Bin) { $Bin = Join-Path $root "firmware\bootloader_ch32v203\build\full-$name.bin" }
+    if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: mingw32-make full in firmware\bootloader_ch32v203)" }
     if (-not (Test-Path $Wchisp)) { throw "wchisp not found: $Wchisp (-Wchisp)" }
     $binPath = (Resolve-Path $Bin).Path
+    # full image: bootloader 0x0000, app 0x2000, app info 0xEF00 (16 bytes)
+    if ((Get-Item $binPath).Length -ne 0xEF10) {
+        throw "$binPath is not a full image (bootloader + app, 61200 bytes): use mkfull.py / mingw32-make full"
+    }
 
-    Write-Host "bin    : $binPath ($((Get-Item $binPath).Length) bytes)"
+    Write-Host "bin    : $binPath ($((Get-Item $binPath).Length) bytes, bootloader + app)"
     Write-Host "wchisp : $Wchisp"
     Write-Host ""
     Write-Host "1. Connect the BOOT bridge (2 pads under the BOOT1 silk), then plug in USB."
@@ -60,6 +96,7 @@ if ($Board) {
     Write-Host ""
     Write-Host "WARNING: a read-protected chip (factory firmware) is ERASED for good."
     Write-Host "         Never flash a reference keyboard."
+    Write-Host "         The saved settings are erased too (back them up in the GUI first)."
     $answer = Read-Host "2. Type yes to flash"
     if ($answer -ne 'yes') {
         Write-Host "Cancelled"
@@ -69,8 +106,9 @@ if ($Board) {
     $code = $LASTEXITCODE
     Write-Host "wchisp exit code: $code"
     if ($code -eq 0) {
-        Write-Host "3. Remove the BOOT bridge and replug USB (with the bridge it starts the bootloader again)."
+        Write-Host "3. Remove the BOOT bridge and replug USB (with the bridge it starts the ROM bootloader again)."
         Write-Host "4. Check: uv run python tools\check_device.py"
+        Write-Host "   Later updates: tools\flash.ps1 -Board $Board (key 7, no bridge)"
     }
     exit $code
 }

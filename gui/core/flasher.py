@@ -136,6 +136,21 @@ def check_hex(path: str | Path, chip: chips.Chip) -> HexInfo:
     return HexInfo(len(image), firmware_id(image))
 
 
+def check_bin(path: str | Path, chip: chips.Chip) -> HexInfo:
+    """A raw .bin for our own bootloader (CH32V203 app linked at 0x08002000)."""
+    if Path(path).suffix.lower() != ".bin":
+        raise FlashError("이 보드는 .bin 펌웨어를 씁니다 (tools/build_fw.ps1 결과)")
+    try:
+        image = Path(path).read_bytes()
+    except OSError as e:
+        raise FlashError(f"펌웨어 파일을 읽을 수 없습니다: {e}") from e
+    if len(image) < 8:
+        raise FlashError("펌웨어 파일이 비어 있습니다")
+    if len(image) > chip.flash_size:
+        raise FlashError(f"펌웨어가 너무 큽니다 ({len(image)}바이트, {chip.name} 최대 {chip.flash_size}바이트)")
+    return HexInfo(len(image), firmware_id(image))
+
+
 def hex_size(path: str | Path) -> int:
     """Bytes of code flash an Intel HEX file uses (highest address + 1)."""
     return len(read_hex(path))

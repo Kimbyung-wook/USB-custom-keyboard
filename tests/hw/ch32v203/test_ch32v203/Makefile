@@ -51,9 +51,13 @@ $(BUILD)/src/%.c: %.c | $(BUILD)/src
 $(BUILD)/%.o: $(BUILD)/src/%.c | $(BUILD)
 > $(CC) $(CFLAGS) $(INCS) -c $< -o $@
 
-# CSR 0xbc0 looks write-once: the ISP bootloader writes it too, so the startup file must not
-$(BUILD)/src/%.S: %.S | $(BUILD)/src
-> sed -e '/csrw[[:space:]]*0xbc0/d' $< > $@
+# Startup file changes:
+# - no csrw 0xbc0: the ISP bootloader writes it (kept from the first jump test)
+# - mstatus 0x1888: enter main in machine mode (SDK 0x88 = user mode, where the
+#   bootloader's machine CSR writes fault after a jump)
+# - boot_check.inc right after the stack setup: RAM mark -> system flash
+$(BUILD)/src/%.S: %.S boot_check.inc | $(BUILD)/src
+> sed -e '/csrw[[:space:]]*0xbc0/d' -e 's/li t0, 0x88[[:space:]]*$$/li t0, 0x1888/' -e '/la sp, _eusrstack/r boot_check.inc' $< > $@
 
 $(BUILD)/%.o: $(BUILD)/src/%.S | $(BUILD)
 > $(CC) $(ASFLAGS) $(INCS) -c $< -o $@
