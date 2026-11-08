@@ -45,6 +45,7 @@
 - [문서] 칩 특성 표(`docs/CHIPS.md`, CH552G·CH32V203C8U6, 자료표 값과 코드 값 구분), 보드 문서 1절은 칩 표 링크만 — 문서 영향: docs/CHIPS.md#칩-특성-표, docs/board/_TEMPLATE.md, README.md#폴더-구조 — 반영: ☑
 - [문서] 9키 장치 확인: 옛 이름 부트로더에 새 이름 앱(SAYO_3X3)을 `--force` 없이 HID 장입, check_device·설정 유지·LED 눈 확인 정상 — 문서 영향: docs/board/BOARD_SAYO_3X3V_RGB.md#7-확인-결과, docs/BOOTLOADER_CH32V203.md#하드웨어-시험-2026-11-07-sayo_3x3 — 반영: ☑
 - [문서] 멀티에이전트 작업 방식 문서(`docs/WORKFLOW.md`): 역할·소유권, 작업 흐름, 추적 장치, 검사 관문, 승인, 도입 체크리스트 — 문서 영향: docs/WORKFLOW.md, README.md#폴더-구조 — 반영: ☑
+- [문서] MK6K1N 실제 장치 1.7.0 확인: 장입·check_device·눈 확인 정상, 설정 유지, 개발 보드 UID 기록 — 문서 영향: docs/board/BOARD_MK6K1N.md#1-개요, docs/board/BOARD_MK6K1N.md#7-확인-결과 — 반영: ☑
 
 ## 1.7.0 (2026-11-07)
 
