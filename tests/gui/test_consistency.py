@@ -150,6 +150,28 @@ def test_flash_ps1_boards():
     assert "BOARD_BOOT_KEY" in src
 
 
+# ---- earlier board names ------------------------------------------------------
+
+def test_board_aliases_only_in_boards_py():
+    """An earlier board name (BoardSpec.aliases) is written in gui/core/boards.py
+    only (tests and Markdown may name it); nothing else may depend on it."""
+    aliases = [a for b in boards.BOARDS for a in b.aliases]
+    current = [b.name for b in boards.BOARDS]
+    assert len(set(aliases)) == len(aliases) and not set(aliases) & set(current)
+    for b in boards.BOARDS:
+        assert all(len(a) <= 8 for a in b.aliases)
+    code = [path for path in ROOT.rglob("*")
+            if path.is_file() and (path.suffix in (".py", ".c", ".h", ".ps1", ".S", ".inc")
+                                   or path.name.startswith("Makefile"))
+            and not {".git", ".venv", "build", "dist", "__pycache__"} & set(path.relative_to(ROOT).parts)
+            and path.relative_to(ROOT).parts[0] != "tests"
+            and path != ROOT / "gui" / "core" / "boards.py"]
+    for path in code:
+        src = text(path)
+        for alias in aliases:
+            assert alias not in src and alias.lower() not in src, f"{alias} in {path.relative_to(ROOT)}"
+
+
 # ---- tool paths -------------------------------------------------------------
 
 TOOL_FILES = [FW / "Makefile.ch32v203", BL / "Makefile",

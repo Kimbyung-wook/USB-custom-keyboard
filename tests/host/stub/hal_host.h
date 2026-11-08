@@ -15,7 +15,9 @@
 
 uint16_t hal_ms(void);
 
-#if BOARD_KEYS + BOARD_KNOBS > 8
+#if BOARD_KEYS + BOARD_KNOBS > 16
+#error more than 16 switches: no HAL has a hal_sw_t that wide (src/core/input.c)
+#elif BOARD_KEYS + BOARD_KNOBS > 8
 typedef uint16_t hal_sw_t; // like the CH32V203 HAL
 #else
 typedef uint8_t hal_sw_t;

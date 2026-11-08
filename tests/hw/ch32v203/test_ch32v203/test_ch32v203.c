@@ -1,9 +1,11 @@
 /*
-  test_ch32v203: hardware test for the 8-key (2 x 4, 2X4V_RGB) and 9-key
-  (3 x 3, 3X3V_RGB) macro keyboards, both CH32V203C8U6. Finds the key pins and
-  the LED pins of a board whose pin map is unknown. The LEDs of the 9-key board
-  are R/G/B cathode lines per row (low = lit) plus one anode pin per key
-  (high = lit), not a WS2812 chain.
+  test_ch32v203: hardware test for any CH32V203C8 (48-pin) macro keyboard:
+  the 9-key SAYO_3X3 and 8-key SAYO_2X4 so far, a new one (e.g. 12 keys) the
+  same way. Finds the key pins and the LED pins of a board whose pin map is
+  unknown; it knows no key count or boot key, it walks all 31 usable pins.
+  The LEDs found so far are R/G/B cathode lines per row or group (low = lit)
+  plus one anode pin per key (high = lit), not a WS2812 chain. A WS2812 data
+  pin would show nothing in FIND/ANODE (it needs a timed signal).
 
   Portable logic only. The chip access is in ch32v203_hal.h (the SDK layer).
   Build and flash: see README.md.

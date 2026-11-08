@@ -1,6 +1,6 @@
 # test_ch32v203: 8키·9키 키보드 하드웨어 확인용 테스트 펌웨어
 
-- **대상**: 8키(2×4, **2X4V_RGB**), 9키(3×3, **3X3V_RGB**) 매크로 키보드. 둘 다 **CH32V203C8U6**(RISC-V, USB 풀스피드, 플래시 64 KB, RAM 20 KB)
+- **대상**: 8키(2×4, **SAYO_2X4**), 9키(3×3, **SAYO_3X3**) 매크로 키보드. 둘 다 **CH32V203C8U6**(RISC-V, USB 풀스피드, 플래시 64 KB, RAM 20 KB)
 - **확인 항목**: 키 핀, LED 핀과 구동 방식
 - GPIO를 **모두 감시**하고, 키가 아닌 핀을 하나씩 직접 구동해 LED를 찾음
 
@@ -67,7 +67,7 @@ mingw32-make
 4. `wchisp flash build/test_ch32v203.bin` → Verify OK
 5. **브리지를 제거**하고 USB를 다시 연결 (브리지가 있으면 매번 부트로더로 들어감)
 
-## 결과 (3X3V_RGB, 2026-11-05)
+## 결과 (SAYO_3X3, 2026-11-05)
 
 - 칩: CH32V203C8U6, 부트로더 진입은 BOOT 브리지
 
@@ -102,10 +102,10 @@ mingw32-make
 
 - PA5~PA7, PC13~PC15: 변화 없음. PB14는 2단계에서 "6"으로 기록됐으나 1단계(4)와 PB8(6)로 보아 키 4
 
-### 2X4V_RGB (8키)
+### SAYO_2X4 (8키)
 
-- 제품: SayoDevice Keyb T8B7 (같은 계열 9키 = 3X3V_RGB)
-- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_2X4V_RGB.md](../../../../docs/board/BOARD_2X4V_RGB.md). 아래는 시험 전에 적은 계획
+- 제품: SayoDevice Keyb T8B7 (같은 계열 9키 = SAYO_3X3)
+- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_SAYO_2X4V_RGB.md](../../../../docs/board/BOARD_SAYO_2X4V_RGB.md). 아래는 시험 전에 적은 계획
 
 **확인된 것** (사용자 확인, 장치 시험 전)
 
@@ -124,14 +124,14 @@ mingw32-make
 4. FIND(길게 누르기 1번): 핀마다 L 동안 켜지는 키·색 기록 → 줄(4키)마다 R/G/B 음극인지
 5. ANODE(길게 누르기 1번 더): 핀마다 켜지는 키 기록 → 키별 양극인지
 6. 확인: PA11·PA12를 LED가 쓰는지(FIND에서 빠짐 → 음극이 2개 모자라면 이 핀), 키 핀이 BOOT1(PB2)·SWD와 겹치는지
-7. 결과로 `src/boards/2x4v_rgb.h` 작성
-   - **부트로더 키**: `BOARD_BOOT_KEY` = 왼쪽 아래 키(키 5, 번호 4). 부트로더는 보드 파일의 키·LED 핀을 그대로 씀(`firmware/bootloader_ch32v203`, `BOARD=2X4V_RGB`)
+7. 결과로 `src/boards/sayo_2x4.h` 작성
+   - **부트로더 키**: `BOARD_BOOT_KEY` = 왼쪽 아래 키(키 5, 번호 4). 부트로더는 보드 파일의 키·LED 핀을 그대로 씀(`firmware/bootloader_ch32v203`, `BOARD=SAYO_2X4`)
    - `config.h` 보드 선택, `tools\build_fw.ps1`·`flash.ps1`의 `-Board`, `gui/core/boards.py`(`boot_key="5"`, `hidboot=True`)에 추가
-8. 빌드 → 브리지 + `flash.ps1 -Board 2x4v_rgb -Full` → GUI 연결, 키 입력, 저장, LED, 키 5 부트로더 확인
+8. 빌드 → 브리지 + `flash.ps1 -Board sayo_2x4 -Full` → GUI 연결, 키 입력, 저장, LED, 키 5 부트로더 확인
 
 ## 공통 확인 사항
 
-- 3X3V_RGB, 2X4V_RGB 모두 **노브 없음**(사용자 확인)
+- SAYO_3X3, SAYO_2X4 모두 **노브 없음**(사용자 확인)
 
 ## 실험: 소프트웨어로 부트로더 진입 (2026-11-05)
 

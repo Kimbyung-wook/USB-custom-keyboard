@@ -4,9 +4,9 @@
 
 - 목적: BOOT 브리지 없이 펌웨어 업데이트. **왼쪽 아래 키(9키: 키 7, 8키: 키 5)를 누른 채 꽂으면** 부트로더, 또는 GUI [업데이트 모드로 전환]
 - 배경: WCH ROM 부트로더는 소프트웨어로 들어가도 앱으로 돌려보냄 ([시험](../tests/hw/ch32v203/test_ch32v203/README.md) "실험: 소프트웨어로 부트로더 진입")
-- 대상: 3X3V_RGB(진입 키 7), 2X4V_RGB(진입 키 5). 진입 키·LED 핀은 보드 파일에서 읽음(`BOARD_BOOT_KEY`, `BOARD_KEY_PINS`, `BOARD_LED_PINS`, `BOARD_KEY_LED_PINS`)
-- 상태: 구현·빌드 완료(부트로더 4.4 KB), PC 쪽 pytest 통과. 하드웨어 확인: 설치, 앱 시작, 키 7 진입·HELLO, HID 앱 장입(키 7, BOOT 명령 모두), 장입 뒤 설정 유지, GUI 업데이트 창, 장입 중 뽑기 → 다시 장입. 8키(2X4V_RGB): 설치, 키 5 진입, HID 장입 확인
-  - 9키 장치는 1.7.0 `-Full`로 부트로더를 새 빌드로 바꿈. 8키 장치는 이전 빌드 그대로(보드 이름을 2X4V_RGB로 알려 장입에 문제없음)
+- 대상: SAYO_3X3(진입 키 7), SAYO_2X4(진입 키 5). 진입 키·LED 핀은 보드 파일에서 읽음(`BOARD_BOOT_KEY`, `BOARD_KEY_PINS`, `BOARD_LED_PINS`, `BOARD_KEY_LED_PINS`)
+- 상태: 구현·빌드 완료(부트로더 4.4 KB), PC 쪽 pytest 통과. 하드웨어 확인: 설치, 앱 시작, 키 7 진입·HELLO, HID 앱 장입(키 7, BOOT 명령 모두), 장입 뒤 설정 유지, GUI 업데이트 창, 장입 중 뽑기 → 다시 장입. 8키(SAYO_2X4): 설치, 키 5 진입, HID 장입 확인
+  - 9키 장치는 1.7.0 `-Full`로 부트로더를 새 빌드로 바꿈. 8키 장치는 이전 빌드 그대로(옛 이름 `2X4V_RGB`를 알림, `boards.py` 별칭으로 장입에 문제없음)
 
 ## 결정
 
@@ -62,16 +62,16 @@
 
 ## 빌드
 
-- `tools\build_fw.ps1 -Board 3x3v_rgb`(8키는 `2x4v_rgb`, 아래 파일 이름도 보드 이름만 다름): 앱 + 부트로더 + 전체 이미지
-  - 앱: `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin`
-  - 전체: `firmware/bootloader_ch32v203/build/full-3X3V_RGB.bin` (부트로더 + 앱 + 앱 정보, 61200 B, `mkfull.py`)
+- `tools\build_fw.ps1 -Board sayo_3x3`(8키는 `sayo_2x4`, 아래 파일 이름도 보드 이름만 다름): 앱 + 부트로더 + 전체 이미지
+  - 앱: `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin`
+  - 전체: `firmware/bootloader_ch32v203/build/full-SAYO_3X3.bin` (부트로더 + 앱 + 앱 정보, 61200 B, `mkfull.py`)
 - 부트로더만: `firmware/bootloader_ch32v203`에서 `mingw32-make` (8 KB 넘으면 실패)
 - 헤더 의존성(`-MMD -MP`): `boot_layout.h`·보드 파일만 고쳐도 다시 빌드. `make full`은 `EXTRA_DEFS`(빌드 날짜)를 앱 빌드에 넘김
 
 ## 설치·업데이트
 
-- 아래는 9키 예(8키는 `-Board 2x4v_rgb`, 키 5). 단계별 사용자 절차는 [MANUAL 8장](MANUAL.md#처음-설치-공장-펌웨어)
-- 처음 한 번(공장 펌웨어 또는 부트로더 없음), 부트로더 교체: `tools\flash.ps1 -Board 3x3v_rgb -Full`
+- 아래는 9키 예(8키는 `-Board sayo_2x4`, 키 5). 단계별 사용자 절차는 [MANUAL 8장](MANUAL.md#처음-설치-공장-펌웨어)
+- 처음 한 번(공장 펌웨어 또는 부트로더 없음), 부트로더 교체: `tools\flash.ps1 -Board sayo_3x3 -Full`
   1. BOOT 브리지 이은 채 꽂기 → `wchisp info`로 칩 CH32V203C8U6, 보드 UID, 보호 없음 확인 → `yes`
   2. wchisp가 `bootloader-<BOARD>.bin`(8 KB 이하)만 씀. wchisp는 최소 8섹터(0x0000~0x1FFF)를 지움. 부트로더 8 KB 영역 안이라 앱·설정은 그대로
   3. 브리지 떼고 진입 키를 누른 채 다시 꽂기 → `hidboot`이 앱(`-Bin`)을 씀
@@ -82,10 +82,12 @@
   - 9키 실측(2026-11-07): 부트로더 교체 → 키 7로 앱 1.7.0 장입 → `check_device` v1.7.0, 설정(슬롯 9개) 유지
 - 이후: 브리지 불필요
   - GUI 업데이트 창: [업데이트 모드로 전환] 또는 키 7 누른 채 꽂기 → 칩 표에 "자체 1.0" → [장입]
-  - 스크립트: `tools\flash.ps1 -Board 3x3v_rgb` (키 7) 또는 `-Enter`(잠금 풀린 앱에 BOOT)
+  - 스크립트: `tools\flash.ps1 -Board sayo_3x3` (키 7) 또는 `-Enter`(잠금 풀린 앱에 BOOT)
   - CLI: `uv run python -m gui.core.hidboot info | flash <bin> [--force] | run [--enter]`
 - 부트로더 버전: GUI와 `hidboot`은 부트로더 **1.x**만 받음(HELLO [3] 주 버전). `--force`로도 넘어가지 않음(`--force`는 보드 검사만 건너뜀)
 - HID 한 번 쓰기(WRITE) 최대 **56 B** (64바이트 리포트 - 머리 8바이트)
+- 옛 이름 장치(보드 확인): 펌웨어 1.7.0·부트로더 1.0은 옛 이름(`3X3V_RGB`, `2X4V_RGB`)을 알림 → `gui/core/boards.py` 별칭으로 같은 보드로 인식. GUI 업데이트 창·`hidboot` 보드 검사는 BOOT 브리지나 `--force` 없이 통과, `check_device`는 "옛 보드 이름" 안내
+- 새 펌웨어를 올리면 USB 시리얼(보드 이름)이 바뀌어 Windows가 새 장치로 한 번 잡음. 설정은 남음
 - 보드 확인: HID 장입은 `.bin` 식별 문자열(`MKFW1:<보드>:...`)의 보드가 부트로더 HELLO의 보드와 같아야 함. 다르거나 식별 문자열이 없으면 지우기 전에 거부. 시험 펌웨어·다른 보드용은 `--force`(`tools\flash.ps1 -Force`)로만
 - 복구: 부트로더가 망가져도 BOOT 브리지 + `-Full`은 언제나 가능
 
@@ -99,7 +101,7 @@
 | 키를 누른 채 꽂는 실수 | 보라 LED로 구분, 다시 꽂으면 앱 |
 | 부트로더 크기 초과 | 8 KB 넘으면 빌드 실패 |
 
-## 하드웨어 시험 (2026-11-07, 3X3V_RGB)
+## 하드웨어 시험 (2026-11-07, SAYO_3X3)
 
 1. ✅ `wchisp info`: CH32V203C8U6, 읽기 보호 없음 → `-Full` 장입
 2. ✅ 브리지 떼고 꽂기 → 앱 동작(키, LED, GUI 연결)
@@ -107,12 +109,12 @@
 4. ✅ `hidboot flash <bin>` → 앱 재시작, 설정 유지 (키 7, BOOT 명령 모두)
 5. ✅ GUI [업데이트 모드로 전환] → 장입
 6. ✅ 장입 중 USB 뽑기 → 다시 꽂으면 부트로더 → 재장입
-7. ✅ 8키(2X4V_RGB): 키 5(PA5), 설치·진입·HID 장입 (2026-11-07)
+7. ✅ 8키(SAYO_2X4): 키 5(PA5), 설치·진입·HID 장입 (2026-11-07)
 8. ✅ 1.7.0 `-Full`(부트로더 교체) → 키 7로 앱 1.7.0 장입, 설정(슬롯 9개) 유지 (2026-11-07)
 
 ## 이력
 
-- 2026-11-07: 구현, 3X3V_RGB 하드웨어 시험. 이어서 진입 키·LED 핀을 보드 파일에서 읽게 바꾸고 2X4V_RGB 추가
+- 2026-11-07: 구현, SAYO_3X3 하드웨어 시험. 이어서 진입 키·LED 핀을 보드 파일에서 읽게 바꾸고 SAYO_2X4 추가
 - 2026-11-07 (1.7.0): `-Full`이 부트로더만 wchisp로 쓰고 앱은 HID로 (전에는 `full-<BOARD>.bin`을 wchisp로 써서 1 KB × 61페이지, ~0xF3FF까지 지워 설정도 지움)
 - 2026-11-07: 9키 실측 — wchisp는 최소 8섹터(0x0000~0x1FFF) 지움(전에 적은 약 6페이지는 틀림). 부트로더 교체 뒤 키 7로 앱 1.7.0 장입, 설정(슬롯 9개) 유지
 - 2026-11-07: 8키도 1.7.0 HID 장입 확인(보드 검사 통과, 설정 유지. 부트로더는 옛 빌드 그대로)

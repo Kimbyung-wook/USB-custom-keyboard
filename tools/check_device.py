@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -59,7 +60,10 @@ def check(client: DeviceClient, spec: boards.BoardSpec | None, out: Callable[[st
             ok = False
     if spec is not None:
         exp = spec.layout
-        if b != exp:
+        if boards.same(b.name, spec.name) and b.name != spec.name:
+            out(f"[--] 옛 보드 이름 {b.name} (지금 이름 {spec.name}): 펌웨어를 새로 올리면 바뀜")
+        # an earlier name of the board counts as its name (gui/core/boards.py aliases)
+        if replace(b, name=boards.current_name(b.name)) != exp:
             out(f"[!!] 보드가 {spec.name}와 다름 (기대: {exp.summary}, {exp.rows}줄, 칩 0x{exp.chip_id:02X})")
             ok = False
         else:

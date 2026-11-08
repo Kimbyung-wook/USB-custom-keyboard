@@ -11,7 +11,7 @@
 | 1 | CHANGELOG `## 미출시` 항목의 "문서 영향" 문서를 모두 고침 | 모든 항목이 `반영: ☑` |
 | 2 | 버전 올림: `firmware/macro_keyboard/src/config.h`(`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`), `gui/core/version.py`, `pyproject.toml` | 세 곳 같은 번호 (`test_consistency.py`가 검사) |
 | 3 | `uv run python tools\gen_docs.py` | 생성 구역(`gen:이름` 표시)이 최신, 문서 검사 통과 |
-| 4 | 보드 4개 빌드: `tools\build_fw.ps1 -Board <보드>` (mk6k1n, mk6k1nl, 3x3v_rgb, 2x4v_rgb) | 4개 모두 성공, 크기 확인 |
+| 4 | 보드 4개 빌드: `tools\build_fw.ps1 -Board <보드>` (mk6k1n, mk6k1nl, sayo_3x3, sayo_2x4) | 4개 모두 성공, 크기 확인 |
 | 5 | `uv run pytest` | 전부 통과 (GUI + host + 교차 검사) |
 | 6 | 바뀐 보드의 실제 장치 확인 (아래 표) | 보드 문서 7절 "확인 결과"에 날짜와 결과 |
 | 7 | CHANGELOG `## 미출시` → `## <버전> (<YYYY-MM-DD>)`, 각 항목의 "문서 영향"·"반영" 칸 지움. 각 문서 "이력"에 같은 날짜로 한 줄 | 미출시 절은 `- 없음` |

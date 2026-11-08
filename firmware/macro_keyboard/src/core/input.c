@@ -13,6 +13,11 @@ __data uint16_t now16;
 // Switches: the keys (switch i types slot i), then the knob switch (if any)
 #define NUM_SWITCHES (BOARD_KEYS + BOARD_KNOBS)
 #define KNOB_SWITCH BOARD_KEYS // index of the knob switch
+// Every switch needs a bit of hal_sw_t (CH55x 8, CH32V 16). Not under SDCC:
+// hal_ch552.c has its own #error for 8 and code size there stays as it is
+#ifndef __SDCC
+typedef char switches_fit_hal_sw_t[NUM_SWITCHES <= 8 * sizeof(hal_sw_t) ? 1 : -1];
+#endif
 
 #define DEBOUNCE_MS 20
 

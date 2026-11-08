@@ -10,7 +10,7 @@ from gui.core import boards  # noqa: E402
 from gui.core import protocol as p  # noqa: E402
 from gui.core.transport import MockDevice, TransportError  # noqa: E402
 
-NINE = boards.find("3X3V_RGB").layout
+NINE = boards.find("SAYO_3X3").layout
 
 
 def run(dev, *args):
@@ -22,11 +22,11 @@ def run(dev, *args):
 def test_check_passes_for_expected_board():
     code, text = run(MockDevice(capacity=4096, board=NINE))
     assert code == 0, text
-    assert "3X3V_RGB와 같음" in text and "0x19" in text
+    assert "SAYO_3X3와 같음" in text and "0x19" in text
 
 
 def test_check_flags_wrong_board():
-    code, text = run(MockDevice(board=p.DEFAULT_BOARD), "--board", "3X3V_RGB")   # named board wins
+    code, text = run(MockDevice(board=p.DEFAULT_BOARD), "--board", "SAYO_3X3")   # named board wins
     assert code == 1 and "다름" in text
 
 
@@ -43,7 +43,7 @@ def test_check_fails_for_an_unknown_board():
 
 
 def test_check_flags_missing_features():
-    nine = p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19, features=p.BOARD_FEATURE_LOCK)
+    nine = p.Board(keys=9, knobs=0, rows=3, name="SAYO_3X3", chip_id=0x19, features=p.BOARD_FEATURE_LOCK)
     code, text = run(MockDevice(capacity=4096, board=nine))
     assert code == 1 and "기능" in text
 

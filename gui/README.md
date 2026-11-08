@@ -212,7 +212,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - 업로더 실행
   - CH55xDuino의 `vnproch55x.exe`를 보드 목록의 옵션으로 실행 (MK6K1N: `-t CH552 -c 1`, 부트로더 진입 핀 P1.5, `tools/flash.ps1`과 같음)
   - 출력에서 칩 종류, 부트로더 버전, 쓰기/검증 진행률을 읽어 표시
-- CH32V203 보드(3X3V_RGB, 2X4V_RGB): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
+- CH32V203 보드(SAYO_3X3, SAYO_2X4): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
   - 앱 영역만 지움 → 설정 유지. 끊기면 다음에 꽂을 때 부트로더에 머묾
   - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내
@@ -311,7 +311,7 @@ uv run python tools\capture_screens.py
   - 키보드가 없어 잠금을 풀 수 없음
   - 패턴을 저장해도 "다음에 꽂을 때"가 없어 잠기지 않음
 - 펌웨어 업데이트 대상: **보드 목록(`boards.py`)에 있는 보드**만
-  - 현재: MK6K1N, MK6K1NL, 3X3V_RGB, 2X4V_RGB ([docs/BOARDS.md](../docs/BOARDS.md))
+  - 현재: MK6K1N, MK6K1NL, SAYO_3X3, SAYO_2X4 ([docs/BOARDS.md](../docs/BOARDS.md))
   - 식별되지 않은 키보드는 사용자가 이 목록에서 보드를 골라 장입 ([docs/BOARD_INFO.md](../docs/BOARD_INFO.md) 진행 순서 4)
 - 라이선스: 업로더(`vnproch55x.exe`와 DLL)는 CH55xDuino(LGPL-2.1)에 포함된 것, `CH375DLL.dll`은 WCH의 드라이버 DLL
   - exe를 다른 사람에게 배포할 때는 이 사실과 라이선스를 함께 알릴 것

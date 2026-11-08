@@ -36,10 +36,13 @@
 - [펌웨어] CH32V203 보드는 저장 중 전원이 끊기면 다음에 빈 설정으로 시작(CRC 불일치, host `torn` 모드로 확인) — 문서 영향: docs/MANUAL.md#장치에-저장, docs/TROUBLESHOOTING.md#3-9-꽂았더니-설정이-비어-있음 — 반영: ☑
 - [저장소] `.gitattributes` 추가, `gui/.venv` 삭제(루트 `.venv`만) — 문서 영향: 없음 — 반영: ☑
 - [문서] 보드 문서 양식 통일(`docs/board/_TEMPLATE.md`), CH32V203 48핀 칩 핀맵 그림 — 문서 영향: docs/board/_TEMPLATE.md, docs/BOARDS.md#세부-문서-목차-보드-공통 — 반영: ☑
-- [문서] 9키·8키 실측: `-Full`은 0x0000~0x1FFF만 지우고 설정 유지, 8키도 1.7.0 HID 장입 확인 — 문서 영향: docs/BOOTLOADER_CH32V203.md#하드웨어-시험-2026-11-07-3x3v_rgb, docs/board/BOARD_3X3V_RGB.md#7-확인-결과, docs/board/BOARD_2X4V_RGB.md#7-확인-결과 — 반영: ☑
+- [문서] 9키·8키 실측: `-Full`은 0x0000~0x1FFF만 지우고 설정 유지, 8키도 1.7.0 HID 장입 확인 — 문서 영향: docs/BOOTLOADER_CH32V203.md#하드웨어-시험-2026-11-07-sayo_3x3, docs/board/BOARD_SAYO_3X3V_RGB.md#7-확인-결과, docs/board/BOARD_SAYO_2X4V_RGB.md#7-확인-결과 — 반영: ☑
 - [문서] 변경 기록(`CHANGELOG.md`)과 출시 순서(`docs/RELEASE.md`) — 문서 영향: README.md#폴더-구조 — 반영: ☑
-- [문서] CH32V203 핀 번호 확인(자료표 V2.6 표 3-1-1, LQFP48/QFN48 공통, QFN48 0번 = 바닥 패드 VSS), BOOT 브리지 = BOOT0 쪽 기능 확인, 칩 핀맵 그림 문구 갱신 — 문서 영향: docs/board/BOARD_3X3V_RGB.md#3-칩-핀맵, docs/board/BOARD_2X4V_RGB.md#3-칩-핀맵, docs/PINMAP.md — 반영: ☑
-- [도구] 문서 생성 구역: `tools/gen_docs.py`가 versions·boards·chips·pins-<보드> 표를 코드에서 채움(`--check`로 검사) — 문서 영향: README.md#현재-버전-2026-11-07, docs/BOARDS.md#구성, docs/BOARD_INFO.md#5-1-보드-목록-guicoreboardspy-새-파일, docs/BOARD_INFO.md#4-칩-표와-펌웨어-업데이트, docs/board/BOARD_MK6K1N.md#2-버튼-배치와-매핑, docs/board/BOARD_MK6K1NL.md#2-버튼-배치와-매핑, docs/board/BOARD_3X3V_RGB.md#2-버튼-배치와-매핑, docs/board/BOARD_2X4V_RGB.md#2-버튼-배치와-매핑, docs/board/_TEMPLATE.md, docs/RELEASE.md — 반영: ☑
+- [문서] CH32V203 핀 번호 확인(자료표 V2.6 표 3-1-1, LQFP48/QFN48 공통, QFN48 0번 = 바닥 패드 VSS), BOOT 브리지 = BOOT0 쪽 기능 확인, 칩 핀맵 그림 문구 갱신 — 문서 영향: docs/board/BOARD_SAYO_3X3V_RGB.md#3-칩-핀맵, docs/board/BOARD_SAYO_2X4V_RGB.md#3-칩-핀맵, docs/PINMAP.md — 반영: ☑
+- [도구] 문서 생성 구역: `tools/gen_docs.py`가 versions·boards·chips·pins-<보드> 표를 코드에서 채움(`--check`로 검사) — 문서 영향: README.md#현재-버전-2026-11-07, docs/BOARDS.md#구성, docs/BOARD_INFO.md#5-1-보드-목록-guicoreboardspy-새-파일, docs/BOARD_INFO.md#4-칩-표와-펌웨어-업데이트, docs/board/BOARD_MK6K1N.md#2-버튼-배치와-매핑, docs/board/BOARD_MK6K1NL.md#2-버튼-배치와-매핑, docs/board/BOARD_SAYO_3X3V_RGB.md#2-버튼-배치와-매핑, docs/board/BOARD_SAYO_2X4V_RGB.md#2-버튼-배치와-매핑, docs/board/_TEMPLATE.md, docs/RELEASE.md — 반영: ☑
+- [문서] 식별 전 보드 SAYO_2X6(12키 2×6)·BT_2X3(6키 2×3 무선, 별도 USB 동글) 준비: 파일 구조 안, 보드 문서 초안과 식별 체크리스트(동글 연결 방식 확인 포함) — 문서 영향: docs/NEW_BOARD.md#9-식별-전-보드, docs/board/BOARD_SAYO_2X6.md, docs/board/BOARD_BT_2X3.md, docs/BOARDS.md#준비-중-보드, README.md#폴더-구조 — 반영: ☑
+- [저장소] Sayo 보드 이름 통일: 3X3V_RGB → SAYO_3X3, 2X4V_RGB → SAYO_2X4(보드 파일 sayo_3x3.h·sayo_2x4.h, `-Board sayo_3x3`·`sayo_2x4`, 산출물·그림 파일 이름). 옛 이름을 알리는 장치(부트로더 1.0, 펌웨어 1.7.0)는 `boards.py` 별칭으로 같은 보드(GUI, check_device, hidboot 보드 검사는 `--force` 없이 통과), 설정은 남음 — 문서 영향: README.md, docs/BOARDS.md, docs/BOARD_INFO.md, docs/BOOTLOADER_CH32V203.md, docs/MANUAL.md, docs/TROUBLESHOOTING.md, docs/NEW_BOARD.md, docs/PINMAP.md, docs/board/BOARD_SAYO_3X3V_RGB.md, docs/board/BOARD_SAYO_2X4V_RGB.md, firmware/macro_keyboard/README.md, gui/README.md, tests/hw/ch32v203/test_ch32v203/README.md — 반영: ☑
+- [문서] 칩 특성 표(`docs/CHIPS.md`, CH552G·CH32V203C8U6, 자료표 값과 코드 값 구분), 보드 문서 1절은 칩 표 링크만 — 문서 영향: docs/CHIPS.md#칩-특성-표, docs/board/_TEMPLATE.md, README.md#폴더-구조 — 반영: ☑
 
 ## 1.7.0 (2026-11-07)
 

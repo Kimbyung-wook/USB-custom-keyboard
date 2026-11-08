@@ -1,19 +1,24 @@
 # 보드 문서 양식 (`docs/board/BOARD_<보드>.md`)
 
+- 이름 두 가지
+  - **보드 ID**(펌웨어 `BOARD_NAME`·GUI `boards.py`·`-Board`): 8자 이하, CH32V203 보드는 정확히 8자. Sayo 제품은 `SAYO_<행>X<열>`, 그 밖은 `MK<키>K<노브>N`[구분 글자] ([NEW_BOARD 5절](../NEW_BOARD.md#5-보드-파일gui스크립트시험-추가))
+  - **문서 파일·제목**: 제품 기판 이름. Sayo 제품은 `BOARD_SAYO_<기판 표기>.md`(예: 기판 `3X3V_RGB` → `BOARD_SAYO_3X3V_RGB.md`, 제목 `# SAYO_3X3V_RGB (9키)`). 기판 표기가 없거나 보드 ID와 같으면 `BOARD_<보드 ID>.md`
+  - 1절에 보드 ID와 기판 표기를 둘 다 적음
+
 - 모든 보드 문서는 아래 절 순서·제목·표 열 이름을 그대로 씀. 해당 없는 절은 "해당 없음" 한 줄
 - 본문은 현재 상태만. 날짜·버전별 변경은 **각 절 끝 `**이력**`**에 짧게(따로 "이력" 절을 두지 않음)
 - 다른 보드와 같은 내용은 옮겨 쓰지 않고 링크(예: MK6K1NL → MK6K1N 노브 신호)
-- 예: [BOARD_3X3V_RGB.md](BOARD_3X3V_RGB.md)
+- 예: [BOARD_SAYO_3X3V_RGB.md](BOARD_SAYO_3X3V_RGB.md)
 
 ## 절 순서
 
 ```markdown
-# <보드> 보드 (<키 수>키[ + 노브], <LED 방식>)
+# <문서 이름> (<키 수>키[ + 노브])
 
 - 요약 표: [BOARDS.md](../BOARDS.md). (같은 계열 보드 링크)
 
 ## 1. 개요
-- 제품, 칩(패키지, 플래시/RAM, 부트로더), 구성(키·노브·LED), 개발 보드 UID, 확인 근거(시험 펌웨어 README, 날짜)
+- 제품, 칩(이름·패키지만. 플래시/RAM/핀 수 등 칩 특성은 다시 적지 않고 [CHIPS.md](../CHIPS.md) 링크), 구성(키·노브·LED), 개발 보드 UID, 확인 근거(시험 펌웨어 README, 날짜)
 
 ## 2. 버튼 배치와 매핑
 ![<보드> 버튼 별 맵핑: ...](../images/buttons_<보드>.svg)

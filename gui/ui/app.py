@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
                 state, color = "● 연결됨 - 잠금 풀림", "#2e7d32"
             else:
                 state, color = "● 연결됨 - 잠금 안 씀", "#2e7d32"
-            board = f"{info.board.name} ({info.board.summary})"
+            board = f"{boards.display_name(info.board.name)} ({info.board.summary})"
             if info.board_info is None:
                 board += " · 보드 정보 없음"
             lines = [state, f"{board} / 용량 {info.capacity}바이트", info.fw_text]
@@ -283,7 +283,8 @@ class MainWindow(QMainWindow):
 
     def _sync_board_combo(self) -> None:
         """Show the current board in the list (a board we do not list is added)."""
-        i = self.board_combo.findData(self.board.name)
+        # A keyboard reporting an earlier board name (boards.py aliases) is that board
+        i = self.board_combo.findData(boards.current_name(self.board.name))
         if i < 0:
             self._add_board_item(self.board.name, self.board.summary)
             i = self.board_combo.count() - 1
@@ -317,7 +318,7 @@ class MainWindow(QMainWindow):
 
     def _update_title(self) -> None:
         # The keyboard being edited (connected, or picked in the board list)
-        parts = [f"{APP_TITLE} v{VERSION}", f"{self.board.name} ({self.board.summary})"]
+        parts = [f"{APP_TITLE} v{VERSION}", f"{boards.current_name(self.board.name)} ({self.board.summary})"]
         if self._mock_label:
             parts.append(self._mock_label)
         self.setWindowTitle(("* " if self.has_unsaved() else "") + " — ".join(parts))

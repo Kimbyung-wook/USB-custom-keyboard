@@ -5,7 +5,7 @@
 ## 1. 개요
 
 - 제품: 6키 + 노브 CH552G 미니 매크로 키보드
-- 칩: **CH552G** (SOP-16, 플래시 16 KB, RAM 1 KB + 256 B, DataFlash 128 B), ROM 부트로더 2.5.0
+- 칩: **CH552G** (SOP-16), ROM 부트로더 2.5.0. 특성: [CHIPS.md](../CHIPS.md#칩-특성-표)
 - 구성: 2×3 키(A~F) + 노브 1개(돌리기 양방향 + 누르기), WS2812 LED 1개
 - 개발 보드 UID: 기록 없음 (칩 고유 ID는 HELLO 32~35, GUI 업데이트 창에 표시)
 - 확인 근거: [test_pinmap](../../tests/hw/mk6k1n/test_pinmap/README.md) (2026-10-25)

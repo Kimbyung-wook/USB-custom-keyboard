@@ -124,7 +124,7 @@ class Board:
 
 - 표는 `tools/gen_docs.py`가 `gui/core/chips.py`에서 만듦. "지원"은 vnproch55x로 올릴 수 있는지
 - 업로드 도구: CH551·CH552·CH554는 vnproch55x `-t <칩>`(CH554는 확인 필요). CH32V203은 자체 HID 부트로더(`hidboot.py`, `.bin`), 처음 한 번만 wchisp + BOOT 브리지 ([BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md))
-- CH32V203은 3X3V_RGB, 2X4V_RGB에서 지원(자체 부트로더)
+- CH32V203은 SAYO_3X3, SAYO_2X4에서 지원(자체 부트로더)
 
 - **업데이트 모드 칩 목록**: 부트로더 Detect가 돌려준 칩 ID로 이 표를 찾아 최대 크기와 업로드 도구를 정함
   - 표에 없거나 "미지원"이면 [장입]을 막고 이유를 보여 줌
@@ -150,7 +150,8 @@ class Board:
 - 보드 이름(HELLO 24~31, 8자) 규칙:
   - 기본: `MK` + 키 수 + `K` + 노브 수 + `N` (예: `MK6K1N`)
   - 키 수가 같은데 기판이 다르면 끝에 구분 글자 (예: `MK6K1NL`)
-  - CH32V203 보드는 제품 기판 이름을 그대로 씀 (`3X3V_RGB`, `2X4V_RGB`)
+  - Sayo 제품은 `SAYO_<행>X<열>` (`SAYO_3X3`, `SAYO_2X4`). 펌웨어 1.7.0까지는 기판 표기(`3X3V_RGB`, `2X4V_RGB`)를 썼고, 지금은 `gui/core/boards.py` 별칭
+  - CH32V203 보드 이름은 **정확히 8자** (USB 시리얼 문자열 길이, `usbd_desc.c`)
   - 8자 검사는 gcc 빌드(host 테스트, CH32V203)에서만. SDCC(CH552)는 코드 크기 때문에 끔
 
 ### 5-1. 보드 목록 (`gui/core/boards.py`, 새 파일)
@@ -178,13 +179,13 @@ class Board:
 |---|---|---|---|---|---|---|
 | MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
 | MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
-| 3X3V_RGB | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board 3x3v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin` |
-| 2X4V_RGB | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board 2x4v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-2X4V_RGB.bin` |
+| SAYO_3X3 | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_3x3 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin` |
+| SAYO_2X4 | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board sayo_2x4 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X4.bin` |
 <!-- /gen:boards -->
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
 - MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
-- 3X3V_RGB: 9키(3x3), 2X4V_RGB: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
+- SAYO_3X3: 9키(3x3), SAYO_2X4: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
 - 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
 
 - 핀 배치 그림·표: 보드 문서 2·3절 ([BOARDS.md](BOARDS.md))
@@ -206,7 +207,7 @@ class Board:
 1. [펌웨어 업데이트] 창을 열고 키보드를 업데이트 모드로 꽂음
    - 공장 펌웨어에는 BOOT 명령이 없음 → 보드 목록의 "사용자 안내"대로 들어감
 2. 칩 목록에 칩이 나타나면 그 칩 계열의 보드만 보여 줌
-   - 예: CH552 → `MK6K1N`, `MK6K1NL` / CH32V203 → `3X3V_RGB`, `2X4V_RGB`
+   - 예: CH552 → `MK6K1N`, `MK6K1NL` / CH32V203 → `SAYO_3X3`, `SAYO_2X4`
 3. 사용자가 보드를 고르면 그 보드의 펌웨어 파일을 기본으로 채우고 키 배치 미리 보기를 보여 줌(키 수를 눈으로 맞춰 보도록)
 4. [장입] 후 키보드가 다시 시작하면 ①로 넘어가 HELLO로 확인. HELLO 보드 이름이 고른 보드와 다르면 알려 줌
 

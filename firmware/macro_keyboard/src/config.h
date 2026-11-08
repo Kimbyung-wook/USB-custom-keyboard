@@ -42,14 +42,18 @@
 // CH55xduino pin numbers are port * 10 + bit
 #define PIN_PORT(p) ((p) / 10)
 #define PIN_BIT(p) (1 << ((p) % 10))
-#if defined(BOARD_MK6K1N)
+#if defined(BOARD_HEADER)
+// A board file outside src/boards, e.g. tests/host/boards (boards not yet in
+// gui/core/boards.py): -DBOARD_HEADER="\"path\""
+#include BOARD_HEADER
+#elif defined(BOARD_MK6K1N)
 #include "boards/mk6k1n.h"
 #elif defined(BOARD_MK6K1NL)
 #include "boards/mk6k1nl.h"
-#elif defined(BOARD_3X3V_RGB)
-#include "boards/3x3v_rgb.h"
-#elif defined(BOARD_2X4V_RGB)
-#include "boards/2x4v_rgb.h"
+#elif defined(BOARD_SAYO_3X3)
+#include "boards/sayo_3x3.h"
+#elif defined(BOARD_SAYO_2X4)
+#include "boards/sayo_2x4.h"
 #else
 #include "boards/mk6k1n.h"
 #endif

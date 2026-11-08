@@ -1,6 +1,6 @@
 # macro_keyboard: 본 펌웨어 v1.7
 
-- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: 3X3V_RGB, 2X4V_RGB). 보드별 핀은 `docs/board/BOARD_<보드>.md`
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4). 보드별 핀은 `docs/board/BOARD_<보드>.md`
 - 이 문서의 예시는 MK6K1N 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
 - [gui](../../gui/) 설정 프로그램과 [PROTOCOL.md](../../docs/PROTOCOL.md) v2 규격으로 통신함
@@ -65,7 +65,7 @@
   - 2초 넘게 누르면 패턴 입력이 시작되고 문자열은 입력 안 됨
   - 패턴 암호가 없으면 누를 때 입력됨
 - 2초 누르기는 **꽂은 뒤에** (노브 없는 보드는 진입 키를 누른 채 꽂으면 부트로더)
-- **노브 없는 보드(3X3V_RGB, 2X4V_RGB)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
+- **노브 없는 보드(SAYO_3X3, SAYO_2X4)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
   - 패턴 단계는 키만
   - 키는 항상 누를 때 입력(뗄 때 입력은 늦게 느껴짐). 풀린 상태에서 2초 눌러 다시 잠그면 그 키가 한 번 입력됨
 - 잠긴 동안 GUI에서 읽기·테스트 입력 안 됨
@@ -85,10 +85,10 @@
 
 ## 빌드
 
-- **CH32V203 보드(3X3V_RGB, 2X4V_RGB)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
+- **CH32V203 보드(SAYO_3X3, SAYO_2X4)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
   (경로·주의점은 [PORT_CH32V203](../../docs/old/PORT_CH32V203.md), [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
   - `BOOTLOADER ?= 1`(기본): 자체 부트로더용. 앱 시작 0x08002000, 최대 52992 B. `BOOTLOADER=0`은 부트로더 없는 배치(바꾸면 `rm -rf build`)
-  - 보통은 `tools\build_fw.ps1 -Board 3x3v_rgb` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
+  - 보통은 `tools\build_fw.ps1 -Board sayo_3x3` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
   - 목적 파일: 보드별 `build/ch32v203/obj-<BOARD>/`. `.bin`은 `build/ch32v203/macro_keyboard-<BOARD>.bin`. `build_fw.ps1`은 그 보드의 파일만 지우고 다시 빌드
   - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
   - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
@@ -128,7 +128,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 ### 크기
 
-- 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). 3X3V_RGB 앱 12,304바이트, 2X4V_RGB 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
+- 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). SAYO_3X3 앱 12,304바이트, SAYO_2X4 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
 
 **이력 (크기)**
 
@@ -161,8 +161,8 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|---|
 | `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [BOARD_MK6K1N](../../docs/board/BOARD_MK6K1N.md) |
 | `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
-| `3x3v_rgb.h` | 3X3V_RGB: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_3X3V_RGB](../../docs/board/BOARD_3X3V_RGB.md) |
-| `2x4v_rgb.h` | 2X4V_RGB: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_2X4V_RGB](../../docs/board/BOARD_2X4V_RGB.md) |
+| `sayo_3x3.h` | SAYO_3X3: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_SAYO_3X3](../../docs/board/BOARD_SAYO_3X3V_RGB.md) |
+| `sayo_2x4.h` | SAYO_2X4: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X4](../../docs/board/BOARD_SAYO_2X4V_RGB.md) |
 
 - **공통 기판 파일** `ch552_6k1n.h`: 두 보드가 같은 기판이라 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠
   - HAL 선택(`BOARD_HAL_CH55X`)도 여기서 정함
@@ -177,7 +177,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|
 | `tools/build_fw.ps1 -Board mk6k1n` | `-DBOARD_MK6K1N` | `build/macro_keyboard-MK6K1N.hex` |
 | `tools/build_fw.ps1 -Board mk6k1nl` | `-DBOARD_MK6K1NL` | `build/macro_keyboard-MK6K1NL.hex` |
-| `tools/build_fw.ps1 -Board 3x3v_rgb` / `2x4v_rgb` | `BOARD=3X3V_RGB` / `2X4V_RGB` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
+| `tools/build_fw.ps1 -Board sayo_3x3` / `sayo_2x4` | `BOARD=SAYO_3X3` / `SAYO_2X4` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
 | `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1n` | – |
 
 - `macro_keyboard-<보드>.hex`는 GUI 펌웨어 업데이트 창이 먼저 고르는 파일

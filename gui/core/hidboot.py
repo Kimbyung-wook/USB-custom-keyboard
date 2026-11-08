@@ -2,7 +2,7 @@
 
 CLI (from the repo root):
   uv run python -m gui.core.hidboot info
-  uv run python -m gui.core.hidboot flash firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin
+  uv run python -m gui.core.hidboot flash firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin
   uv run python -m gui.core.hidboot run
 ``--enter`` first sends BOOT (0x06) to a running keyboard app so it restarts
 into the bootloader (no key needed).
@@ -160,7 +160,7 @@ def board_mismatch(image: bytes, board: str) -> str:
     fid = flasher.firmware_id(image)
     if fid is None:
         return "펌웨어 식별 정보(MKFW1)가 없습니다 (시험 펌웨어이거나 다른 펌웨어)"
-    if fid.board != board:
+    if not boards.same(fid.board, board):   # an earlier board name is the same board
         return f"{fid.board}용 펌웨어입니다 (부트로더의 보드: {board})"
     return ""
 
@@ -226,7 +226,7 @@ def open_first(wait_s: float = 0.0) -> Bootloader:
 class MockBootloader(Transport):
     """Simulates firmware/bootloader_ch32v203/main.c for tests."""
 
-    def __init__(self, board: str = "3X3V_RGB", flash_error: bool = False,
+    def __init__(self, board: str = "SAYO_3X3", flash_error: bool = False,
                  version: tuple[int, int] = (1, 0), write_max: int = 56):
         self.board = board
         self.version = version

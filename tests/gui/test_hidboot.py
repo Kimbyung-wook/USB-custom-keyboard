@@ -21,14 +21,14 @@ def test_chunks_never_cross_a_page():
 def test_hello_parse():
     bl = h.Bootloader(h.MockBootloader())
     info = bl.hello()
-    assert info.board == "3X3V_RGB"
+    assert info.board == "SAYO_3X3"
     assert info.version == (1, 0)
     assert (info.app_addr, info.app_max, info.page_size) == (h.APP_ADDR, h.APP_MAX, 256)
     assert not info.app_valid
     assert info.write_max == 56
 
 
-NINE_ID = b"MKFW1:3X3V_RGB:CH32V203:1.7.0\0"
+NINE_ID = b"MKFW1:SAYO_3X3:CH32V203:1.7.0\0"
 
 
 def app(size: int, fid: bytes | None = NINE_ID) -> bytes:
@@ -63,13 +63,13 @@ def test_flash_error_reported():
 
 @pytest.mark.parametrize("fid, force, problem", [
     (NINE_ID, False, None),                                   # same board
-    (b"MKFW1:2X4V_RGB:CH32V203:1.7.0\0", False, "2X4V_RGB용"),  # another board
+    (b"MKFW1:SAYO_2X4:CH32V203:1.7.0\0", False, "SAYO_2X4용"),  # another board
     (None, False, "식별 정보"),                                 # test firmware, no ID
-    (b"MKFW1:2X4V_RGB:CH32V203:1.7.0\0", True, None),          # forced
+    (b"MKFW1:SAYO_2X4:CH32V203:1.7.0\0", True, None),          # forced
     (None, True, None),
 ])
 def test_flash_checks_the_board(fid, force, problem):
-    dev = h.MockBootloader(board="3X3V_RGB")
+    dev = h.MockBootloader(board="SAYO_3X3")
     bl = h.Bootloader(dev)
     image = app(2000, fid)
     if problem:

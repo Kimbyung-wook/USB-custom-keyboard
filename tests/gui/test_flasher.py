@@ -364,7 +364,7 @@ def test_main_window_locked_device_needs_key_d(qapp, tmp_path):
     w.close()
 
 
-NINE_ID = "MKFW1:3X3V_RGB:CH32V203:1.4.0"
+NINE_ID = "MKFW1:SAYO_3X3:CH32V203:1.4.0"
 
 
 def make_bin(path: Path, size: int, fid: str | None = NINE_ID) -> Path:
@@ -373,11 +373,11 @@ def make_bin(path: Path, size: int, fid: str | None = NINE_ID) -> Path:
     return path
 
 
-def make_hid_dialog(tmp_path, dev=None, board="3X3V_RGB", path=None, **kw):
+def make_hid_dialog(tmp_path, dev=None, board="SAYO_3X3", path=None, keyboard=None, **kw):
     """Update window for the 9-key board with a MockBootloader plugged in (dev=None: none)."""
     from gui.core import hidboot
     from gui.ui.flash_dialog import FirmwareDialog
-    nine = boards.find("3X3V_RGB")
+    nine = boards.find("SAYO_3X3")
 
     def scan():
         if dev is None:
@@ -389,7 +389,7 @@ def make_hid_dialog(tmp_path, dev=None, board="3X3V_RGB", path=None, **kw):
         bl.flash(image, progress, force)
         bl.run()
 
-    dlg = FirmwareDialog(lambda: "", lambda p: ["unused"], keyboard=nine.layout,
+    dlg = FirmwareDialog(lambda: "", lambda p: ["unused"], keyboard=keyboard or nine.layout,
                          hex_path=path or make_bin(tmp_path / "fw.bin", 11928),
                          auto_scan=False, hid_scan_fn=scan, hid_flash_fn=flash, **kw)
     dlg.confirm = lambda title, text: True
@@ -402,7 +402,7 @@ def test_dialog_ch32v203_flashes_through_own_bootloader(qapp, tmp_path):
     dlg = make_hid_dialog(tmp_path, dev)
     assert dlg.spec.hidboot and dlg.window_flash and dlg.boot_btn.isEnabled()
     assert "키 7을 누른 채" in dlg.hint.text() and "보라색" in dlg.hint.text()
-    assert r"tools\flash.ps1 -Board 3x3v_rgb -Full" in dlg.hint.text()   # first install
+    assert r"tools\flash.ps1 -Board sayo_3x3 -Full" in dlg.hint.text()   # first install
     assert "✔" in dlg.size_label.text() and "52992" in dlg.size_label.text()
     assert dlg.chip_table.rowCount() == 1 and dlg.chip_table.item(0, 3).text() == "자체 1.0"
     assert dlg.start_btn.isEnabled()
@@ -429,7 +429,7 @@ def test_dialog_ch32v203_without_bootloader_or_with_hex(qapp, tmp_path):
 
 @pytest.mark.parametrize("fid, warning", [
     (None, "식별 정보가 없는"),
-    ("MKFW1:2X4V_RGB:CH32V203:1.7.0", "다른 키보드(2X4V_RGB)용"),
+    ("MKFW1:SAYO_2X4:CH32V203:1.7.0", "다른 키보드(SAYO_2X4)용"),
 ])
 def test_dialog_ch32v203_wrong_file_needs_forced_consent(qapp, tmp_path, fid, warning):
     from gui.core import hidboot
@@ -486,8 +486,8 @@ def test_dialog_ch32v203_right_file_asks_no_force(qapp, tmp_path):
 
 def test_dialog_ch32v203_other_board_and_flash_error(qapp, tmp_path):
     from gui.core import hidboot
-    dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader(board="2X4V_RGB"))
-    assert "2X4V_RGB" in dlg.chip_status.text() and not dlg.start_btn.isEnabled()
+    dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader(board="SAYO_2X4"))
+    assert "SAYO_2X4" in dlg.chip_status.text() and not dlg.start_btn.isEnabled()
 
     dlg = make_hid_dialog(tmp_path, hidboot.MockBootloader(flash_error=True))
     assert not dlg.start() and not dlg.succeeded

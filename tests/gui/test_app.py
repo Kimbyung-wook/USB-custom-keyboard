@@ -343,17 +343,17 @@ def test_board_picker_changes_layout_while_disconnected(win):
     from gui.core import boards
     combo = win.board_combo
     assert combo.isEnabled()
-    i = combo.findData("3X3V_RGB")
+    i = combo.findData("SAYO_3X3")
     assert i >= 0
     combo.setCurrentIndex(i)
     win._on_board_picked(i)
     assert win.board.keys == 9 and win.board.knobs == 0
     assert len(win.slots) == 9
-    assert win.board == boards.find("3X3V_RGB").layout
+    assert win.board == boards.find("SAYO_3X3").layout
 
 
 def test_connect_switches_picker_to_recognized_board(win):
-    win.board_combo.setCurrentIndex(win.board_combo.findData("3X3V_RGB"))
+    win.board_combo.setCurrentIndex(win.board_combo.findData("SAYO_3X3"))
     win._on_board_picked(win.board_combo.currentIndex())
     assert win.connect_device()  # the mock reports MK6K1N
     assert win.board.name == "MK6K1N"
@@ -363,12 +363,12 @@ def test_connect_switches_picker_to_recognized_board(win):
 
 def test_picker_ignored_while_connected(win):
     assert win.connect_device()
-    win._on_board_picked(win.board_combo.findData("3X3V_RGB"))
+    win._on_board_picked(win.board_combo.findData("SAYO_3X3"))
     assert win.board.name == "MK6K1N"
 
 
 def test_board_without_lock_feature_disables_lock_editor(qapp):
-    mock = MockDevice(board=p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
+    mock = MockDevice(board=p.Board(keys=9, knobs=0, rows=3, name="SAYO_3X3", chip_id=0x19,
                                     features=p.BOARD_FEATURE_RGB_LED))
     w = MainWindow(make_mock_connector(mock), auto_reconnect=False)
     assert w.connect_device()
@@ -382,7 +382,7 @@ def test_board_without_lock_feature_disables_lock_editor(qapp):
 
 def test_knobless_board_has_lock_editor(qapp):
     from gui.core import boards
-    mock = MockDevice(board=boards.find("3X3V_RGB").layout)
+    mock = MockDevice(board=boards.find("SAYO_3X3").layout)
     w = MainWindow(make_mock_connector(mock), auto_reconnect=False)
     assert w.connect_device()
     assert w.lock_editor.isEnabled() and not w.lock_editor.isHidden()
@@ -394,7 +394,7 @@ def test_knobless_board_has_lock_editor(qapp):
 
 
 def test_key_picture_not_squeezed(qapp):
-    mock = MockDevice(board=p.Board(keys=9, knobs=0, rows=3, name="3X3V_RGB", chip_id=0x19,
+    mock = MockDevice(board=p.Board(keys=9, knobs=0, rows=3, name="SAYO_3X3", chip_id=0x19,
                                     features=p.BOARD_FEATURE_RGB_LED))
     w = MainWindow(make_mock_connector(mock), auto_reconnect=False)
     w.show()
@@ -418,7 +418,7 @@ def test_every_board_listed_and_drawn(win, name):
     win._on_board_picked(i)
     b = spec.layout
     assert win.board == b and len(win.slots) == b.slot_count
-    # Keys drawn in rows x cols (e.g. 2X4V_RGB: 2 rows of 4)
+    # Keys drawn in rows x cols (e.g. SAYO_2X4: 2 rows of 4)
     grid = win.device_view._body.layout().itemAt(0).layout()
     assert isinstance(grid, QGridLayout)
     cells = {grid.getItemPosition(k)[:2] for k in range(grid.count())}

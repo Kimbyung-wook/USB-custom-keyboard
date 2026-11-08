@@ -10,7 +10,7 @@ A region is the text between two markers; only that text is replaced:
   (generated)
   <!-- /gen:boards -->
 
-Regions: boards, versions, chips, pins-<BOARD> (e.g. pins-3X3V_RGB). A doc
+Regions: boards, versions, chips, pins-<BOARD> (e.g. pins-SAYO_3X3). A doc
 without markers is never touched; the markers are put in by hand.
 Sources: gui/core/boards.py, gui/core/chips.py, gui/core/version.py and,
 through tools/repo_facts.py, the board files, src/config.h, the protocol
@@ -88,10 +88,11 @@ def gen_chips() -> str:
 
 
 def gen_pins(name: str) -> str:
-    spec = boards.find(name)
+    spec = boards.find(name)    # an earlier board name (aliases) still works
     files = rf.board_files()
-    if spec is None or name not in files:
+    if spec is None or spec.name not in files:
         raise KeyError(f"pins-{name}: no such board")
+    name = spec.name
     d = rf.defines(files[name])
     if d.get("BOARD_HAL_CH32V20X") == "1":
         keys = rf.pin_pairs(d["BOARD_KEY_PINS"])

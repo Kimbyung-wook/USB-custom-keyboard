@@ -1,20 +1,22 @@
-# 3X3V_RGB 보드 (9키, 키마다 RGB LED)
+# SAYO_3X3V_RGB (9키)
 
-- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 8키: [2X4V_RGB](BOARD_2X4V_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
+- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 8키: [SAYO_2X4](BOARD_SAYO_2X4V_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
 
 ## 1. 개요
 
 - 제품: SayoDevice 계열 9키 매크로 키패드 (같은 계열 8키 = Keyb T8B7)
-- 칩: **CH32V203C8U6** (RISC-V QingKe V4, QFN48, 플래시 64 KB, RAM 20 KB, USB 풀스피드)
+- 보드 ID(펌웨어·GUI·`-Board`): `SAYO_3X3` (8자). 문서 파일·제목은 기판 표기를 붙인 `SAYO_3X3V_RGB`
+- 기판 표기: `3X3V_RGB` (펌웨어 1.7.0까지는 이것이 보드 ID, 지금은 `boards.py` 별칭). 이름 규칙은 [NEW_BOARD 5절](../NEW_BOARD.md#5-보드-파일gui스크립트시험-추가)
+- 칩: **CH32V203C8U6** (QFN48). 특성: [CHIPS.md](../CHIPS.md#칩-특성-표)
 - 구성: 3×3 키, **노브 없음**, 키마다 3색 한 칩 RGB LED
 - 개발 보드 UID: `CD-AB-EE-F7-7D-BC-38-60` (`tools/flash.ps1` UID 표)
 - 확인 근거: [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md) 시험(2026-11-05), 분해 확인(사용자)
 
 ## 2. 버튼 배치와 매핑
 
-![3X3V_RGB 키 배치: 윗면에서 본 9키의 키 핀, 슬롯, LED 양극 핀, 음극 묶음, 부트로더 진입 키](../images/buttons_3x3v_rgb.svg)
+![SAYO_3X3 키 배치: 윗면에서 본 9키의 키 핀, 슬롯, LED 양극 핀, 음극 묶음, 부트로더 진입 키](../images/buttons_sayo_3x3.svg)
 
-<!-- gen:pins-3X3V_RGB -->
+<!-- gen:pins-SAYO_3X3 -->
 | 키 | 키 GPIO (누르면 Low) | LED 양극 (High = 켜짐) |
 |---|---|---|
 | 1 | PB15 | PB3 |
@@ -34,7 +36,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 | 1 | PA11 | PA12 | PA13 |
 | 2 | PA8 | PA9 | PA10 |
 | 3 | PA0 | PA1 | PA2 |
-<!-- /gen:pins-3X3V_RGB -->
+<!-- /gen:pins-SAYO_3X3 -->
 
 - 표는 `tools/gen_docs.py`가 보드 파일에서 만듦
 - 슬롯 = 키 번호 − 1. 칩 핀 번호는 3절
@@ -46,7 +48,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 
 ## 3. 칩 핀맵
 
-![3X3V_RGB 칩 핀맵: CH32V203C8U6 48핀 윗면, 핀마다 연결된 키, LED 양극·음극, USB, BOOT](../images/pinmap_3x3v_rgb.svg)
+![SAYO_3X3 칩 핀맵: CH32V203C8U6 48핀 윗면, 핀마다 연결된 키, LED 양극·음극, USB, BOOT](../images/pinmap_sayo_3x3.svg)
 
 - 핀 번호: 확인(자료표 V2.6 표 3-1-1, 2026-11-08). 이 표에서 LQFP48(C8T6)과 QFN48(C8U6)은 같은 번호, QFN48만 0번 = 바닥 패드(VSS)
 
@@ -78,7 +80,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 
 ## 4. LED
 
-![3X3V_RGB LED 배선: 색별 음극 줄과 키별 양극 핀이 만나는 곳의 LED](../images/leds_3x3v_rgb.svg)
+![SAYO_3X3 LED 배선: 색별 음극 줄과 키별 양극 핀이 만나는 곳의 LED](../images/leds_sayo_3x3.svg)
 
 - WS2812가 아님. 줄마다 색별 음극(캐소드) 핀 1개를 키 3개가 공유, **낮추면 켜짐**
 
@@ -109,15 +111,17 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 ## 5. 부팅·장입
 
 - 평소 업데이트: **자체 HID 부트로더**. **키 7을 누른 채 꽂기** 또는 GUI [업데이트 모드로 전환] → GUI 업데이트 창 (설정 유지)
-- 처음 설치·복구: ROM 부트로더. **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 꽂고 `tools\flash.ps1 -Board 3x3v_rgb -Full` → wchisp로 부트로더만 쓴 뒤 브리지 떼고 **키 7**를 누른 채 다시 꽂으면 앱을 HID로 씀 (우리 펌웨어가 있던 칩은 설정 유지, 공장 펌웨어는 전부 지워짐). 절차: [MANUAL 8장](../MANUAL.md#처음-설치-공장-펌웨어)
+- 처음 설치·복구: ROM 부트로더. **BOOT 브리지**(BOOT1 실크 아래 패드 2개)를 이은 채 꽂고 `tools\flash.ps1 -Board sayo_3x3 -Full` → wchisp로 부트로더만 쓴 뒤 브리지 떼고 **키 7**를 누른 채 다시 꽂으면 앱을 HID로 씀 (우리 펌웨어가 있던 칩은 설정 유지, 공장 펌웨어는 전부 지워짐). 절차: [MANUAL 8장](../MANUAL.md#처음-설치-공장-펌웨어)
 - 절차·플래시 배치: [BOOTLOADER_CH32V203.md](../BOOTLOADER_CH32V203.md)
+- 옛 이름 장치: 펌웨어 1.7.0·부트로더 1.0은 옛 이름(`3X3V_RGB`, `2X4V_RGB`)을 알림 → `gui/core/boards.py` 별칭으로 같은 보드로 인식. GUI 업데이트 창·`hidboot` 보드 검사는 BOOT 브리지나 `--force` 없이 통과, `check_device`는 "옛 보드 이름" 안내
+- 새 펌웨어를 올리면 USB 시리얼(보드 이름)이 바뀌어 Windows가 새 장치로 한 번 잡음. 설정은 남음
 - ROM 부트로더는 소프트웨어로 진입 불가: 점프·리셋 후 점프·플래시 비트 모두 앱으로 돌아옴 ([시험](../../tests/hw/ch32v203/test_ch32v203/README.md)) → 자체 부트로더를 만든 이유
 - ⚠️ 제조사 펌웨어는 읽기 보호. 보호 해제 때 지워짐(되돌릴 수 없음)
 
 ## 6. 본 펌웨어에서의 동작
 
-- 보드 파일: `firmware/macro_keyboard/src/boards/3x3v_rgb.h`
-- 빌드: `tools\build_fw.ps1 -Board 3x3v_rgb` → 앱 `macro_keyboard-3X3V_RGB.bin`, 전체 이미지 `full-3X3V_RGB.bin`(`flash.ps1`은 안 씀). 이식 기록: [PORT_CH32V203.md](../old/PORT_CH32V203.md)
+- 보드 파일: `firmware/macro_keyboard/src/boards/sayo_3x3.h`
+- 빌드: `tools\build_fw.ps1 -Board sayo_3x3` → 앱 `macro_keyboard-SAYO_3X3.bin`, 전체 이미지 `full-SAYO_3X3.bin`(`flash.ps1`은 안 씀). 이식 기록: [PORT_CH32V203.md](../old/PORT_CH32V203.md)
 - 슬롯 9개: 키 1~9. 문자열 합계 최대 4070자
 - 잠금(패턴 암호)·자동 잠금 있음: 노브 대신 **아무 키 2초**로 패턴 입력 시작, 단계는 키만
   - 키는 누를 때 입력 (암호가 있어도). 풀린 상태에서 2초 눌러 다시 잠그면 그 키가 한 번 입력됨

@@ -229,12 +229,12 @@ def draw_buttons(board: str, title: str, key_leds: bool) -> str:
             + "".join(parts) + "</svg>\n")
 
 
-# CH32V203 boards (3X3V_RGB, 2X4V_RGB): firmware/macro_keyboard/src/boards/<board>.h.
+# CH32V203 boards (SAYO_3X3, SAYO_2X4): firmware/macro_keyboard/src/boards/<board>.h.
 # Per key: (key pin, anode pin, cathode group). Keys in slot order, row-major.
 # Cathode groups: name -> (keys, red, green, blue); low = lit. Anode high = lit.
 RGB_BOARDS = {
-    "3X3V_RGB": {
-        "title": "3X3V_RGB", "desc": "9키, 노브 없음, CH32V203C8U6", "cols": 3, "boot": 6,
+    "SAYO_3X3": {
+        "title": "SAYO_3X3", "desc": "9키, 노브 없음, CH32V203C8U6", "cols": 3, "boot": 6,
         "keys": [("PB15", "PB3", 0), ("PA14", "PB4", 0), ("PA4", "PB9", 0),
                  ("PB10", "PB14", 1), ("PA15", "PB5", 1), ("PA3", "PB8", 1),
                  ("PB2", "PB13", 2), ("PB11", "PB12", 2), ("PB1", "PB0", 2)],
@@ -242,8 +242,8 @@ RGB_BOARDS = {
                    ("2줄", "4·5·6", "PA8", "PA9", "PA10"),
                    ("3줄", "7·8·9", "PA0", "PA1", "PA2")],
     },
-    "2X4V_RGB": {
-        "title": "2X4V_RGB", "desc": "8키, 노브 없음, CH32V203C8U6", "cols": 4, "boot": 4,
+    "SAYO_2X4": {
+        "title": "SAYO_2X4", "desc": "8키, 노브 없음, CH32V203C8U6", "cols": 4, "boot": 4,
         "keys": [("PA6", "PB14", 0), ("PA15", "PB3", 0), ("PB5", "PB4", 0), ("PB9", "PB8", 2),
                  ("PA5", "PB13", 1), ("PA7", "PB15", 1), ("PB0", "PB12", 1), ("PA4", "PB11", 2)],
         "groups": [("묶음 1", "1·2·3", "PA11", "PA12", "PA13"),
@@ -488,12 +488,12 @@ def draw_ch32_pinmap(board: str) -> str:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
-        "pinmap_3x3v_rgb.svg": draw_ch32_pinmap("3X3V_RGB"),
-        "pinmap_2x4v_rgb.svg": draw_ch32_pinmap("2X4V_RGB"),
-        "buttons_3x3v_rgb.svg": draw_rgb_buttons("3X3V_RGB"),
-        "leds_3x3v_rgb.svg": draw_rgb_leds("3X3V_RGB"),
-        "buttons_2x4v_rgb.svg": draw_rgb_buttons("2X4V_RGB"),
-        "leds_2x4v_rgb.svg": draw_rgb_leds("2X4V_RGB"),
+        "pinmap_sayo_3x3.svg": draw_ch32_pinmap("SAYO_3X3"),
+        "pinmap_sayo_2x4.svg": draw_ch32_pinmap("SAYO_2X4"),
+        "buttons_sayo_3x3.svg": draw_rgb_buttons("SAYO_3X3"),
+        "leds_sayo_3x3.svg": draw_rgb_leds("SAYO_3X3"),
+        "buttons_sayo_2x4.svg": draw_rgb_buttons("SAYO_2X4"),
+        "leds_sayo_2x4.svg": draw_rgb_leds("SAYO_2X4"),
         "pinmap_ch552g.svg": draw("MK6K1N · MK6K1NL", "CH552G 핀맵 (두 보드 공통)",
                                   "LED 데이터 (WS2812 체인)", None),
         "pinmap_mk6k1n.svg": draw("MK6K1N", "MK6K1N 핀맵 (6키 + 노브, LED 1개)",

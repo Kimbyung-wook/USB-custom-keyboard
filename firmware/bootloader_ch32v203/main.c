@@ -1,5 +1,5 @@
 // CH32V203 bootloader for the macro keyboard (docs/BOOTLOADER_CH32V203.md).
-// Stays when the board's boot key (BOARD_BOOT_KEY, 3X3V_RGB: key 7 = PB2) is
+// Stays when the board's boot key (BOARD_BOOT_KEY, SAYO_3X3: key 7 = PB2) is
 // held at power-up, the app left the RAM mark, or the app info is missing/bad;
 // otherwise jumps to the app at 0x08002000.
 // While staying: all LEDs purple, vendor HID 1209:C55E (HELLO/ERASE/WRITE/CHECK/RUN).

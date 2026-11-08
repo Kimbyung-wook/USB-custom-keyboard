@@ -191,10 +191,11 @@ class FirmwareDialog(QDialog):
     @property
     def other_board(self) -> bool:
         """The picked board is not the one the keyboard said it is."""
-        return self.identified and self.spec.name != self.keyboard.name
+        return self.identified and not boards.same(self.spec.name, self.keyboard.name)
 
     def _show_board(self) -> None:
         k = self.keyboard
+        name = boards.display_name(k.name)
         if not self.identified:
             what = (f"목록에 없는 보드({k.name})" if boards.find(k.name) is None
                     else "공장 펌웨어, 보드 정보가 없는 펌웨어(1.2.x 이하), 또는 연결 안 됨")
@@ -203,10 +204,10 @@ class FirmwareDialog(QDialog):
                 "고른 보드가 맞는지 키보드를 확인하세요.")
             self.board_label.setStyleSheet(f"color: {ORANGE};")
         elif self.other_board:
-            self.board_label.setText(f"⚠ 연결되어 있던 키보드는 {k.name}입니다. 다른 보드를 골랐습니다.")
+            self.board_label.setText(f"⚠ 연결되어 있던 키보드는 {name}입니다. 다른 보드를 골랐습니다.")
             self.board_label.setStyleSheet(f"color: {ORANGE};")
         else:
-            self.board_label.setText(f"연결되어 있던 키보드: {k.name} · 업데이트 모드: {self.boot_hint} 꽂기")
+            self.board_label.setText(f"연결되어 있던 키보드: {name} · 업데이트 모드: {self.boot_hint} 꽂기")
             self.board_label.setStyleSheet("")
         if not self.window_flash:
             how = (f"키보드를 뽑았다가 <b>{self.boot_hint}</b> 꽂고, PC에서 <code>{self.spec.flash_text}</code>를 "
@@ -287,7 +288,7 @@ class FirmwareDialog(QDialog):
         text = f"{info.size} / {self.chip.flash_size}바이트 ({pct}%)"
         warning = self.hex_warning
         if fid:
-            text += f" · {fid.board}용 ({fid.chip}) v{fid.version}"
+            text += f" · {boards.display_name(fid.board)}용 ({fid.chip}) v{fid.version}"
         if warning and self.spec.hidboot:
             # Our bootloader refuses it (hidboot.board_mismatch) unless forced at [장입]
             self.size_label.setText(f"⚠ {text} · {warning} · [장입]에서 강제 동의가 필요합니다")
@@ -309,8 +310,8 @@ class FirmwareDialog(QDialog):
         fid = self.hex.firmware_id
         if fid is None:
             return "식별 정보가 없는 펌웨어 (1.2.x 이하이거나 다른 펌웨어)"
-        if fid.board != self.spec.name:
-            return f"다른 키보드({fid.board})용 펌웨어"
+        if not boards.same(fid.board, self.spec.name):
+            return f"다른 키보드({boards.display_name(fid.board)})용 펌웨어"
         return ""
 
     # ------------------------------------------------------------ chips
@@ -381,8 +382,8 @@ class FirmwareDialog(QDialog):
             return f"{found.part}는 고른 보드({self.spec.name}, {self.spec.chip_name})의 칩이 아닙니다"
         if not self.window_flash:
             return f"{self.chip.name}: {self.chip.note}"
-        if self.spec.hidboot and self.boot_boards and self.boot_boards[0] != self.spec.name:
-            return f"부트로더가 {self.boot_boards[0]} 보드라고 알립니다 (고른 보드: {self.spec.name})"
+        if self.spec.hidboot and self.boot_boards and not boards.same(self.boot_boards[0], self.spec.name):
+            return f"부트로더가 {boards.display_name(self.boot_boards[0])} 보드라고 알립니다 (고른 보드: {self.spec.name})"
         return None
 
     def _chip_message(self) -> tuple[str, str]:
@@ -423,7 +424,7 @@ class FirmwareDialog(QDialog):
         if not self.identified:
             reasons.append(f"키보드를 식별하지 못했습니다. 고른 보드: {self.spec.name} ({self.spec.description})")
         elif self.other_board:
-            reasons.append(f"연결되어 있던 키보드는 {self.keyboard.name}인데 {self.spec.name}를 골랐습니다")
+            reasons.append(f"연결되어 있던 키보드는 {boards.display_name(self.keyboard.name)}인데 {self.spec.name}를 골랐습니다")
         # Our bootloader path refuses a file for another board (or without an ID)
         # unless forced: a separate, explicit consent below instead of a reason here
         force_needed = bool(self.spec.hidboot and self.hex_warning)

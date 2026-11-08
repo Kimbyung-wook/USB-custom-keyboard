@@ -17,7 +17,7 @@
 | 키 C를 누르면 `CCW`/`CW`가 입력됨 (MK6K1NL) | [3-6](#3-6-키-c를-누르면-ccwcw가-입력됨-mk6k1nl-v150-이전-빌드) |
 | MK6K1NL 제조사 펌웨어에서 업데이트 모드 진입 안 됨 | [3-7](#3-7-mk6k1nl-제조사-펌웨어에서-업데이트-모드로-들어가지-않음) |
 | CH32V203 보드(9키, 8키): GUI 업데이트 창에 칩이 안 나타남, `wchisp`가 장치를 못 찾음 | [2-6](#2-6-ch32v203-보드-업데이트-모드와-wchisp) |
-| 9키(3X3V_RGB): 1줄 LED가 파랑 외에는 안 켜짐 | [3-8](#3-8-9키3x3v_rgb-1줄-led가-파랑만-켜짐) |
+| 9키(SAYO_3X3): 1줄 LED가 파랑 외에는 안 켜짐 | [3-8](#3-8-9키sayo_3x3-1줄-led가-파랑만-켜짐) |
 | 꽂았더니 설정이 비어 있음 | [3-9](#3-9-꽂았더니-설정이-비어-있음) |
 | LED가 꺼져 있거나(가끔 빨강) 빨강이고, 키를 눌러도 아무것도 입력되지 않음 | 고장 아님. 잠금 상태(꺼짐 + 가끔 빨강) 또는 패턴 입력 중(빨강, 노브 2초 누르기 뒤. 노브 없는 보드는 아무 키 2초). [macro_keyboard README의 "잠금"](../firmware/macro_keyboard/README.md#잠금) |
 
@@ -28,7 +28,7 @@
 | `tools/usb_monitor.ps1 -Seconds 180` | 지정 시간 동안 새로 붙거나 떨어지는 USB/HID 장치 기록. 꽂았을 때 Windows가 **무엇이라도** 감지하는지 확인 |
 | `tools/usb_monitor.ps1 -History` | 부트로더(`4348:55E0`)와 펌웨어(`1209:C55D`) 장치의 **마지막 연결/분리 시각**과 드라이버. 몇 초만 나타났던 장치도 확인 가능. CH32V203 보드(8·9키)의 자체 부트로더(`1209:C55E`)는 대상 아님 → `hidboot info` |
 | `tools/flash.ps1 -Hex <파일>` | 부트로더가 나타나는 즉시 업로드(5초 제한 대응). 진입 핀도 함께 기록 |
-| `tools/flash.ps1 -Board 3x3v_rgb` | CH32V203 보드를 자체 부트로더로 장입 (8키는 `2x4v_rgb`). `-Full`: BOOT 브리지로 wchisp가 부트로더만 쓴 뒤, 진입 키를 누른 채 다시 꽂으면 앱을 HID로 |
+| `tools/flash.ps1 -Board sayo_3x3` | CH32V203 보드를 자체 부트로더로 장입 (8키는 `sayo_2x4`). `-Full`: BOOT 브리지로 wchisp가 부트로더만 쓴 뒤, 진입 키를 누른 채 다시 꽂으면 앱을 HID로 |
 | `tools/check_device.py` | 장입 직후 점검: USB, HELLO, 보드·칩 정보, 설정 읽기. `--write`/`--verify`로 저장 유지 확인 (`uv run python`으로 실행). `--board` 생략: 키보드가 HELLO로 알린 보드를 `boards.py`에서 찾아 비교(모르는 보드면 실패). `--board none`: 비교 안 함. 기능은 `boards.py`에 적힌 기능을 모두 가졌는지로 비교 |
 
 - PowerShell 스크립트 실행이 막혀 있으면: `powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex ...`
@@ -215,6 +215,8 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 - 진입 키를 안 눌러도 보라: 앱 정보가 없거나 틀림(장입이 끊김) → 다시 장입
 - `wchisp`가 못 찾으면: 브리지 접촉 확인, ROM 부트로더 장치에 WinUSB 드라이버(Zadig) 설치
 - 장입 뒤에도 키보드가 동작하지 않으면 브리지를 뗐는지 확인 (붙어 있으면 계속 ROM 부트로더)
+- 옛 이름(`3X3V_RGB`, `2X4V_RGB`)을 알리는 키보드(펌웨어 1.7.0, 부트로더 1.0): 같은 보드로 인식되어 `--force` 없이 업데이트됨. `check_device`의 "옛 보드 이름" 안내는 정상
+- 새 펌웨어를 올린 뒤 Windows가 새 장치를 설치함: USB 시리얼(보드 이름)이 바뀌어 한 번 그럼. 설정은 남음
 - 장입이 시작 전에 거부됨
   - 문구: `<보드>용 펌웨어입니다 (부트로더의 보드: <보드>)` 또는 `펌웨어 식별 정보(MKFW1)가 없습니다 (시험 펌웨어이거나 다른 펌웨어)`, 끝에 `그래도 쓰려면 --force (tools\flash.ps1 -Force)`
   - 원인: `.bin`의 식별 문자열 보드 ≠ 부트로더 HELLO 보드, 또는 식별 문자열 없음. 아무것도 지우지 않았으므로 키보드는 그대로
@@ -321,7 +323,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 2. [2-3](#2-3-다운로드-실패-후-장치가-전혀-인식되지-않음-복구)처럼 **12번(D+)–16번(3V3) 사이에 1.5~2kΩ**을 대고 꽂음
 3. 한 번 올리면 진입 핀이 P1.5로 기록됨 → 다음부터는 키 D를 누른 채 꽂으면 됨
 
-### 3-8. 9키(3X3V_RGB): 1줄 LED가 파랑만 켜짐
+### 3-8. 9키(SAYO_3X3): 1줄 LED가 파랑만 켜짐
 
 **증상**
 

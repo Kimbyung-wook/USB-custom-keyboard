@@ -1,5 +1,5 @@
-# CH32V203 build of the macro keyboard (board 3X3V_RGB): RISC-V GCC (xPack) + WCH EVT SDK.
-#   mingw32-make -f Makefile.ch32v203            -> build/ch32v203/macro_keyboard-3X3V_RGB.bin (objects: build/ch32v203/obj-3X3V_RGB)
+# CH32V203 build of the macro keyboard (board SAYO_3X3): RISC-V GCC (xPack) + WCH EVT SDK.
+#   mingw32-make -f Makefile.ch32v203            -> build/ch32v203/macro_keyboard-SAYO_3X3.bin (objects: build/ch32v203/obj-SAYO_3X3)
 #   mingw32-make -f Makefile.ch32v203 flash      -> wchisp flash (BOOT bridge, BOOTLOADER=0 only)
 # BOOTLOADER=1 (default): app at 0x08002000 behind firmware/bootloader_ch32v203
 #   (install: that folder's `make flash` once, then gui/core/hidboot.py).
@@ -15,7 +15,7 @@ SDK ?= $(MK_EVT_SDK)
 EXAM := $(SDK)/EXAM
 PERIPH := $(EXAM)/SRC/Peripheral
 SDK_LD := $(EXAM)/SRC/Ld/Link.ld
-BOARD ?= 3X3V_RGB
+BOARD ?= SAYO_3X3
 BOOTLOADER ?= 1
 # Config storage at the end of the 64 KB flash (src/config.h BLOB_CAPACITY)
 STORE_SIZE := 4096

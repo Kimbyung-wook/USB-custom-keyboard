@@ -5,7 +5,7 @@
 ## 1. 개요
 
 - 제품: 6키 + 노브 CH552G 미니 매크로 키보드, 키마다 LED (제조사 펌웨어 USB ID `1189:8890`)
-- 칩: **CH552G** (MK6K1N과 같음), ROM 부트로더 2.5.0
+- 칩: **CH552G** (MK6K1N과 같음), ROM 부트로더 2.5.0. 특성: [CHIPS.md](../CHIPS.md#칩-특성-표)
 - 구성: 2×3 키(A~F) + 노브 1개, **키마다 WS2812 LED**(6개)
 - 개발 보드 UID: 칩 고유 ID `5E-E0-6E-BF` (첫 장치)
 - 확인 근거: [test_mk6k1nl](../../tests/hw/mk6k1nl/test_mk6k1nl/README.md) (2026-10-31)

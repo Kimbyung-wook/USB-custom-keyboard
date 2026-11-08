@@ -1,6 +1,6 @@
 # CH32V203 bootloader (docs/BOOTLOADER_CH32V203.md): RISC-V GCC (xPack) + WCH EVT SDK.
-#   mingw32-make              -> build/bootloader-3X3V_RGB.bin (<= 8 KB)
-#   mingw32-make full         -> also builds the app and build/full-3X3V_RGB.bin
+#   mingw32-make              -> build/bootloader-SAYO_3X3.bin (<= 8 KB)
+#   mingw32-make full         -> also builds the app and build/full-SAYO_3X3.bin
 #                                (bootloader + app + app info) for the first install
 #   mingw32-make flash        -> wchisp flash of the full image (BOOT bridge connected)
 # After editing this file run `rm -rf build`.
@@ -12,7 +12,7 @@ MK_EVT_SDK ?= C:/Users/user/tools/sdk/EVT
 SDK ?= $(MK_EVT_SDK)
 EXAM := $(SDK)/EXAM
 PERIPH := $(EXAM)/SRC/Peripheral
-BOARD ?= 3X3V_RGB
+BOARD ?= SAYO_3X3
 BL_MAX := 8192
 APPDIR := ../macro_keyboard
 APPBIN := $(APPDIR)/build/ch32v203/macro_keyboard-$(BOARD).bin

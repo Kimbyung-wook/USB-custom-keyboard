@@ -4,7 +4,7 @@
 
 - 대상 보드 ([요약 표](docs/BOARDS.md))
   - CH552G, 키 6개 + 노브 1개: **MK6K1N**(LED 1개), **MK6K1NL**(키마다 LED)
-  - CH32V203C8U6, 노브 없음: **3X3V_RGB**(9키), **2X4V_RGB**(8키), 키마다 RGB LED
+  - CH32V203C8U6, 노브 없음: **SAYO_3X3**(9키), **SAYO_2X4**(8키), 키마다 RGB LED
 - PC GUI에서 문자열 확인·수정
 - 펌웨어 업로드, 설정, 문자열 출력을 모두 USB 포트 하나로 처리
 
@@ -25,7 +25,7 @@
 - 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
 - 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-- 지원 보드: MK6K1N, MK6K1NL (CH552G) / 3X3V_RGB, 2X4V_RGB (CH32V203C8U6)
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4 (CH32V203C8U6)
 
 ## 핵심 요구사항
 
@@ -51,7 +51,7 @@
 | 패턴 암호 (잠금) | ✅ 2~8단계, 노브(노브 없는 보드는 아무 키) 2초로 입력 시작, 다시 잠그기, 자동 잠금 N분 ([잠금 상태도](#잠금-상태도)). 확인 절차: [firmware/macro_keyboard/README.md](firmware/macro_keyboard/README.md#4-잠금-확인) |
 | 보드 정보 | ✅ HELLO로 칩·키/노브 수·보드 이름을 알리고 GUI가 그 배치로 화면 구성 ([docs/BOARD_INFO.md](docs/BOARD_INFO.md)) |
 | 펌웨어 업데이트 | ✅ GUI 업데이트 창: 장입할 보드 선택, 파일 식별 문자열 확인, 식별 못 한 키보드(공장 펌웨어 등)도 확인 후 장입. CH32V203 보드는 **자체 HID 부트로더**로 브리지 없이 업데이트(처음 한 번만 BOOT 브리지, [docs/BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md)) |
-| 키별 LED | ✅ MK6K1NL·3X3V_RGB·2X4V_RGB: 누르는 동안 누른 키만 초록, 나머지는 꺼짐 |
+| 키별 LED | ✅ MK6K1NL·SAYO_3X3·SAYO_2X4: 누르는 동안 누른 키만 초록, 나머지는 꺼짐 |
 
 ### 이력
 
@@ -61,7 +61,7 @@
 - 2026-10-27 (v1.4): 자동 잠금
 - 2026-10-31 (v1.5): MK6K1NL(키마다 LED)
 - v1.6: 패턴 2단계부터(전에는 4단계), 입력 표시, 장입할 보드 고르기
-- 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴). 3X3V_RGB·2X4V_RGB, 자체 HID 부트로더, 노브 없는 보드는 키를 누를 때 입력
+- 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴). SAYO_3X3·SAYO_2X4, 자체 HID 부트로더, 노브 없는 보드는 키를 누를 때 입력
 
 ## 잠금 상태도
 
@@ -152,7 +152,7 @@ stateDiagram-v2
 ## 하드웨어 요약
 
 - 보드별 칩·키·LED·부트로더·진입 키: [docs/BOARDS.md](docs/BOARDS.md)
-- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [3X3V_RGB](docs/board/BOARD_3X3V_RGB.md), [2X4V_RGB](docs/board/BOARD_2X4V_RGB.md))
+- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4V_RGB.md))
 
 ## 폴더 구조
 
@@ -170,8 +170,11 @@ stateDiagram-v2
 | 출시 | [CHANGELOG.md](CHANGELOG.md) | 저장소 전체 변경 기록: `## 미출시` 항목(문서 영향·반영 표시)과 버전별 요약 |
 | 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. 버튼 매핑, CH552G 칩 핀맵, 노브 신호 |
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
-| 보드 세부 | [board/BOARD_3X3V_RGB.md](docs/board/BOARD_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
-| 보드 세부 | [board/BOARD_2X4V_RGB.md](docs/board/BOARD_2X4V_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 | [board/BOARD_SAYO_3X3V_RGB.md](docs/board/BOARD_SAYO_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 | [board/BOARD_SAYO_2X4V_RGB.md](docs/board/BOARD_SAYO_2X4V_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6.md](docs/board/BOARD_SAYO_2X6.md) | SayoDevice 12키(2×6), 식별 전: 식별 체크리스트 |
+| 보드 세부 (준비 중) | [board/BOARD_BT_2X3.md](docs/board/BOARD_BT_2X3.md) | 6키(2×3) 블루투스, 식별 전: 식별 체크리스트 |
+| 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
 | 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |
 | 옛 문서 | [old/PORT_CH32V203.md](docs/old/PORT_CH32V203.md) | CH32V203 이식 계획·기록 (끝남) |
@@ -194,7 +197,7 @@ stateDiagram-v2
 
 | tools/ 파일 | 용도 |
 |---|---|
-| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Hex`: CH552, `-Board 3x3v_rgb`/`2x4v_rgb`: 자체 부트로더로 장입, `-Full`: 처음 설치(BOOT 브리지, wchisp로 부트로더만 → 진입 키로 앱) |
+| `flash.ps1` | 부트로더 대기 후 자동 업로드. `-Hex`: CH552, `-Board sayo_3x3`/`sayo_2x4`: 자체 부트로더로 장입, `-Full`: 처음 설치(BOOT 브리지, wchisp로 부트로더만 → 진입 키로 앱) |
 | `usb_monitor.ps1` | USB 장치 감지 기록 |
 | `build_fw.ps1` | 펌웨어 빌드, `-Board`로 보드 선택, 빌드 일자 기록 |
 | `build_gui.ps1` | GUI exe 빌드, 빌드 일자 기록 |
@@ -220,7 +223,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
   - `macro_keyboard-MK6K1N.hex`: 보드 이름이 붙은 파일, GUI가 먼저 고름
   - `macro_keyboard.ino.hex`
 - 키마다 LED가 있는 보드: `-Board mk6k1nl`로 빌드 → `macro_keyboard-MK6K1NL.hex`
-- CH32V203 보드: `-Board 3x3v_rgb`(9키), `-Board 2x4v_rgb`(8키) → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) 빌드)
+- CH32V203 보드: `-Board sayo_3x3`(9키), `-Board sayo_2x4`(8키) → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) 빌드)
 - 보드별 파일 이름: [BOARDS.md](docs/BOARDS.md)
 
 ### 펌웨어 업로드

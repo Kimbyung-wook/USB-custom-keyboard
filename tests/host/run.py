@@ -28,11 +28,13 @@ def keys(*pairs: tuple[int, int] | str) -> str:
     return " ".join(out)
 
 
-def build(out_dir: Path, board: str = "MK6K1N") -> Path:
-    """The firmware's functions against the host HAL (stub/hal_host.h)."""
+def build(out_dir: Path, board: str = "MK6K1N", header: Path | None = None) -> Path:
+    """The firmware's functions against the host HAL (stub/hal_host.h); with
+    ``header`` a board file outside src/boards (src/config.h BOARD_HEADER)."""
     exe = out_dir / f"host_test_{board}.exe"
+    pick = f'-DBOARD_HEADER="{header.as_posix()}"' if header else f"-DBOARD_{board}"
     subprocess.run(
-        ["gcc", "-std=c99", "-Wall", "-DHAL_HOST", f"-DBOARD_{board}",
+        ["gcc", "-std=c99", "-Wall", "-DHAL_HOST", pick,
          "-I", str(HERE / "stub"), "-I", str(SRC),
          str(HERE / "host_test.c")] + [str(SRC / "core" / f) for f in
                                        ("storage.c", "macro.c", "lock.c", "input.c", "led.c", "protocol.c")]
@@ -83,17 +85,35 @@ def board_names() -> list[str]:
     return names
 
 
-def check_board(out: Path, name: str) -> None:
+TEST_BOARDS = HERE / "boards"   # boards not identified yet (not in src/boards)
+
+
+def test_board(header: Path) -> tuple[str, p.Board, int]:
+    """(name, layout, config capacity) of a tests/host/boards header."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import repo_facts
+    d = repo_facts.defines(header)
+    name = d["BOARD_NAME"].strip('"')
+    layout = p.Board(keys=int(d["BOARD_KEYS"]), knobs=int(d["BOARD_KNOBS"]), rows=int(d["BOARD_ROWS"]),
+                     name=name, chip_id=repo_facts.number(d["BOARD_CHIP_ID"]))
+    return name, layout, 4096 if d.get("BOARD_HAL_CH32V20X") == "1" else 128
+
+
+def check_board(out: Path, name: str, header: Path | None = None) -> None:
     """HELLO, READ, WRITE, COMMIT through the firmware's protocol.c, parsed by
-    gui.core.protocol and compared with gui.core.boards; keys and LEDs."""
+    gui.core.protocol and compared with gui.core.boards (or, for a test board,
+    its header); keys, the lock pattern and LEDs."""
     from gui.core import boards, version
-    spec = boards.find(name)
-    check(f"{name}: board file known to gui/core/boards.py", spec is not None, True)
-    if spec is None:
-        return
-    exe = build(out, name)
-    layout = spec.layout
-    letters = list("abcdefghi"[:layout.slot_count])
+    if header:
+        name, layout, capacity = test_board(header)
+    else:
+        spec = boards.find(name)
+        check(f"{name}: board file known to gui/core/boards.py", spec is not None, True)
+        if spec is None:
+            return
+        layout, capacity = spec.layout, 4096 if spec.hidboot else 128
+    exe = build(out, name, header)
+    letters = [chr(ord("a") + i) for i in range(layout.slot_count)]
     old = p.encode_blob(letters, board=layout)
     new = p.encode_blob(["x" * 70] + letters[1:], board=layout)  # more than one chunk
     reqs = [p.encode_request(p.Cmd.HELLO, 1),
@@ -114,7 +134,7 @@ def check_board(out: Path, name: str) -> None:
           f"{hello.fw_major}.{hello.fw_minor}.{hello.fw_patch}", version.VERSION)
     check(f"{name}: HELLO protocol, slots, capacity",
           (hello.protocol_version, hello.slot_count, hello.capacity),
-          (p.PROTOCOL_VERSION, layout.slot_count, 4096 if spec.hidboot else 128))
+          (p.PROTOCOL_VERSION, layout.slot_count, capacity))
     board = hello.board_info
     check(f"{name}: HELLO board info = gui/core/boards.py",
           (board, board and board.name, board and board.chip_id), (layout, name, layout.chip_id))
@@ -139,6 +159,28 @@ def check_board(out: Path, name: str) -> None:
     check(f"{name}: color wheel 2 rounds, then off, then blue",
           (sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b),
            re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
+
+    if layout.knobs:
+        return
+    # No knob: holding any key starts the pattern entry. Pattern: last key, first key
+    last = layout.keys - 1
+    locked = p.encode_blob(letters, [last, 0], board=layout)
+    unlock = ("p1", "w2100", "r1", "w50", f"p{last}", "w30", f"r{last}", "w30", "p0", "w30", "r0", "w300")
+
+    def typed(*steps: str) -> str:
+        text = " ".join(run(exe, out, locked, extra=["input", *steps])[3:])
+        return " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text))
+    check(f"{name}: locked keys type nothing", typed("p2", "w30", "r2", f"p{last}", "w30", f"r{last}", "w300"), "")
+    check(f"{name}: hold + pattern (key {last + 1}, key 1) opens, then key {last + 1} types",
+          typed(*unlock, f"p{last}", "w30", f"r{last}", "w300"), keys((0, 0x04 + last)))
+    check(f"{name}: wrong pattern stays locked",
+          typed("p1", "w2100", "r1", "w50", "p0", "w30", "r0", "w30", f"p{last}", "w30", f"r{last}", "w300",
+                "p2", "w30", "r2", "w300"), "")
+    # the key LED of the pressed key only (mask of 12 keys is 3 hex digits)
+    text = " ".join(run(exe, out, blob, extra=["input", "w6500", f"p{last}", "w30", f"r{last}", "w300"])[3:])
+    check(f"{name}: key {last + 1} lights only its LED",
+          re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)[2:],
+          [f"L0.{1 << last:02x}.2", "L1.00.0"])
 
 
 def main() -> int:
@@ -371,8 +413,8 @@ def main() -> int:
                   "L5.00.0 L0.00.0 L5.00.0 L5.08.0 L5.00.0 L1.00.0" if key_leds
                   else "L5.00.0 L0.00.0 L5.00.0 L1.00.0")
 
-        # 3X3V_RGB (CH32V203): 9 keys, no knob, LED per key (mask 9 bits)
-        exe9 = build(out, "3X3V_RGB")
+        # SAYO_3X3 (CH32V203): 9 keys, no knob, LED per key (mask 9 bits)
+        exe9 = build(out, "SAYO_3X3")
 
         def typed9(blob: bytes, *steps: str) -> tuple[str, str, list[str]]:
             text = " ".join(run(exe9, out, blob, extra=["input", *steps])[3:])
@@ -381,68 +423,68 @@ def main() -> int:
                     re.findall(r"C\d+\.\d+\.\d+", text))
 
         lines = run(exe9, out, letters)
-        check("3X3V_RGB: 9-slot blob commits", lines[2], "commit status 0")
+        check("SAYO_3X3: 9-slot blob commits", lines[2], "commit status 0")
         for i in range(9):
-            check(f"3X3V_RGB: key {i + 1} types slot {i}",
+            check(f"SAYO_3X3: key {i + 1} types slot {i}",
                   typed9(letters, f"p{i}", "w30", f"r{i}", "w300")[0], keys((0, 0x04 + i)))
-        check("3X3V_RGB: key 9 press lights only key 9 green, then blue again",
+        check("SAYO_3X3: key 9 press lights only key 9 green, then blue again",
               typed9(letters, "w6500", "p8", "w30", "r8", "w300")[1].split(" ", 1)[1],
               "L1.00.0 L0.100.2 L1.00.0")
-        check("3X3V_RGB: key 1 press lights only key 1 green",
+        check("SAYO_3X3: key 1 press lights only key 1 green",
               typed9(letters, "w6500", "p0", "w30", "r0", "w300")[1].split(" ", 1)[1],
               "L1.00.0 L0.01.2 L1.00.0")
         _, power_leds, wheel = typed9(letters, "w6500")
-        check("3X3V_RGB: power-up color wheel, then off, then blue",
+        check("SAYO_3X3: power-up color wheel, then off, then blue",
               power_leds, "L0.00.0 L1.00.0")
-        check("3X3V_RGB: color wheel starts red and passes green and blue",
+        check("SAYO_3X3: color wheel starts red and passes green and blue",
               (wheel[:1], "C0.40.0" in wheel, "C0.0.40" in wheel), (["C40.0.0"], True, True))
-        check("3X3V_RGB: color wheel goes round 2 times",
+        check("SAYO_3X3: color wheel goes round 2 times",
               sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b), 2)
-        check("3X3V_RGB: two keys at once type both",
+        check("SAYO_3X3: two keys at once type both",
               typed9(letters, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
               keys((0, 0x04), (0, 0x0c)))
-        check("3X3V_RGB: a 10 ms bounce is not a key press",
+        check("SAYO_3X3: a 10 ms bounce is not a key press",
               typed9(letters, "p4", "w10", "r4", "w300")[0], "")
         # No knob: holding any key starts the pattern entry (pattern D, G)
         locked9 = p.encode_blob(list("abcdefghi"), [3, 6])
         lines = run(exe9, out, locked9)
-        check("3X3V_RGB: a lock pattern commits", lines[2], "commit status 0")
+        check("SAYO_3X3: a lock pattern commits", lines[2], "commit status 0")
         unlock = ("p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p6", "w30", "r6", "w300")
-        check("3X3V_RGB: locked keys type nothing",
+        check("SAYO_3X3: locked keys type nothing",
               typed9(locked9, "p0", "w30", "r0", "p3", "w30", "r3", "p6", "w30", "r6", "w300")[0], "")
-        check("3X3V_RGB: key hold + pattern opens, then a key types",
+        check("SAYO_3X3: key hold + pattern opens, then a key types",
               typed9(locked9, *unlock, "p0", "w30", "r0", "w300")[0], keys((0, 0x04)))
-        check("3X3V_RGB: with a pattern, a key types on press (before release)",
+        check("SAYO_3X3: with a pattern, a key types on press (before release)",
               typed9(locked9, *unlock, "p0", "w300")[0], keys((0, 0x04)))
-        check("3X3V_RGB: with a pattern, rolled keys type both in order",
+        check("SAYO_3X3: with a pattern, rolled keys type both in order",
               typed9(locked9, *unlock, "p0", "w30", "p8", "w30", "r0", "r8", "w300")[0],
               keys((0, 0x04), (0, 0x0c)))
-        check("3X3V_RGB: wrong pattern stays locked",
+        check("SAYO_3X3: wrong pattern stays locked",
               typed9(locked9, "p4", "w2100", "r4", "w50", "p3", "w30", "r3", "w30", "p5", "w30", "r5",
                      "w300", "p0", "w30", "r0", "w300")[0], "")
-        check("3X3V_RGB: re-lock with key hold + pattern (held key types once)",
+        check("SAYO_3X3: re-lock with key hold + pattern (held key types once)",
               typed9(locked9, *unlock, *unlock, "p0", "w30", "r0", "w300")[0], keys((0, 0x08)))
         lines = run(exe9, out, p.encode_blob(short, autolock=2), extra=["lock", "mmm"])
-        check("3X3V_RGB: settings slot without a lock never locks",
+        check("SAYO_3X3: settings slot without a lock never locks",
               lock_states(lines)[-1], "open 0")
         lines = run(exe9, out, p.encode_blob(full))
-        check("3X3V_RGB: 128-byte blob commits", lines[2], "commit status 0")
+        check("SAYO_3X3: 128-byte blob commits", lines[2], "commit status 0")
 
         # CH32V203 capacity 4096: header 8 + 9 lengths 18 + 4070 chars
         def long_text(n: int) -> str:
             return "".join(chr(ord("a") + i % 26) for i in range(n))
         big = p.encode_blob([long_text(4070)] + [""] * 8)
-        check("3X3V_RGB: largest blob is 4096 bytes", str(len(big)), "4096")
+        check("SAYO_3X3: largest blob is 4096 bytes", str(len(big)), "4096")
         lines = run(exe9, out, big)
-        check("3X3V_RGB: 4096-byte blob commits", lines[2], "commit status 0")
-        check("3X3V_RGB: 4096-byte blob types 4070 chars",
+        check("SAYO_3X3: 4096-byte blob commits", lines[2], "commit status 0")
+        check("SAYO_3X3: 4096-byte blob types 4070 chars",
               str(len(slot_lines(lines)[0].split())), "4070")
         lines = run(exe9, out, p.encode_blob([long_text(4071)] + [""] * 8))
-        check("3X3V_RGB: 4097-byte blob rejected (TOO_BIG)", lines[1],
+        check("SAYO_3X3: 4097-byte blob rejected (TOO_BIG)", lines[1],
               f"write status {p.Status.TOO_BIG}")
         lines = run(exe9, out, p.encode_blob([long_text(300), "x" * 300] + list("cdefghi")))
-        check("3X3V_RGB: 300-char slots commit", lines[2], "commit status 0")
-        check("3X3V_RGB: 300-char slot types 300 chars",
+        check("SAYO_3X3: 300-char slots commit", lines[2], "commit status 0")
+        check("SAYO_3X3: 300-char slot types 300 chars",
               str(len(slot_lines(lines)[1].split())), "300")
 
         # Power lost while hal_store_flush (CH32V) rewrites the pages of a new
@@ -459,19 +501,21 @@ def main() -> int:
                     continue          # that is the whole new config
                 lines = run(exe9, out, old_cfg, extra=["torn", str(new_path), str(page), str(erased)])
                 slots = slot_lines(lines)
-                check(f"3X3V_RGB: power lost at page {page} ({'erased' if erased else 'written'}) "
+                check(f"SAYO_3X3: power lost at page {page} ({'erased' if erased else 'written'}) "
                       "starts blank",
                       ([line for line in lines if line.startswith("torn ")],
                        set(slots.values()), lines[-1]),
                       ([f"torn page {page} erased {erased}: slot0 len 0"], {"(empty)"}, "errors 0"))
         lines = run(exe9, out, old_cfg, extra=["torn", str(new_path), str(last + 1), "0"])
-        check("3X3V_RGB: a finished flush types the new config",
+        check("SAYO_3X3: a finished flush types the new config",
               (len(slot_lines(lines)[0].split()), len(slot_lines(lines)[1].split())), (600, 600))
 
         # Every board file: the config channel (src/core/protocol.c) read with
         # the GUI's parser, every key and the power-up color wheel
         for name in board_names():
             check_board(out, name)
+        for header in sorted(TEST_BOARDS.glob("*.h")):
+            check_board(out, "", header)
 
     print("all passed" if failures == 0 else f"{failures} failed")
     return 1 if failures else 0

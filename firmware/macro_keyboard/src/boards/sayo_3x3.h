@@ -1,13 +1,13 @@
-#ifndef __MK_BOARD_3X3V_RGB_H__
-#define __MK_BOARD_3X3V_RGB_H__
+#ifndef __MK_BOARD_SAYO_3X3_H__
+#define __MK_BOARD_SAYO_3X3_H__
 
-// 3X3V_RGB: 9-key (3 x 3) CH32V203C8U6 keyboard, no knob. RGB LED per key
+// SAYO_3X3: 9-key (3 x 3) CH32V203C8U6 keyboard, no knob. RGB LED per key
 // (not WS2812): each row has R, G and B cathode lines shared by its 3 keys
 // (low = lit), each key has its own anode pin (high = lit).
 // Pins confirmed with tests/hw/ch32v203/test_ch32v203 (2026-11-05). HAL: src/hal/ch32v203.
 // The name must match gui/core/boards.py.
 
-#define BOARD_NAME "3X3V_RGB"
+#define BOARD_NAME "SAYO_3X3"
 #define BOARD_HAL_CH32V20X 1
 #define BOARD_CHIP "CH32V203"
 // wchisp info (2026-11-08): CH32V203C8U6[0x3019] = chip 0x30, family 0x19. HELLO

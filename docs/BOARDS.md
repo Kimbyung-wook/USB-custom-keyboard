@@ -11,15 +11,15 @@
 |---|---|---|---|---|---|---|
 | MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
 | MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
-| 3X3V_RGB | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board 3x3v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-3X3V_RGB.bin` |
-| 2X4V_RGB | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board 2x4v_rgb -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-2X4V_RGB.bin` |
+| SAYO_3X3 | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_3x3 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin` |
+| SAYO_2X4 | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board sayo_2x4 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X4.bin` |
 <!-- /gen:boards -->
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
 - 칩: CH552 = CH552G, CH32V203 = CH32V203C8U6
-- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), 3X3V_RGB 4096바이트(4070자), 2X4V_RGB 4096바이트(4072자)
+- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), SAYO_3X3 4096바이트(4070자), SAYO_2X4 4096바이트(4072자)
 - RGB 보드의 LED: 색별 음극(캐소드) 묶음 + 키별 양극(애노드)
-- 세부 문서: [MK6K1N](board/BOARD_MK6K1N.md), [MK6K1NL](board/BOARD_MK6K1NL.md), [3X3V_RGB](board/BOARD_3X3V_RGB.md), [2X4V_RGB](board/BOARD_2X4V_RGB.md)
+- 세부 문서: [MK6K1N](board/BOARD_MK6K1N.md), [MK6K1NL](board/BOARD_MK6K1NL.md), [SAYO_3X3](board/BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](board/BOARD_SAYO_2X4V_RGB.md)
 
 - 노브 없는 보드: 패턴 입력 시작은 **아무 키 2초**, 단계는 키만, 키는 누를 때 입력 ([MANUAL 10장](MANUAL.md#10-노브-없는-보드에서-다른-점))
 - 패턴 암호·자동 잠금: 모든 보드에 있음
@@ -31,10 +31,20 @@
 | MK6K1N | MK6K1NL |
 |---|---|
 | ![MK6K1N 키 배치](images/buttons_mk6k1n.svg) | ![MK6K1NL 키 배치](images/buttons_mk6k1nl.svg) |
-| **3X3V_RGB** | **2X4V_RGB** |
-| ![3X3V_RGB 키 배치](images/buttons_3x3v_rgb.svg) | ![2X4V_RGB 키 배치](images/buttons_2x4v_rgb.svg) |
+| **SAYO_3X3** | **SAYO_2X4** |
+| ![SAYO_3X3 키 배치](images/buttons_sayo_3x3.svg) | ![SAYO_2X4 키 배치](images/buttons_sayo_2x4.svg) |
 
 - 주황 = 부트로더 진입 키. 칩 핀맵 그림(`pinmap_<보드>.svg`)은 각 보드 문서 3절. 그림 다시 그리기: [board/_TEMPLATE.md](board/_TEMPLATE.md#그림-만들기)
+
+## 준비 중 보드
+
+- 식별 전. 칩·핀·LED·부트로더를 모름 → 위 생성 표와 아래 업데이트 표에는 아직 없음
+- 이름은 임시(식별 뒤 바꿀 수 있음). 파일 위치와 할 일: [NEW_BOARD.md 9절](NEW_BOARD.md#9-식별-전-보드)
+
+| 임시 이름 | 제품 | 배치 | 칩 | 문서 |
+|---|---|---|---|---|
+| SAYO_2X6 | SayoDevice 12키 | 2행 × 6열 | 확인 필요 (CH32V203일 수 있음) | [BOARD_SAYO_2X6.md](board/BOARD_SAYO_2X6.md) |
+| BT_2X3 | 제조사 미상 6키, 무선(별도 USB 동글) | 2행 × 3열 | 확인 필요 | [BOARD_BT_2X3.md](board/BOARD_BT_2X3.md) |
 
 ## 펌웨어 업데이트
 
@@ -42,8 +52,8 @@
 |---|---|---|---|---|---|
 | **MK6K1N** | WCH ROM (USB `4348:55E0`) | **키 D**(P1.5) | 키 E를 누른 채 꽂기 | GUI(vnproch55x), `flash.ps1 -Hex` | `macro_keyboard-MK6K1N.hex` |
 | **MK6K1NL** | WCH ROM (USB `4348:55E0`) | **키 D**(P1.5) | D+ 풀업: 칩 12번–16번에 1.5~2kΩ | GUI(vnproch55x), `flash.ps1 -Hex` | `macro_keyboard-MK6K1NL.hex` |
-| **3X3V_RGB** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PB2) | BOOT 브리지 + `flash.ps1 -Board 3x3v_rgb -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board 3x3v_rgb` | `ch32v203/macro_keyboard-3X3V_RGB.bin` |
-| **2X4V_RGB** | 자체 HID (USB `1209:C55E`) | **키 5**(왼쪽 아래, PA5) | BOOT 브리지 + `flash.ps1 -Board 2x4v_rgb -Full` → 키 5 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board 2x4v_rgb` | `ch32v203/macro_keyboard-2X4V_RGB.bin` |
+| **SAYO_3X3** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PB2) | BOOT 브리지 + `flash.ps1 -Board sayo_3x3 -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_3x3` | `ch32v203/macro_keyboard-SAYO_3X3.bin` |
+| **SAYO_2X4** | 자체 HID (USB `1209:C55E`) | **키 5**(왼쪽 아래, PA5) | BOOT 브리지 + `flash.ps1 -Board sayo_2x4 -Full` → 키 5 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_2x4` | `ch32v203/macro_keyboard-SAYO_2X4.bin` |
 
 - 모든 보드: 잠금 풀린 키보드는 GUI [업데이트 모드로 전환] 단추(BOOT 명령)으로 키 없이 진입. 업데이트 모드 LED는 **보라**
 - 펌웨어 파일 위치: `firmware/macro_keyboard/build/` (`tools\build_fw.ps1 -Board <보드>`)
