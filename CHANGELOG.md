@@ -43,6 +43,7 @@
 - [문서] 식별 전 보드 SAYO_2X6(12키 2×6)·BT_2X3(6키 2×3 무선, 별도 USB 동글) 준비: 파일 구조 안, 보드 문서 초안과 식별 체크리스트(동글 연결 방식 확인 포함) — 문서 영향: docs/NEW_BOARD.md#9-식별-전-보드, docs/board/BOARD_SAYO_2X6.md, docs/board/BOARD_BT_2X3.md, docs/BOARDS.md#준비-중-보드, README.md#폴더-구조 — 반영: ☑
 - [저장소] Sayo 보드 이름 통일: 3X3V_RGB → SAYO_3X3, 2X4V_RGB → SAYO_2X4(보드 파일 sayo_3x3.h·sayo_2x4.h, `-Board sayo_3x3`·`sayo_2x4`, 산출물·그림 파일 이름). 옛 이름을 알리는 장치(부트로더 1.0, 펌웨어 1.7.0)는 `boards.py` 별칭으로 같은 보드(GUI, check_device, hidboot 보드 검사는 `--force` 없이 통과), 설정은 남음 — 문서 영향: README.md, docs/BOARDS.md, docs/BOARD_INFO.md, docs/BOOTLOADER_CH32V203.md, docs/MANUAL.md, docs/TROUBLESHOOTING.md, docs/NEW_BOARD.md, docs/PINMAP.md, docs/board/BOARD_SAYO_3X3V_RGB.md, docs/board/BOARD_SAYO_2X4V_RGB.md, firmware/macro_keyboard/README.md, gui/README.md, tests/hw/ch32v203/test_ch32v203/README.md — 반영: ☑
 - [문서] 칩 특성 표(`docs/CHIPS.md`, CH552G·CH32V203C8U6, 자료표 값과 코드 값 구분), 보드 문서 1절은 칩 표 링크만 — 문서 영향: docs/CHIPS.md#칩-특성-표, docs/board/_TEMPLATE.md, README.md#폴더-구조 — 반영: ☑
+- [문서] 9키 장치 확인: 옛 이름 부트로더에 새 이름 앱(SAYO_3X3)을 `--force` 없이 HID 장입, check_device·설정 유지·LED 눈 확인 정상 — 문서 영향: docs/board/BOARD_SAYO_3X3V_RGB.md#7-확인-결과, docs/BOOTLOADER_CH32V203.md#하드웨어-시험-2026-11-07-sayo_3x3 — 반영: ☑
 
 ## 1.7.0 (2026-11-07)
 
