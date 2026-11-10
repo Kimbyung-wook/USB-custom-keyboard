@@ -42,5 +42,9 @@
 #define BOARD_LED_COUNT 8
 #define BOARD_KEY_LEDS 1 // only the pressed key's LED turns green
 #define BOARD_LED_SELF_TEST 1 // color wheel 2 x 3 s, then off 0.3 s at power-up (src/core/led.c)
+// Slots clockwise around the keys from key 1, seen from the top: the power-up
+// color wheel turns along them (src/core/led.c).
+#define BOARD_LED_RING 0, 1, 2, 3, 7, 6, 5, 4 // keys 1 2 3 4 8 7 6 5
+#define BOARD_LED_RING_CHASE 1 // one LED at a time; 0 = rainbow around the ring
 
 #endif

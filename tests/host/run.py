@@ -99,6 +99,109 @@ def test_board(header: Path) -> tuple[str, p.Board, int]:
     return name, layout, 4096 if d.get("BOARD_HAL_CH32V20X") == "1" else 128
 
 
+# Power-up wheel turning around the keys: key numbers clockwise from key 1,
+# written out here so a wrong BOARD_LED_RING in the board file is caught
+LED_RING = {"SAYO_3X3": (1, 2, 3, 6, 9, 8, 7, 4), "SAYO_2X4": (1, 2, 3, 4, 8, 7, 6, 5),
+            "MK6K1NL": (1, 2, 3, 6, 5, 4), "TEST_RNG": (1, 2, 3, 6, 5, 4)}
+LED_CHASE = {"SAYO_3X3": 1000, "SAYO_2X4": 1000, "MK6K1NL": 1000}  # BOARD_LED_RING_CHASE: ms per lap of the lit LED
+WHEEL_MS = 3000
+
+
+def wheel_colors(text: str) -> list[str]:
+    """The wheel as "C<r>.<g>.<b>": all LEDs together, or else key 1's LED."""
+    return ["C" + c for c in re.findall(r"(?:\bC|\bK0:)(\d+\.\d+\.\d+)", text)]
+
+
+def wheel_rgb(t: int) -> str:
+    """led.c wheel(): the color at t ms within a turn."""
+    seg, rest = divmod(t, WHEEL_MS // 6)
+    up = rest * 40 // (WHEEL_MS // 6)
+    down = 40 - up
+    return "%d.%d.%d" % [(40, up, 0), (down, 40, 0), (0, 40, up), (0, down, 40), (up, 0, 40), (40, 0, down)][seg]
+
+
+def check_chase(exe: Path, out: Path, blob: bytes, name: str, key_count: int) -> None:
+    """Every LED at every ms of the test: the light fades from one ring LED to the next."""
+    ring = LED_RING[name]
+    step = LED_CHASE[name] // len(ring)
+
+    def dimmed(rgb: str, level: int) -> str:
+        return ".".join(str(int(c) * level >> 5) for c in rgb.split("."))
+
+    # now = 1 after "start"; the last wheel frame is at 5992 ms (one frame per 8 ms)
+    lines = run(exe, out, blob, extra=["input", *["w1"] * 5998])[3:]
+    colors: dict[int, str] = {}
+    at: dict[int, dict[int, str]] = {}
+    laps: list[int] = []
+    wrong = []
+    for i, line in enumerate(lines):
+        colors.update((int(k), c) for k, c in re.findall(r"\bK(\d+):(\d+\.\d+\.\d+)", line))
+        now = i + 1
+        frame = now & ~7 if now >= 8 else 1
+        rgb = wheel_rgb(frame % WHEEL_MS)
+        cur, frac = divmod(frame % LED_CHASE[name], step)
+        cur %= len(ring)                                        # 1000 // 6: the lap's last ms
+        level = frac * (8192 // step) >> 8
+        want = {k: rgb for k in range(key_count)}               # keys off the ring: always lit
+        want.update({key - 1: "0.0.0" for key in ring})
+        want[ring[cur] - 1] = dimmed(rgb, 32 - level)
+        want[ring[(cur + 1) % len(ring)] - 1] = dimmed(rgb, level)
+        if colors != want:
+            wrong.append(now)
+        at[now] = dict(colors)
+        bright = max(ring, key=lambda k: sum(int(c) for c in colors[k - 1].split(".")))
+        if not laps or laps[-1] != bright:
+            laps.append(bright)
+    check(f"{name}: the light fades between two ring LEDs, the others off, at every ms", wrong[:5], [])
+    check(f"{name}: the brightest LED steps clockwise", laps, [*ring * 7][:len(laps)])
+    check(f"{name}: 6 laps in 6 s", len(laps) - len(ring) * 6 in (0, 1), True)
+    # End of a lap: last position -> first, through the last frame before the boundary
+    first, second, last = ring[0] - 1, ring[1] - 1, ring[-1] - 1
+    before = at[992]
+    check(f"{name}: lap end: last and first LED both lit, the next one off",
+          (before[last] != "0.0.0", before[first] != "0.0.0", before[second]), (True, True, "0.0.0"))
+    check(f"{name}: lap boundary: first LED full, next and last off",
+          (at[1000][first], at[1000][second], at[1000][last]), (wheel_rgb(1000), "0.0.0", "0.0.0"))
+
+
+def check_rainbow(exe: Path, out: Path, blob: bytes, name: str, key_count: int) -> None:
+    """Every LED's color at known times: red moves one key clockwise per 1/8 turn."""
+    ring = LED_RING[name]
+    step = WHEEL_MS // len(ring)
+    # now = 1 after "start"; then every 1/8 turn for a whole turn, and a time between steps
+    waits = [step - 1] + [step] * len(ring) + [1234]
+    lines = run(exe, out, blob, extra=["input", *[f"w{w}" for w in waits]])[3:]
+    colors: dict[int, str] = {}
+    now = 1
+    for i, line in enumerate(lines):
+        colors.update((int(k), c) for k, c in re.findall(r"\bK(\d+):(\d+\.\d+\.\d+)", line))
+        if i == 0:
+            continue
+        now += waits[i - 1]
+        t = now % WHEEL_MS
+        want = {k: wheel_rgb(t) for k in range(key_count)}     # keys off the ring: plain wheel
+        for p, key in enumerate(ring):
+            want[key - 1] = wheel_rgb((t - p * step) % WHEEL_MS)
+        check(f"{name}: wheel around the keys at {now} ms", colors, want)
+        if i < len(ring):
+            check(f"{name}: red on key {ring[i]} at {now} ms", colors[ring[i] - 1], "40.0.0")
+
+
+def check_ring(exe: Path, out: Path, blob: bytes, name: str, key_count: int) -> None:
+    (check_chase if name in LED_CHASE else check_rainbow)(exe, out, blob, name, key_count)
+    if name == "MK6K1NL":    # WS2812: a frame keeps interrupts off; one only after a color change
+        frames = " ".join(run(exe, out, blob, extra=["input", "w6000"])[3:]).split().count("F")
+        check(f"{name}: at most a frame per 8 ms", 400 < frames <= 751, True)
+
+    text = run(exe, out, blob, extra=["input", "w1000", "p0", "w30", "r0", "w300"])[3:]
+    during = " ".join(text)
+    check(f"{name}: a key types while the wheel turns, no key LED frame",
+          (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", during)), re.findall(r"\bL\d", during)),
+          (keys((0, 0x04)), []))
+    check(f"{name}: the wheel keeps turning while the key is down",
+          len(re.findall(r"\bK\d+:", text[3])) > 0, True)  # the "w30" step
+
+
 def check_board(out: Path, name: str, header: Path | None = None) -> None:
     """HELLO, READ, WRITE, COMMIT through the firmware's protocol.c, parsed by
     gui.core.protocol and compared with gui.core.boards (or, for a test board,
@@ -155,10 +258,12 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
         check(f"{name}: key {i + 1} types slot {i}",
               " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)), keys((0, 0x04 + i)))
     text = " ".join(run(exe, out, blob, extra=["input", "w6500"])[3:])
-    wheel = re.findall(r"C\d+\.\d+\.\d+", text)
+    wheel = wheel_colors(text)
     check(f"{name}: color wheel 2 rounds, then off, then blue",
           (sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b),
            re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
+    if name in LED_RING:
+        check_ring(exe, out, blob, name, layout.keys)
 
     if layout.knobs:
         return
@@ -374,7 +479,7 @@ def main() -> int:
             text = " ".join(run(exe_b, out, letters, extra=["input", "w6500"])[3:])
             check(f"{board}: power-up color wheel, then off, then blue",
                   " ".join(re.findall(r"L\d\.[0-9a-f]{2}\.\d", text)), "L0.00.0 L1.00.0")
-            wheel = re.findall(r"C\d+\.\d+\.\d+", text)
+            wheel = wheel_colors(text)
             check(f"{board}: color wheel starts red and passes green and blue",
                   (wheel[:1], "C0.40.0" in wheel, "C0.0.40" in wheel), (["C40.0.0"], True, True))
             check(f"{board}: color wheel goes round 2 times",
@@ -420,7 +525,7 @@ def main() -> int:
             text = " ".join(run(exe9, out, blob, extra=["input", *steps])[3:])
             return (" ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)),
                     " ".join(re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)),
-                    re.findall(r"C\d+\.\d+\.\d+", text))
+                    wheel_colors(text))
 
         lines = run(exe9, out, letters)
         check("SAYO_3X3: 9-slot blob commits", lines[2], "commit status 0")

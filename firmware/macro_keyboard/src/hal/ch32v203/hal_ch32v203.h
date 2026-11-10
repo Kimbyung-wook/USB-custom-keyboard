@@ -22,6 +22,8 @@ extern const uint8_t hal_palette[][3];
 // Every key LED in color, the keys in mask (bit i = key i) in maskColor
 void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor);
 void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b); // every LED, palette units
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b); // one LED (slot)
+#define hal_leds_show() // PWM: the timer interrupt picks the colors up itself
 
 // Config: RAM copy of the last BLOB_CAPACITY bytes of flash; hal_store_flush() writes it
 uint8_t hal_store_read(blob_pos_t addr);

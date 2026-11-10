@@ -20,6 +20,10 @@
 // At power-up every LED runs a smooth color wheel (red, yellow, green, cyan,
 // blue, purple, red) SELF_TEST_CYCLES times (2 x 3 s), then goes off for a moment, so a dead color
 // or LED is seen at once. Needs hal_leds_rgb (CH32V203 and CH552 HALs).
+// A board with BOARD_LED_RING (slots clockwise around the keys, from key 1) has
+// the wheel laid out around the keys, turning clockwise; needs hal_led_key_rgb
+// and hal_leds_show. With BOARD_LED_RING_CHASE 1 a single light in the plain
+// wheel color flows around the ring instead; only one of the styles is built.
 #ifndef SELF_TEST_CYCLE_MS
 #define SELF_TEST_CYCLE_MS 3000 // one turn of the wheel (-D to try others; chosen 2026-11-07)
 #endif
@@ -33,20 +37,114 @@
 #endif
 static __idata uint8_t selfTestDone;
 
+#ifndef BOARD_LED_RING_CHASE
+#define BOARD_LED_RING_CHASE 0
+#endif
+#if defined(BOARD_LED_RING) && BOARD_LED_RING_CHASE
+static __idata uint8_t wheelR, wheelG, wheelB; // this frame's color from wheel()
+#define WHEEL_SET(r, g, b) (wheelR = (r), wheelG = (g), wheelB = (b))
+#elif defined(BOARD_LED_RING)
+static __idata uint8_t wheelKey; // the LED wheel() sets
+#define WHEEL_SET(r, g, b) hal_led_key_rgb(wheelKey, r, g, b)
+#else
+#define WHEEL_SET(r, g, b) hal_leds_rgb(r, g, b)
+#endif
+
 // Wheel position t (ms within a cycle) -> R, G, B in palette units (0..40)
 static void wheel(uint16_t t) {
   uint8_t seg = (uint8_t)(t / SELF_TEST_SEG_MS);
   uint8_t up = (uint8_t)((uint16_t)(t % SELF_TEST_SEG_MS) * 40 / SELF_TEST_SEG_MS);
   uint8_t down = (uint8_t)(40 - up);
   switch (seg) {
-  case 0: hal_leds_rgb(40, up, 0); break;   // red -> yellow
-  case 1: hal_leds_rgb(down, 40, 0); break; // yellow -> green
-  case 2: hal_leds_rgb(0, 40, up); break;   // green -> cyan
-  case 3: hal_leds_rgb(0, down, 40); break; // cyan -> blue
-  case 4: hal_leds_rgb(up, 0, 40); break;   // blue -> purple
-  default: hal_leds_rgb(40, 0, seg == 5 ? down : 0); break; // purple -> red
+  case 0: WHEEL_SET(40, up, 0); break;   // red -> yellow
+  case 1: WHEEL_SET(down, 40, 0); break; // yellow -> green
+  case 2: WHEEL_SET(0, 40, up); break;   // green -> cyan
+  case 3: WHEEL_SET(0, down, 40); break; // cyan -> blue
+  case 4: WHEEL_SET(up, 0, 40); break;   // blue -> purple
+  default: WHEEL_SET(40, 0, seg == 5 ? down : 0); break; // purple -> red
   }
 }
+
+#ifdef BOARD_LED_RING
+#if BOARD_LED_RING_CHASE
+#ifndef SELF_TEST_CHASE_MS
+// One lap of the light. Not the wheel's cycle: each key would always get the
+// same color and a dead R, G or B would not show. 1 s: 120 degrees per lap.
+#define SELF_TEST_CHASE_MS 1000
+#endif
+#define CHASE_STEP (SELF_TEST_CHASE_MS / sizeof(ring)) // ms per ring position
+static __idata uint8_t chaseSlot = 0xff;               // now16 / 8 of the last frame
+
+// The color from wheel() on one LED at level 0..32 (no division: this is the
+// CH552's palette math too)
+static void chaseLed(uint8_t key, uint8_t level) {
+  hal_led_key_rgb(key, (uint8_t)((wheelR * level) >> 5), (uint8_t)((wheelG * level) >> 5),
+                  (uint8_t)((wheelB * level) >> 5));
+}
+
+// The light flows clockwise: over one step the LED at position i fades 32 -> 0
+// while the next one fades 0 -> 32, all others off. Keys off the ring (the
+// middle of a 3 x 3) stay lit in the wheel color. A new frame every 8 ms: the
+// fade needs no more, and a WS2812 frame keeps interrupts off.
+static void wheelRing(uint16_t t) {
+  static __code uint8_t ring[] = {BOARD_LED_RING};
+  hal_sw_t rest = (hal_sw_t)((1u << BOARD_KEYS) - 1);
+  uint8_t slot = (uint8_t)(now16 >> 3);
+  uint16_t frac;
+  uint8_t cur = 0, next, level;
+  if (slot == chaseSlot) {
+    return;
+  }
+  chaseSlot = slot;
+  wheel(t);
+  frac = now16 % SELF_TEST_CHASE_MS;
+  while (frac >= CHASE_STEP) {
+    frac -= CHASE_STEP;
+    cur++;
+  }
+  if (cur >= sizeof(ring)) { // lap not divisible by the positions: its last ms
+    cur = 0;
+  }
+  next = (uint8_t)(cur + 1 == sizeof(ring) ? 0 : cur + 1);
+  level = (uint8_t)((frac * (8192u / CHASE_STEP)) >> 8); // frac * 32 / CHASE_STEP
+  for (uint8_t p = 0; p < sizeof(ring); p++) {
+    rest &= (hal_sw_t)~(1u << ring[p]);
+    chaseLed(ring[p], p == cur ? (uint8_t)(32 - level) : p == next ? level : 0);
+  }
+  for (uint8_t k = 0; k < BOARD_KEYS; k++) {
+    if ((rest >> k) & 1) {
+      chaseLed(k, 32);
+    }
+  }
+  hal_leds_show();
+}
+#else
+// Ring position p shows the wheel p/n of a turn back, so each color moves one
+// step clockwise every cycle/n ms (t = 0: key 1 red). Keys off the ring (the
+// middle of a 3 x 3) run the plain wheel: every LED stays lit and is checked.
+// The offset is added up, without 32-bit math (slow on the CH552, every loop).
+static void wheelRing(uint16_t t) {
+  static __code uint8_t ring[] = {BOARD_LED_RING};
+  hal_sw_t rest = (hal_sw_t)((1u << BOARD_KEYS) - 1);
+  uint16_t back = 0;
+  for (uint8_t p = 0; p < sizeof(ring); p++) {
+    wheelKey = ring[p];
+    rest &= (hal_sw_t)~(1u << wheelKey);
+    wheel(t >= back ? (uint16_t)(t - back) : (uint16_t)(t + SELF_TEST_CYCLE_MS - back));
+    back += SELF_TEST_CYCLE_MS / sizeof(ring);
+  }
+  for (wheelKey = 0; wheelKey < BOARD_KEYS; wheelKey++) {
+    if ((rest >> wheelKey) & 1) {
+      wheel(t);
+    }
+  }
+  hal_leds_show();
+}
+#endif
+#define SELF_TEST_FRAME wheelRing
+#else
+#define SELF_TEST_FRAME wheel
+#endif
 #endif
 
 // R, G, B per COLOR_* value (hal.h)
@@ -148,7 +246,7 @@ void led_task(void) {
   if (!selfTestDone) {
     // now16 counts from power-up; the test ends before it can wrap
     if (now16 < SELF_TEST_CYCLE_MS * SELF_TEST_CYCLES) {
-      wheel(now16 % SELF_TEST_CYCLE_MS);
+      SELF_TEST_FRAME(now16 % SELF_TEST_CYCLE_MS);
       return;
     }
     if (now16 < SELF_TEST_CYCLE_MS * SELF_TEST_CYCLES + SELF_TEST_OFF_MS) {

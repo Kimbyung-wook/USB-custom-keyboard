@@ -61,6 +61,24 @@ void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
   if (frame != ledLast) printf(" C%u.%u.%u", r, g, b);
   ledLast = frame;
 }
+// Wheel turning around the keys: per frame with a change " F", then
+// " K<slot>:<r>.<g>.<b>" per LED that changed. As on the CH552, nothing shows
+// before hal_leds_show
+static int keyNext[16], keyShown[16];
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b) {
+  keyNext[key] = 1 << 30 | r << 16 | g << 8 | b;
+}
+void hal_leds_show(void) {
+  int frame = 0;
+  for (int k = 0; k < 16; k++) {
+    if (keyNext[k] != keyShown[k]) {
+      if (!frame++) printf(" F");
+      printf(" K%d:%d.%d.%d", k, (keyNext[k] >> 16) & 255, (keyNext[k] >> 8) & 255, keyNext[k] & 255);
+      keyShown[k] = keyNext[k];
+    }
+  }
+  ledLast = -1; // the next hal_leds frame is printed
+}
 
 static int pressed = 0; // a key is down and must be released next
 static int errors = 0;

@@ -9,6 +9,10 @@
 #define BOARD_LED_COUNT 6    // chain position i = key i (A-F), GRB
 #define BOARD_KEY_LEDS 1
 #define BOARD_LED_SELF_TEST 1 // color wheel 2 x 3 s, then off 0.3 s at power-up (src/core/led.c)
+// Slots clockwise around the keys from key 1 (A), seen from the top: the power-up
+// color wheel turns along them (src/core/led.c)
+#define BOARD_LED_RING 0, 1, 2, 5, 4, 3 // keys A B C F E D
+#define BOARD_LED_RING_CHASE 1 // one LED at a time; 0 = rainbow around the ring
 
 #include "ch552_6k1n.h"
 

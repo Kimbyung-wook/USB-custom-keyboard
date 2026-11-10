@@ -47,6 +47,7 @@
 - [문서] 멀티에이전트 작업 방식 문서(`docs/WORKFLOW.md`): 역할·소유권, 작업 흐름, 추적 장치, 검사 관문, 승인, 도입 체크리스트 — 문서 영향: docs/WORKFLOW.md, README.md#폴더-구조 — 반영: ☑
 - [문서] MK6K1N 실제 장치 1.7.0 확인: 장입·check_device·눈 확인 정상, 설정 유지, 개발 보드 UID 기록 — 문서 영향: docs/board/BOARD_MK6K1N.md#1-개요, docs/board/BOARD_MK6K1N.md#7-확인-결과 — 반영: ☑
 - [문서] MK6K1NL 실제 장치 1.7.0 확인(UID 9C-B3-6E-BF): 장입·check_device·눈 확인 정상, 설정 유지 — 문서 영향: docs/board/BOARD_MK6K1NL.md#1-개요, docs/board/BOARD_MK6K1NL.md#7-확인-결과 — 반영: ☑
+- [펌웨어] SAYO_3X3·SAYO_2X4·MK6K1NL 전원 인가 점검이 키 둘레를 1번 키부터 시계방향으로 흐르는 빛으로 회전(이웃한 두 칸 교차 페이드, 한 바퀴 1초, 빛은 색 바퀴 색, 색 주기·횟수는 그대로, 9키 가운데 키는 계속 켜짐, MK6K1N은 LED 1개라 그대로; `BOARD_LED_RING_CHASE 0`이면 무지개 회전) — 문서 영향: docs/board/BOARD_SAYO_3X3V_RGB.md, docs/board/BOARD_SAYO_2X4V_RGB.md, docs/board/BOARD_MK6K1NL.md, docs/MANUAL.md, firmware/macro_keyboard/README.md — 반영: ☑
 
 ## 1.7.0 (2026-11-07)
 

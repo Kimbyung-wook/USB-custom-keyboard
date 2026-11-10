@@ -156,16 +156,18 @@ void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
 #ifndef WHEEL_MIN_DUTY
 #define WHEEL_MIN_DUTY 1
 #endif
+static uint8_t wheelDuty(uint8_t v) {
+  uint8_t d = (uint8_t)((v * WHEEL_FULL_DUTY + PALETTE_FULL / 2) / PALETTE_FULL);
+  // At least duty 1: every color keeps its phase, so the time share does not
+  // jump when a color fades in or out (2026-11-07)
+  return d < WHEEL_MIN_DUTY ? WHEEL_MIN_DUTY : d;
+}
+
 void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
   const uint8_t rgb[3] = {r, g, b};
   uint8_t on = 0;
   for (uint8_t c = 0; c < 3; c++) {
-    uint8_t d = (uint8_t)((rgb[c] * WHEEL_FULL_DUTY + PALETTE_FULL / 2) / PALETTE_FULL);
-    // At least duty 1: every color keeps its phase, so the time share does not
-    // jump when a color fades in or out (2026-11-07)
-    if (d < WHEEL_MIN_DUTY) {
-      d = WHEEL_MIN_DUTY;
-    }
+    uint8_t d = wheelDuty(rgb[c]);
     for (uint8_t i = 0; i < BOARD_KEYS; i++) {
       keyDuty[i][c] = d;
     }
@@ -174,6 +176,32 @@ void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
     }
   }
   colorsOn = on;
+}
+
+// One LED in one R, G, B (the color wheel turning around the keys). Every key
+// has its own duty in each color phase, so no phase changes. colorsOn only
+// gains colors here; the next hal_leds sets it from scratch.
+// BOARD_LED_RING_CHASE dims LEDs to 0: no minimum duty, or a faded LED would
+// turn white and an off one glow. All three phases stay on instead (hence no
+// jump in time share), until the next hal_leds.
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b) {
+  const uint8_t rgb[3] = {r, g, b};
+#if BOARD_LED_RING_CHASE
+  for (uint8_t c = 0; c < 3; c++) {
+    keyDuty[key][c] = (uint8_t)((rgb[c] * WHEEL_FULL_DUTY + PALETTE_FULL / 2) / PALETTE_FULL);
+  }
+  colorsOn = 7;
+#else
+  uint8_t on = colorsOn;
+  for (uint8_t c = 0; c < 3; c++) {
+    uint8_t d = wheelDuty(rgb[c]);
+    keyDuty[key][c] = d;
+    if (d) {
+      on |= (uint8_t)(1u << c);
+    }
+  }
+  colorsOn = on;
+#endif
 }
 
 static void ledInit(void) {

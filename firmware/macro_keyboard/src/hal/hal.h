@@ -23,6 +23,10 @@
 //   hal_palette[][3]                   R, G, B per color, defined by led.c
 //   hal_leds_rgb(r, g, b)              every LED in one R, G, B (0..40): the
 //                                      power-up color wheel (BOARD_LED_SELF_TEST)
+//   hal_led_key_rgb(key, r, g, b)      one LED (slot) likewise: only boards with
+//                                      BOARD_LED_RING (wheel turning around the keys)
+//   hal_leds_show()                    after hal_led_key_rgb for every LED: sends
+//                                      the frame (only if a color changed)
 // Config storage (BLOB_CAPACITY bytes that survive a power cycle)
 //   uint8_t hal_store_read(addr)       addr: blob_pos_t
 //   void hal_store_write(addr, value)  CH55x: straight to DataFlash; CH32V: RAM

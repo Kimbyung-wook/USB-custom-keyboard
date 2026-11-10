@@ -45,7 +45,7 @@ uint8_t hal_encoder(void) {
 #define NUM_LEDS BOARD_LED_COUNT
 static __xdata uint8_t ledData[NUM_LEDS * 3];
 
-#if !BOARD_KEY_LEDS || BOARD_LED_SELF_TEST
+#if !BOARD_KEY_LEDS || (BOARD_LED_SELF_TEST && !defined(BOARD_LED_RING))
 static void fillLeds(uint8_t r, uint8_t g, uint8_t b) {
   // Walked with a pointer (set_pixel_for_GRB_LED multiplies i * 3)
   __xdata uint8_t *p = ledData;
@@ -57,7 +57,31 @@ static void fillLeds(uint8_t r, uint8_t g, uint8_t b) {
 }
 #endif
 
-#if BOARD_LED_SELF_TEST
+#if BOARD_LED_SELF_TEST && defined(BOARD_LED_RING)
+// The wheel turning around the keys (src/core/led.c): a color per LED kept in
+// ledData, palette units as they are. led_task runs every loop but the colors
+// change about every 12 ms: a frame goes out only after a change, as it keeps
+// interrupts off (6 LEDs: about 0.18 ms), the same as one hal_leds_rgb frame
+static __idata uint8_t ledsChanged;
+#define WHEEL_FORGET()
+
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b) {
+  __xdata uint8_t *p = ledData + (uint8_t)(key * 3);
+  if (p[0] != g || p[1] != r || p[2] != b) {
+    p[0] = g;
+    p[1] = r;
+    p[2] = b;
+    ledsChanged = 1;
+  }
+}
+
+void hal_leds_show(void) {
+  if (ledsChanged) {
+    ledsChanged = 0;
+    neopixel_show_P3_4(ledData, NUM_LEDS * 3);
+  }
+}
+#elif BOARD_LED_SELF_TEST
 // The last hal_leds_rgb color; wheelR = 0xff (never a color) after any other frame
 static __idata uint8_t wheelR = 0xff, wheelG, wheelB;
 #define WHEEL_FORGET() (wheelR = 0xff)

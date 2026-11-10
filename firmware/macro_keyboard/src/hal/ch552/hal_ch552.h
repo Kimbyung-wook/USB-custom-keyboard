@@ -26,6 +26,9 @@ void hal_leds_all(uint8_t color);
 #endif
 // Every LED in one R, G, B (0..40): the power-up color wheel (BOARD_LED_SELF_TEST)
 void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b);
+// One LED, then the frame: the wheel turning around the keys (BOARD_LED_RING)
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b);
+void hal_leds_show(void);
 
 // The core's DataFlash access
 #define hal_store_read(addr) eeprom_read_byte(addr)
