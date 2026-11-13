@@ -90,6 +90,8 @@
 - 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
 - 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴)
 - 2026-11-10: 키마다 LED인 보드의 LED 점검이 둘레를 흐르는 빛으로 회전
+- 2026-11-13: SAYO_2B3(옛 이름 BT_2X3)용 `battery.c`·`bt_led.c`와 CH573 부품 추가(앱 연결 전)
+- 2026-11-13: SAYO_2B3 본 펌웨어 1단계(CH573, USB 유선, BLE 없음) `Makefile.ch573`, `bt_app.c`
 - 2026-11-13: SAYO_2X6(12키) 추가, LED 점검 빛 수 `BOARD_LED_RING_CHASE n`
 
 ## 빌드
@@ -101,6 +103,8 @@
   - 목적 파일: 보드별 `build/ch32v203/obj-<BOARD>/`. `.bin`은 `build/ch32v203/macro_keyboard-<BOARD>.bin`. `build_fw.ps1`은 그 보드의 파일만 지우고 다시 빌드
   - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
   - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
+- **CH573 보드(SAYO_2B3)**: `mingw32-make -f Makefile.ch573` → `build/ch573/macro_keyboard-SAYO_2B3.bin`. 1단계(USB 유선 키보드, BLE 없음), 자체 부트로더 뒤 0x3000
+  - `DEMO=1` → `…-SAYO_2B3-demo.bin`(키가 상태 LED를 바꾸는 시험판), `full` → `…-full.bin`(부트로더 + 앱 정보 + 앱). 자세한 내용: [BOARD_SAYO_2X3B_RGB 6절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작)
   - 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
 
 - Arduino IDE + CH55xDuino 0.0.26
@@ -170,9 +174,9 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|---|
 | `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [BOARD_MK6K1N](../../docs/board/BOARD_MK6K1N.md) |
 | `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
-| `sayo_3x3.h` | SAYO_3X3: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_SAYO_3X3](../../docs/board/BOARD_SAYO_3X3V_RGB.md) |
-| `sayo_2x4.h` | SAYO_2X4: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X4](../../docs/board/BOARD_SAYO_2X4V_RGB.md) |
-| `sayo_2x6.h` | SAYO_2X6: 12키 (CH32V203), 이름 임시 | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X6](../../docs/board/BOARD_SAYO_2X6.md) (본 펌웨어 확인 중) |
+| `sayo_3x3.h` | SAYO_3X3: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_SAYO_3X3](../../docs/board/BOARD_SAYO_3X3_RGB.md) |
+| `sayo_2x4.h` | SAYO_2X4: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X4](../../docs/board/BOARD_SAYO_2X4_RGB.md) |
+| `sayo_2x6.h` | SAYO_2X6: 12키 (CH32V203, 기판 `2x6_RGB`) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X6_RGB](../../docs/board/BOARD_SAYO_2X6_RGB.md) (본 펌웨어 확인 중) |
 
 - **공통 기판 파일** `ch552_6k1n.h`: 두 보드가 같은 기판이라 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠
   - HAL 선택(`BOARD_HAL_CH55X`)도 여기서 정함
@@ -348,10 +352,14 @@ flowchart TB
 | `src/core/protocol.c/.h` | Vendor HID 명령 처리 (HELLO/READ/WRITE/COMMIT/TEST/BOOT), HELLO 보드 정보, 펌웨어 식별 문자열 |
 | `src/core/storage.c/.h` | 설정 블롭 저장, CRC 검사, 슬롯 찾기 (문자열, 패턴 암호, 설정 슬롯) |
 | `src/core/macro.c/.h` | 매크로 해석과 비동기 출력 (키 누름/뗌, DELAY) |
+| `src/core/battery.c/.h` | 배터리 추정(`BOARD_BATTERY` 보드만, 다른 보드 0 B): VDD + 650 mV, 4회 평활, Li-Po 곡선 %, 저전압 3.4 V·위험 3.1 V 플래그. LED 표시 없음 |
+| `src/core/bt_led.c/.h` | SAYO_2B3 상태 LED(`BOARD_BT_LED` 보드만, 다른 보드 0 B): 슬롯 파랑, 동글·유선 초록, 저전압 빨강, 키 흰색, 잔량 표시. 시간·값은 `bt_led.h` 상수 ([BOARD_SAYO_2X3B_RGB 4절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#led-의미)) |
 | `src/hal/hal.h` | **추상 하드웨어**: 기능 코드가 쓰는 이름 목록과 설명, 칩 구현 고르기 |
 | `src/hal/ch552/hal_ch552.c/.h` | CH55x 구현: 핀 설정, 스위치·노브 읽기(포트 직접), WS2812 LED, DataFlash(코어 `eeprom_*` 매크로), 칩 고유 ID, 부트로더 |
 | `src/hal/ch552/usb/` | USB 디스크립터, 요청 처리, 엔드포인트 (CH55xDuino qmkCompatibleKeyboard 예제 기반, LGPL-2.1) |
 | `src/hal/ch552/main_min.c` | 코어의 `main.c` 대신 쓰는 작은 `main()`과 인터럽트 표(USB, Timer0) |
+| `src/core/bt_app.c/.h` | SAYO_2B3 앱 동작: 키 흰색, USB 연결 초록, 배터리 10초마다 측정·저전압 빨강·위험 시 절전(USB 연결 중엔 안 함), 키 1+6 1초 잔량 파랑, `DEMO=1` 시험 동작 |
+| `src/hal/ch573/` | CH573 HAL(`hal_ch573.c`, `main.c`: TMR0, 키, Data-Flash 설정, USB 부트 키보드 + 벤더 HID `1209:C55D`, BOOT, 절전), 보드 파일 `sayo_2b3.h`, `battery_ch573.c`(VBAT −12 dB, 16회 평균), `led_ch573.c`(상태 LED 핀) |
 
 ### PC 검사 (tests/host)
 

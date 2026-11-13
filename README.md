@@ -13,9 +13,9 @@
 <!-- gen:versions -->
 | 항목 | 버전 | 정의한 곳 |
 |---|---|---|
-| 펌웨어 | 1.7.0 | `firmware/macro_keyboard/src/config.h` |
-| GUI | 1.7.0 | `gui/core/version.py` |
-| Python 프로젝트 | 1.7.0 | `pyproject.toml` |
+| 펌웨어 | 1.7.1 | `firmware/macro_keyboard/src/config.h` |
+| GUI | 1.7.1 | `gui/core/version.py` |
+| Python 프로젝트 | 1.7.1 | `pyproject.toml` |
 | CH32V203 부트로더 | 1.0 | `firmware/bootloader_ch32v203/main.c` |
 | 설정 프로토콜 | 2 | `firmware/macro_keyboard/src/core/protocol.h` |
 | 보드 정보 (HELLO) | 1 | `firmware/macro_keyboard/src/config.h` |
@@ -153,7 +153,7 @@ stateDiagram-v2
 ## 하드웨어 요약
 
 - 보드별 칩·키·LED·부트로더·진입 키: [docs/BOARDS.md](docs/BOARDS.md)
-- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4V_RGB.md), [SAYO_2X6](docs/board/BOARD_SAYO_2X6.md))
+- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](docs/board/BOARD_SAYO_2X6_RGB.md))
 
 ## 폴더 구조
 
@@ -173,10 +173,10 @@ stateDiagram-v2
 | 출시 | [CHANGELOG.md](CHANGELOG.md) | 저장소 전체 변경 기록: `## 미출시` 항목(문서 영향·반영 표시)과 버전별 요약 |
 | 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. 버튼 매핑, CH552G 칩 핀맵, 노브 신호 |
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
-| 보드 세부 | [board/BOARD_SAYO_3X3V_RGB.md](docs/board/BOARD_SAYO_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
-| 보드 세부 | [board/BOARD_SAYO_2X4V_RGB.md](docs/board/BOARD_SAYO_2X4V_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
-| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6.md](docs/board/BOARD_SAYO_2X6.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
-| 보드 세부 (준비 중) | [board/BOARD_BT_2X3.md](docs/board/BOARD_BT_2X3.md) | 6키(2×3) 블루투스, 식별 전: 식별 체크리스트 |
+| 보드 세부 | [board/BOARD_SAYO_3X3_RGB.md](docs/board/BOARD_SAYO_3X3_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 | [board/BOARD_SAYO_2X4_RGB.md](docs/board/BOARD_SAYO_2X4_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
+| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6_RGB.md](docs/board/BOARD_SAYO_2X6_RGB.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
+| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X3B_RGB.md](docs/board/BOARD_SAYO_2X3B_RGB.md) | 6키(2×3) 블루투스(CH573F), 준비 중: 핀·부트로더·본 펌웨어 1단계 |
 | 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
 | 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |

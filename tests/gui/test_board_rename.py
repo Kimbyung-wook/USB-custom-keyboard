@@ -151,3 +151,32 @@ def test_flash_dialog_shows_new_name_and_still_warns_for_another_board(tmp_path)
     dlg.confirm_force = lambda text: (forced.append(text), False)[1]
     assert dlg.start_btn.isEnabled() and not dlg.start() and not dev.ran
     assert forced and "SAYO_3X3 부트로더는 이 파일을 받지 않습니다" in forced[0]
+
+
+# ---- a board renamed before it is in boards.BOARDS (CH573 bootloader says BT_2X3)
+
+def test_pending_alias_names_the_same_board():
+    assert boards.current_name("BT_2X3") == "SAYO_2B3"
+    assert boards.same("BT_2X3", "SAYO_2B3") and boards.same("SAYO_2B3", "BT_2X3")
+    assert not boards.same("BT_2X3", "SAYO_2X3") and not boards.same("BT_2X3", "SAYO_2X4")
+    assert boards.display_name("BT_2X3") == "SAYO_2B3 (옛 이름 BT_2X3)"
+    if boards.find("SAYO_2B3") is None:          # not in the board list yet
+        assert boards.find("BT_2X3") is None
+
+
+@pytest.mark.parametrize("bootloader, image_board", [("BT_2X3", "SAYO_2B3"), ("SAYO_2B3", "BT_2X3")])
+def test_hidboot_takes_the_pending_alias(bootloader, image_board):
+    assert hidboot.board_mismatch(app(image_board), bootloader) == ""
+    assert "SAYO_3X3" in hidboot.board_mismatch(app("SAYO_3X3"), "BT_2X3")
+
+
+def test_board_names_fit_hello():
+    """Names and earlier names fit HELLO's name field (bytes 24-31), and an
+    earlier name means one board only."""
+    names = [b.name for b in boards.BOARDS]
+    aliases = [a for b in boards.BOARDS for a in b.aliases] + list(boards.PENDING_ALIASES)
+    for n in names + aliases + list(boards.PENDING_ALIASES.values()):
+        assert len(n.encode("ascii")) <= p.BOARD_NAME_LEN, n
+    assert len(set(names + aliases)) == len(names) + len(aliases)
+    # Once the board is in BOARDS, its earlier names belong in its aliases
+    assert not set(boards.PENDING_ALIASES.values()) & set(names)

@@ -1,7 +1,7 @@
 """Planned boards not yet in gui/core/boards.py: the GUI must draw and edit any
 layout HELLO reports (keys, rows, knobs), not only 6/8/9 keys.
 
-BT_2X3 (6 keys, 2 x 3, Bluetooth, no knob) is a working name; its BoardSpec
+SAYO_2B3 (6 keys, 2 x 3, Bluetooth, no knob) is a working name; its BoardSpec
 lives only here until the firmware has a board header
 (tests/gui/test_consistency.py compares those with boards.py). SAYO_2X6 (12
 keys, 2 x 6) is in boards.py since 2026-11-13; its 12-key tests stay here.
@@ -19,11 +19,11 @@ from gui.ui.app import MainWindow, make_mock_connector  # noqa: E402
 FEATURES = p.BOARD_FEATURE_RGB_LED | p.BOARD_FEATURE_LOCK | p.BOARD_FEATURE_AUTO_LOCK
 
 SAYO_2X6 = boards.find("SAYO_2X6")
-BT_2X3 = boards.BoardSpec(
-    "BT_2X3", "6키 (2x3), 노브 없음, 블루투스 (시험용)",
-    p.Board(keys=6, knobs=0, rows=2, name="BT_2X3", chip_id=0x19, features=FEATURES),
+SAYO_2B3 = boards.BoardSpec(
+    "SAYO_2B3", "6키 (2x3), 노브 없음, 블루투스 (시험용)",
+    p.Board(keys=6, knobs=0, rows=2, name="SAYO_2B3", chip_id=0x19, features=FEATURES),
     boot_config=0, boot_key="A", hidboot=True)
-PLANNED = (BT_2X3,)
+PLANNED = (SAYO_2B3,)
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +57,7 @@ def key_cells(w: MainWindow) -> dict[int, tuple[int, int]]:
             for k in range(grid.count())}
 
 
-@pytest.mark.parametrize("spec,cols", [(SAYO_2X6, 6), (BT_2X3, 3)], ids=lambda x: getattr(x, "name", x))
+@pytest.mark.parametrize("spec,cols", [(SAYO_2X6, 6), (SAYO_2B3, 3)], ids=lambda x: getattr(x, "name", x))
 def test_hello_layout_drawn(qapp, spec, cols):
     w = window(spec)
     w.show()
@@ -131,7 +131,7 @@ def test_switch_between_planned_and_known_boards(qapp, planned_boards):
     w = MainWindow(make_mock_connector(MockDevice()), auto_reconnect=False)
     combo = w.board_combo
     assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.BOARDS]
-    for name in ("SAYO_2X6", "MK6K1N", "BT_2X3", "SAYO_3X3", "SAYO_2X6"):
+    for name in ("SAYO_2X6", "MK6K1N", "SAYO_2B3", "SAYO_3X3", "SAYO_2X6"):
         i = combo.findData(name)
         w._on_board_picked(i)
         b = boards.find(name).layout
@@ -156,6 +156,6 @@ def test_flash_dialog_unknown_board_not_guessed(qapp):
     cannot tell which board it is instead of quietly picking one."""
     from gui.ui.flash_dialog import FirmwareDialog
     dlg = FirmwareDialog(lambda: "", scan_fn=lambda: [], hid_scan_fn=lambda: [], auto_scan=False,
-                         keyboard=BT_2X3.layout)
+                         keyboard=SAYO_2B3.layout)
     assert not dlg.identified
     dlg.close()

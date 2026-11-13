@@ -30,8 +30,17 @@
 */
 
 #include <stdint.h>
+// Another chip builds this same logic with its own HAL and pin table:
+// -DTEST_HAL_H='"x_hal.h"' -DTEST_PINS_H='"x_pins.h"' (tests/hw/ch573/test_ch573)
+#ifdef TEST_HAL_H
+#include TEST_HAL_H
+#else
 #include "ch32v203_hal.h"
+#endif
 
+#ifdef TEST_PINS_H
+#include TEST_PINS_H // NUM_PINS (at most 32), pinPort[], pinBit[]
+#else
 // Usable pins of the CH32V203C8U6 (QFN-48): PA0-PA10, PA13-PA15, PB0-PB5, PB8-PB15,
 // PC13-PC15. Left out: PA11/PA12 (USBD), PB6/PB7 (USBFS D-/D+, this firmware's USB).
 // PA13-PA15 and PB3/PB4 (SWD/JTAG) are included because the HAL turns SWJ off.
@@ -52,6 +61,7 @@ static const uint8_t pinBit[NUM_PINS] = {
   8, 9, 10, 11, 12, 13, 14, 15,
   13, 14, 15,
 };
+#endif
 
 #define NO_PIN 0xFF
 #define DEBOUNCE_MS 20
@@ -70,8 +80,15 @@ static uint8_t heldLong = 0;
 #define MODE_KEYS 0
 #define MODE_FIND 1
 #define MODE_ANODE 2
+#ifdef HAL_HAS_ADC // the HAL types its analog readings (hal_adc_report), every ADC_MS
+#define MODE_ADC 3
+#define NUM_MODES 4
+#define ADC_MS 2000
+static const char *modeNames[NUM_MODES] = {"KEYS", "FIND", "ANODE", "ADC"};
+#else
 #define NUM_MODES 3
 static const char *modeNames[NUM_MODES] = {"KEYS", "FIND", "ANODE"};
+#endif
 
 #define ANODE_MS 2000
 #define ANODE_GAP_MS 500
@@ -465,5 +482,11 @@ int main(void) {
     if (mode == MODE_ANODE) {
       anodeTask();
     }
+#ifdef HAL_HAS_ADC
+    if (mode == MODE_ADC && hal_millis() - stepAt >= ADC_MS) {
+      stepAt = hal_millis();
+      hal_adc_report();
+    }
+#endif
   }
 }

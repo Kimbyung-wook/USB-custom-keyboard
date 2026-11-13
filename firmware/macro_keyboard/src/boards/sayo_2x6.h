@@ -1,8 +1,8 @@
 #ifndef __MK_BOARD_SAYO_2X6_H__
 #define __MK_BOARD_SAYO_2X6_H__
 
-// SAYO_2X6: 12-key (2 x 6) CH32V203C8U6 keyboard, no knob (SayoDevice, exact
-// model not known yet). Name is provisional (docs/board/BOARD_SAYO_2X6.md).
+// SAYO_2X6: 12-key (2 x 6) CH32V203C8U6 keyboard, no knob (SayoDevice, PCB
+// marking 2x6_RGB; docs/board/BOARD_SAYO_2X6_RGB.md).
 // RGB LED per key (not WS2812), as SAYO_3X3/SAYO_2X4: R, G and B cathode
 // lines shared by a group of keys (low = lit), each key has its own anode pin
 // (high = lit). Same cathode pins as SAYO_3X3, grouped 1-2-3-7, 4-5-6-12,

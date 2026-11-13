@@ -2,13 +2,13 @@
 
 - 이름 두 가지
   - **보드 ID**(펌웨어 `BOARD_NAME`·GUI `boards.py`·`-Board`): 8자 이하, CH32V203 보드는 정확히 8자. Sayo 제품은 `SAYO_<행>X<열>`, 그 밖은 `MK<키>K<노브>N`[구분 글자] ([NEW_BOARD 5절](../NEW_BOARD.md#5-보드-파일gui스크립트시험-추가))
-  - **문서 파일·제목**: 제품 기판 이름. Sayo 제품은 `BOARD_SAYO_<기판 표기>.md`(예: 기판 `3X3V_RGB` → `BOARD_SAYO_3X3V_RGB.md`, 제목 `# SAYO_3X3V_RGB (9키)`). 기판 표기가 없거나 보드 ID와 같으면 `BOARD_<보드 ID>.md`
+  - **문서 파일·제목**: 제품 기판 이름. Sayo 제품은 `BOARD_SAYO_<기판 표기>.md`(예: 기판 `3X3V_RGB` → `BOARD_SAYO_3X3_RGB.md`, 제목 `# SAYO_3X3V_RGB (9키)`). 기판 표기가 없거나 보드 ID와 같으면 `BOARD_<보드 ID>.md`
   - 1절에 보드 ID와 기판 표기를 둘 다 적음
 
 - 모든 보드 문서는 아래 절 순서·제목·표 열 이름을 그대로 씀. 해당 없는 절은 "해당 없음" 한 줄
 - 본문은 현재 상태만. 날짜·버전별 변경은 **각 절 끝 `**이력**`**에 짧게(따로 "이력" 절을 두지 않음)
 - 다른 보드와 같은 내용은 옮겨 쓰지 않고 링크(예: MK6K1NL → MK6K1N 노브 신호)
-- 예: [BOARD_SAYO_3X3V_RGB.md](BOARD_SAYO_3X3V_RGB.md)
+- 예: [BOARD_SAYO_3X3_RGB.md](BOARD_SAYO_3X3_RGB.md)
 
 ## 절 순서
 

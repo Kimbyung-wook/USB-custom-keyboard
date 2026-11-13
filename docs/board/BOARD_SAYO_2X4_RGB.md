@@ -1,6 +1,6 @@
 # SAYO_2X4V_RGB (8키)
 
-- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 9키: [SAYO_3X3](BOARD_SAYO_3X3V_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
+- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 9키: [SAYO_3X3](BOARD_SAYO_3X3_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
 
 ## 1. 개요
 
@@ -50,7 +50,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 
 ![SAYO_2X4 칩 핀맵: CH32V203C8U6 48핀 윗면, 핀마다 연결된 키, LED 양극·음극, USB, BOOT](../images/pinmap_sayo_2x4.svg)
 
-- 핀 번호: 확인(자료표 V2.6 표 3-1-1, 2026-11-08). LQFP48/QFN48 공통 번호, QFN48만 0번 = 바닥 패드(VSS). 9키와 같은 칩([BOARD_SAYO_3X3V_RGB.md 3절](BOARD_SAYO_3X3V_RGB.md#3-칩-핀맵))
+- 핀 번호: 확인(자료표 V2.6 표 3-1-1, 2026-11-08). LQFP48/QFN48 공통 번호, QFN48만 0번 = 바닥 패드(VSS). 9키와 같은 칩([BOARD_SAYO_3X3_RGB.md 3절](BOARD_SAYO_3X3_RGB.md#3-칩-핀맵))
 
 | 핀 번호 | 이름 | 용도 | 비고 |
 |---|---|---|---|
@@ -91,7 +91,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 - 음극(캐소드) 핀은 9키와 같고 묶음만 다름. **낮추면 켜짐**
 - PA11/PA12: 시험 펌웨어는 건드리지 않아 추정 → 본 펌웨어 LED 점검(옛 방식: 빨강·초록·파랑·흰색)으로 확인 (2026-11-07)
 - **키마다 양극(애노드) 핀**, 높이면 켜짐 (ANODE 모드, 핀은 2절 표)
-- 구동 방식·밝기·꽂을 때 점검은 9키와 같음(색마다 차례로, 키별 양극으로 밝기, [BOARD_SAYO_3X3V_RGB.md 4절](BOARD_SAYO_3X3V_RGB.md#4-led)) → 묶음 구성은 펌웨어 동작에 영향 없음
+- 구동 방식·밝기·꽂을 때 점검은 9키와 같음(색마다 차례로, 키별 양극으로 밝기, [BOARD_SAYO_3X3_RGB.md 4절](BOARD_SAYO_3X3_RGB.md#4-led)) → 묶음 구성은 펌웨어 동작에 영향 없음
 - 꽂을 때 점검의 둘레 순서: 1, 2, 3, 4, 8, 7, 6, 5 (`BOARD_LED_RING`). 8개 모두 둘레라 계속 켜진 키 없음
 
 **이력**
@@ -112,7 +112,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 - 보드 파일: `firmware/macro_keyboard/src/boards/sayo_2x4.h`
 - 빌드: `tools\build_fw.ps1 -Board sayo_2x4` → 앱 `macro_keyboard-SAYO_2X4.bin`, 전체 이미지 `full-SAYO_2X4.bin`(`flash.ps1`은 안 씀)
 - 슬롯 8개: 키 1~8. 문자열 합계 최대 4072자
-- 잠금·LED·저장: 9키와 같음 ([BOARD_SAYO_3X3V_RGB.md 6절](BOARD_SAYO_3X3V_RGB.md#6-본-펌웨어에서의-동작)). 누르는 동안 누른 키만 초록, 나머지는 꺼짐
+- 잠금·LED·저장: 9키와 같음 ([BOARD_SAYO_3X3_RGB.md 6절](BOARD_SAYO_3X3_RGB.md#6-본-펌웨어에서의-동작)). 누르는 동안 누른 키만 초록, 나머지는 꺼짐
 
 **이력**
 

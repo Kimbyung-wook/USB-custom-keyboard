@@ -1,6 +1,6 @@
 # SAYO_3X3V_RGB (9키)
 
-- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 8키: [SAYO_2X4](BOARD_SAYO_2X4V_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
+- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열 8키: [SAYO_2X4](BOARD_SAYO_2X4_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
 
 ## 1. 개요
 

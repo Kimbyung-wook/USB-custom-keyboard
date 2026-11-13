@@ -3,15 +3,25 @@
 - 새 버전(펌웨어·GUI 같은 번호)을 낼 때 위에서부터 차례로. 한 단계라도 실패하면 거기서 멈추고 고침
 - 변경 기록: [CHANGELOG.md](../CHANGELOG.md) (항목 양식은 그 파일 맨 위)
 - 평소: 코드를 바꾸면 그때마다 CHANGELOG `## 미출시`에 한 줄 추가(`반영: ☐`), 문서를 고치면 `☑`
+- 평소 시험판: 바뀐 빌드를 실제 장치에 장입하기 전에 revision을 하나 올림(세 곳 같은 번호, 아래 체크리스트 2단계의 파일)
+
+## 버전 규칙
+
+- 형식 `major.minor.revision`. 펌웨어·GUI 같은 번호
+- 배포판: revision 0 (1.7.0, 1.8.0 …)
+- 시험판: 배포 뒤 수정은 revision만 올려 시험 (1.7.1, 1.7.2 …). 실제 장치에 장입하는 바뀐 빌드마다 하나씩
+- 배포 확정: minor를 올리고 revision 0 (1.7.x → 1.8.0). 호환이 깨지는 큰 변경은 major를 올림
+- GUI가 버전으로 기능을 판단할 때: 그 기능이 처음 들어간 **시험판 번호**를 기준으로 함(예: ≥1.7.2)
+- 번호는 계속 커지기만 함(되돌리거나 다시 쓰지 않음)
 
 ## 체크리스트
 
 | # | 할 일 | 확인 |
 |---|---|---|
 | 1 | CHANGELOG `## 미출시` 항목의 "문서 영향" 문서를 모두 고침 | 모든 항목이 `반영: ☑` |
-| 2 | 버전 올림: `firmware/macro_keyboard/src/config.h`(`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`), `gui/core/version.py`, `pyproject.toml` | 세 곳 같은 번호 (`test_consistency.py`가 검사) |
+| 2 | 버전 올림: 배포는 minor(또는 major)를 올리고 revision 0. `firmware/macro_keyboard/src/config.h`(`FW_MAJOR`/`FW_MINOR`/`FW_PATCH`), `gui/core/version.py`, `pyproject.toml` | 세 곳 같은 번호 (`test_consistency.py`가 검사) |
 | 3 | `uv run python tools\gen_docs.py` | 생성 구역(`gen:이름` 표시)이 최신, 문서 검사 통과 |
-| 4 | 보드 4개 빌드: `tools\build_fw.ps1 -Board <보드>` (mk6k1n, mk6k1nl, sayo_3x3, sayo_2x4) | 4개 모두 성공, 크기 확인 |
+| 4 | 보드 5개 빌드: `tools\build_fw.ps1 -Board <보드>` (mk6k1n, mk6k1nl, sayo_3x3, sayo_2x4, sayo_2x6) | 5개 모두 성공, 크기 확인 |
 | 5 | `uv run pytest` | 전부 통과 (GUI + host + 교차 검사) |
 | 6 | 바뀐 보드의 실제 장치 확인 (아래 표) | 보드 문서 7절 "확인 결과"에 날짜와 결과 |
 | 7 | CHANGELOG `## 미출시` → `## <버전> (<YYYY-MM-DD>)`, 각 항목의 "문서 영향"·"반영" 칸 지움. 각 문서 "이력"에 같은 날짜로 한 줄 | 미출시 절은 `- 없음` |
@@ -34,3 +44,7 @@
 | 7 | 업데이트 모드 | 진입 키로 들어감(보라) |
 
 - 새 보드를 처음 확인할 때는 [NEW_BOARD.md](NEW_BOARD.md) 6절의 표 전체
+
+**이력**
+
+- 2026-11-13: 버전 규칙 절(배포판 revision 0, 시험판 revision 증가), 2단계 배포 번호, 4단계 보드 5개(sayo_2x6)

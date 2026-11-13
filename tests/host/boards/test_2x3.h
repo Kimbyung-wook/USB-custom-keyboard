@@ -2,7 +2,7 @@
 #define __MK_TEST_BOARD_2X3_H__
 
 // Host-test stand-in for the 6-key (2 x 3) Bluetooth keyboard planned as
-// BT_2X3 (chip unknown). Only what src/core needs, with the small CH55x-size
+// SAYO_2B3 (chip unknown). Only what src/core needs, with the small CH55x-size
 // config (128 B) so the tight case is covered. Built with the host HAL only
 // (tests/host/run.py); not in src/boards or gui/core/boards.py.
 

@@ -70,7 +70,7 @@ BOARDS = (
               boot_config=BOOT_P15, boot_key="D",
               factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
                            "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
-    # CH32V203C8U6, 9 keys, no knob (docs/board/BOARD_SAYO_3X3V_RGB.md). Our own HID bootloader
+    # CH32V203C8U6, 9 keys, no knob (docs/board/BOARD_SAYO_3X3_RGB.md). Our own HID bootloader
     # (docs/BOOTLOADER_CH32V203.md): key 7 at power-up, or BOOT from the app. It goes
     # on once through the ROM bootloader (BOOT bridge, wchisp: flash_text).
     # Without a knob, holding any key starts the lock pattern entry.
@@ -83,7 +83,7 @@ BOARDS = (
               flash_text=r"tools\flash.ps1 -Board sayo_3x3 -Full",
               aliases=("3X3V_RGB",)),   # until firmware 1.7.0 and bootloader 1.0 (2026-11-08)
     # CH32V203C8U6, 8 keys (2 x 4), no knob, same scheme as SAYO_3X3; boot key 5
-    # (bottom left, PA5; docs/board/BOARD_SAYO_2X4V_RGB.md). Pins: firmware/macro_keyboard/src/boards/sayo_2x4.h
+    # (bottom left, PA5; docs/board/BOARD_SAYO_2X4_RGB.md). Pins: firmware/macro_keyboard/src/boards/sayo_2x4.h
     BoardSpec("SAYO_2X4", "8키 (2x4), 노브 없음, 키별 RGB LED (CH32V203)",
               Board(keys=8, knobs=0, rows=2, name="SAYO_2X4", chip_id=0x19,
                     features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
@@ -93,7 +93,7 @@ BOARDS = (
               flash_text=r"tools\flash.ps1 -Board sayo_2x4 -Full",
               aliases=("2X4V_RGB",)),   # until firmware 1.7.0 and bootloader 1.0 (2026-11-08)
     # CH32V203C8U6, 12 keys (2 x 6), no knob, same scheme as SAYO_3X3; boot key 7
-    # (bottom left, PA7; docs/board/BOARD_SAYO_2X6.md). Name provisional.
+    # (bottom left, PA7). PCB marking 2x6_RGB (docs/board/BOARD_SAYO_2X6_RGB.md).
     # Pins: firmware/macro_keyboard/src/boards/sayo_2x6.h
     BoardSpec("SAYO_2X6", "12키 (2x6), 노브 없음, 키별 RGB LED (CH32V203)",
               Board(keys=12, knobs=0, rows=2, name="SAYO_2X6", chip_id=0x19,
@@ -105,8 +105,16 @@ BOARDS = (
 )
 
 
+# Earlier names of boards not in BOARDS yet: earlier name -> current name.
+# A board's aliases move into its BoardSpec when it is added to BOARDS.
+PENDING_ALIASES = {
+    "BT_2X3": "SAYO_2B3",   # CH573 bootloader before the rename (2026-11-13)
+}
+
+
 def find(name: str) -> BoardSpec | None:
     """The board called ``name`` now or under an earlier name (aliases)."""
+    name = PENDING_ALIASES.get(name, name)
     for spec in BOARDS:
         if spec.name == name or name in spec.aliases:
             return spec
@@ -115,16 +123,13 @@ def find(name: str) -> BoardSpec | None:
 
 def same(a: str, b: str) -> bool:
     """``a`` and ``b`` name the same board (one may be an earlier name)."""
-    if a == b:
-        return True
-    spec = find(a)
-    return spec is not None and spec is find(b)
+    return current_name(a) == current_name(b)
 
 
 def current_name(name: str) -> str:
     """The board's name now (an earlier name -> the current one; unknown stays)."""
     spec = find(name)
-    return spec.name if spec else name
+    return spec.name if spec else PENDING_ALIASES.get(name, name)
 
 
 def display_name(name: str) -> str:

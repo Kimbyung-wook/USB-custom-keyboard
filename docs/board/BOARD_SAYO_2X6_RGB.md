@@ -1,14 +1,13 @@
-# SAYO_2X6 (12키)
+# SAYO_2X6_RGB (12키)
 
-- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열: [SAYO_3X3](BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](BOARD_SAYO_2X4V_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
+- 요약 표: [BOARDS.md](../BOARDS.md). 같은 계열: [SAYO_3X3](BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](BOARD_SAYO_2X4_RGB.md). 문서 양식: [_TEMPLATE.md](_TEMPLATE.md)
 - **상태: 핀 확인 완료, 본 펌웨어 확인 중**. 확인한 것: 칩, 키·LED 핀, 자체 부트로더 설치, 본 펌웨어의 꽂을 때 LED 점검, 부트로더 진입 보라 LED. 확인 전: 본 펌웨어 키 입력, GUI 설정 (7절)
-- 이름 `SAYO_2X6`은 임시(기판 표기를 알면 바꿀 수 있음). 준비 범위와 파일 위치: [NEW_BOARD.md 9절](../NEW_BOARD.md#9-식별-전-보드)
-- 문서 파일 이름은 기판 표기를 모르는 동안 `BOARD_SAYO_2X6.md`. 기판 표기를 알면 `BOARD_SAYO_<기판 표기>.md`로 바꿀 예정
 
 ## 1. 개요
 
 - 제품: SayoDevice 계열 12키 매크로 키패드 (정확한 모델명 확인 필요)
-- 보드 ID(펌웨어·GUI·`-Board`): `SAYO_2X6` (8자, 임시). 기판 표기: 확인 필요
+- 보드 ID(펌웨어·GUI·`-Board`): `SAYO_2X6` (8자). 문서 파일·제목은 기판 표기를 붙인 `SAYO_2X6_RGB`
+- 기판 표기: `2x6_RGB` (사용자 확인, 2026-11-13). 이름 규칙은 [NEW_BOARD 5절](../NEW_BOARD.md#5-보드-파일gui스크립트시험-추가)
 - 칩: **CH32V203C8U6** (칩 표기 사용자 확인, `wchisp info` 칩 ID 0x3019, 2026-11-13). 8키·9키와 같은 칩. 특성: [CHIPS.md](../CHIPS.md#칩-특성-표)
 - 구성: 2×6 키, **노브 없음**, 키마다 RGB LED 1개(색별 음극 + 키별 양극, 4절)
 - 개발 보드 UID: `CD-AB-6B-22-66-BD-9E-8B` (`wchisp info`, 2026-11-13). 공장 펌웨어(USB `8089:000B`)는 보호 해제로 지워짐
@@ -34,6 +33,7 @@
 **이력**
 
 - 2026-11-13: 칩·UID·보호 상태 확인, 보호 해제
+- 2026-11-13: 기판 표기 `2x6_RGB` 확인 → 보드 ID `SAYO_2X6` 확정(임시 아님), 문서 파일 이름 `BOARD_SAYO_2X6.md` → `BOARD_SAYO_2X6_RGB.md`
 
 ## 2. 버튼 배치와 매핑
 
@@ -77,7 +77,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 ## 3. 칩 핀맵
 
 - 그림(`pinmap_sayo_2x6.svg`): 아직 없음 (2절 그림과 함께 그릴 예정)
-- 핀 번호: 8키·9키와 같은 칩·같은 번호(자료표 V2.6 표 3-1-1, LQFP48/QFN48 공통, QFN48만 0번 = 바닥 패드 VSS, [BOARD_SAYO_3X3V_RGB.md 3절](BOARD_SAYO_3X3V_RGB.md#3-칩-핀맵))
+- 핀 번호: 8키·9키와 같은 칩·같은 번호(자료표 V2.6 표 3-1-1, LQFP48/QFN48 공통, QFN48만 0번 = 바닥 패드 VSS, [BOARD_SAYO_3X3_RGB.md 3절](BOARD_SAYO_3X3_RGB.md#3-칩-핀맵))
 
 | 핀 번호 | 이름 | 용도 | 비고 |
 |---|---|---|---|
@@ -110,7 +110,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 ## 4. LED
 
 - 방식: 8키·9키와 같음. **색별 음극**(낮추면 켜짐, 키 묶음이 공유) + **키별 양극**(높이면 켜짐, 핀은 2절 표). WS2812 아님
-- 구동 방식·밝기는 9키와 같음(색마다 차례로, 키별 양극으로 밝기, [BOARD_SAYO_3X3V_RGB.md 4절](BOARD_SAYO_3X3V_RGB.md#4-led))
+- 구동 방식·밝기는 9키와 같음(색마다 차례로, 키별 양극으로 밝기, [BOARD_SAYO_3X3_RGB.md 4절](BOARD_SAYO_3X3_RGB.md#4-led))
 - 그림(`leds_sayo_2x6.svg`): 아직 없음
 
 | 묶음 | 키 | 빨강 | 초록 | 파랑 |
@@ -150,7 +150,7 @@ LED 음극 (Low = 켜짐, 묶음마다 공통)
 - 보드 파일: `firmware/macro_keyboard/src/boards/sayo_2x6.h`
 - 빌드: `tools\build_fw.ps1 -Board sayo_2x6` → 앱 `macro_keyboard-SAYO_2X6.bin`, 전체 이미지 `full-SAYO_2X6.bin`(`flash.ps1`은 안 씀)
 - 슬롯 12개: 키 1~12. 문자열 합계 최대: 확인 필요
-- 잠금·LED·저장: 9키와 같음 ([BOARD_SAYO_3X3V_RGB.md 6절](BOARD_SAYO_3X3V_RGB.md#6-본-펌웨어에서의-동작)). 누르는 동안 누른 키만 초록, 나머지는 꺼짐
+- 잠금·LED·저장: 9키와 같음 ([BOARD_SAYO_3X3_RGB.md 6절](BOARD_SAYO_3X3_RGB.md#6-본-펌웨어에서의-동작)). 누르는 동안 누른 키만 초록, 나머지는 꺼짐
 - 꽂을 때 LED 점검 (`BOARD_LED_SELF_TEST`, `led.c`의 `wheelRing()`): 약 6.3초, 그 뒤 평소 동작
   - **빛 2개**가 둘레에서 마주 보며(6칸 떨어져) 시계방향으로 흐름. 둘레 순서 1→6→12→7, 즉 1, 2, 3, 4, 5, 6, 12, 11, 10, 9, 8, 7 (`BOARD_LED_RING`), 한 바퀴 1초
   - 빛 수: `BOARD_LED_RING_CHASE 2`. 둘레가 길어 2개로 함(다른 보드는 1개)

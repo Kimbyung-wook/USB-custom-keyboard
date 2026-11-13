@@ -300,6 +300,125 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
           [f"L0.{1 << last:02x}.2", "L1.00.0"])
 
 
+BAT_CURVE = [(3000, 0), (3450, 5), (3600, 10), (3670, 20), (3710, 30), (3750, 40), (3800, 50),
+             (3860, 60), (3920, 70), (4000, 80), (4100, 90), (4200, 100)]
+
+
+def bat_percent(v: int) -> int:
+    """Li-Po curve of src/core/battery.c: linear between points, rounded down."""
+    if v <= BAT_CURVE[0][0]:
+        return 0
+    for (v0, p0), (v1, p1) in zip(BAT_CURVE, BAT_CURVE[1:]):
+        if v < v1:
+            return p0 + (v - v0) * (p1 - p0) // (v1 - v0)
+    return 100
+
+
+def check_battery(out: Path) -> None:
+    """src/core/battery.c (SAYO_2B3 battery estimate) against a Python model:
+    the curve, smoothing, offset, low/critical flags with hysteresis."""
+    header = out / "test_battery.h"
+    header.write_text('#define BOARD_NAME "TEST_BAT"\n#define BOARD_BATTERY 1\n')
+    exe = out / "battery_test.exe"
+    subprocess.run(["gcc", "-std=c99", "-Wall", "-Werror", f'-DBOARD_HEADER="{header.as_posix()}"',
+                    "-I", str(SRC), str(HERE / "battery_test.c"), str(SRC / "core" / "battery.c"),
+                    "-o", str(exe)], check=True)
+    curve = subprocess.run([str(exe), "curve"], capture_output=True, text=True, check=True).stdout
+    want = "".join(f"{v} {bat_percent(v)}\n" for v in range(2900, 4301, 10))
+    check("battery: Li-Po curve 3.0 V = 0 %, 4.2 V = 100 %, monotonic", curve, want)
+    check("battery: curve ends", (bat_percent(3000), bat_percent(4200), bat_percent(3800)), (0, 100, 50))
+
+    # VDD readings: full, slow fall through low (3400) and critical (3100), back up
+    vdd = [3517] + list(range(3500, 2300, -40)) + list(range(2300, 3100, 40))
+    mv, low, crit, lines = 0, 0, 0, []
+    for r in vdd:
+        v = min(max(r + 650, 0), 6000)
+        mv = v if mv == 0 else mv + int((v - mv) / 4)  # C division truncates toward 0
+        low = (mv <= 3400 + 100) if low else (mv < 3400)
+        crit = (mv <= 3100 + 100) if crit else (mv < 3100)
+        lines.append(f"{mv} {bat_percent(mv)} {int(low)} {int(crit)}")
+    got = subprocess.run([str(exe)] + [str(r) for r in vdd], capture_output=True, text=True,
+                         check=True).stdout.splitlines()
+    check("battery: smoothing, +650 mV offset, low/critical hysteresis", got, lines)
+    check("battery: first reading 3517 mV = 4167 mV battery", got[0], f"4167 {bat_percent(4167)} 0 0")
+    flags = [ln.split()[2:] for ln in got]
+    check("battery: low and critical both set and cleared", (["1", "1"] in flags, flags[-1]),
+          (True, ["0", "0"]))
+
+
+BT_LED_WANT = {  # bits: 01 white, 02 green, 04 red, 08/10/20 blue slot 1/2/3
+    "pair_0": "10", "pair_1100": "00", "pair_1200": "10",
+    "reconn_2500": "10", "reconn_3500": "00", "reconn_4000": "10",
+    "conn_7999": "10", "conn_8000": "00",
+    "key_9029": "01", "key_9030": "00", "key_off": "00",
+    "dongle_2999": "02", "dongle_3000": "00", "usb_60000": "02",
+    "combo_fires": "01", "batt80": "38", "batt50": "18", "batt10": "08",
+    "batt_end": "00", "batt_end2": "08",
+    "low_0": "04", "low_49": "04", "low_50": "00", "low_5000": "04",
+    "crit_6000": "04", "crit_6100": "00", "crit_6200": "04", "crit_6599": "00",
+    "sleep_before": "00", "crit_6600": "00", "sleep_after": "01",
+}
+
+
+def check_bt_led(out: Path) -> None:
+    """src/core/bt_led.c (SAYO_2B3 status LEDs): blink timings, slots, dongle/USB green,
+    battery check (key 1 + 6), low/critical red, the 3-LED limit."""
+    header = out / "test_bt_led.h"
+    header.write_text('#define BOARD_NAME "TEST_LED"\n#define BOARD_BT_LED 1\n')
+    exe = out / "bt_led_test.exe"
+    subprocess.run(["gcc", "-std=c99", "-Wall", "-Werror", f'-DBOARD_HEADER="{header.as_posix()}"',
+                    "-I", str(SRC), str(HERE / "bt_led_test.c"), str(SRC / "core" / "bt_led.c"),
+                    "-o", str(exe)], check=True)
+    got = dict(ln.split() for ln in subprocess.run([str(exe)], capture_output=True, text=True,
+                                                   check=True).stdout.splitlines())
+    for group in ("pair", "reconn", "conn", "key", "dongle", "usb", "combo", "batt", "low", "crit", "sleep"):
+        names = [n for n in BT_LED_WANT if n.startswith(group + "_") or n == group]
+        check(f"bt_led: {group}", {n: got.get(n) for n in names}, {n: BT_LED_WANT[n] for n in names})
+
+
+BT_APP_WANT = {  # "<LED bits> <sleep>" or a plain value; bits as BT_LED_WANT
+    0: {"usb_off": "00 0", "usb_on": "02 0", "key_down": "03 0", "key_after": "02 0",
+        "combo_early": "02 0", "combo_fired": "38 0", "combo_end": "02 0",
+        "low_soon": "00 0", "low_red_ms": "50", "crit_usb": "02 0", "crit_batt": "00 1"},
+    1: {"demo_start": "0a 0", "demo_slot2": "12 0", "demo_slot_end": "02 0",
+        # dongle <-> USB: green only, no slot blue (board check 2026-11-13)
+        "demo_pair_seen": "12", "demo_dongle_seen": "02", "demo_dongle_end": "00 0",
+        "demo_usb_back_seen": "02", "demo_usb_back": "02 0", "demo_batt1": "1", "demo_batt2": "2",
+        "demo_crit_done": "02 0", "demo_batt_after": "0", "demo_combo": "38 0",
+        "demo_combo_batt": "0", "demo_combo_slot": "02 0"},
+}
+
+
+def check_bt_app(out: Path) -> None:
+    """src/core/bt_app.c (SAYO_2B3 stage 1): USB green, key blip, key 1 + 6 battery
+    level, low/critical from the smoothed reading, sleep only off the cable; the
+    LED check build (BTLED_DEMO=1) where keys set the BLE/dongle states."""
+    header = out / "test_bt_app.h"
+    header.write_text('#define BOARD_NAME "TEST_APP"\n#define BOARD_BT_LED 1\n#define BOARD_BATTERY 1\n')
+    for demo, want in BT_APP_WANT.items():
+        exe = out / f"bt_app_test{demo}.exe"
+        subprocess.run(["gcc", "-std=c99", "-Wall", "-Werror", f'-DBOARD_HEADER="{header.as_posix()}"',
+                        f"-DBTLED_DEMO={demo}", "-I", str(SRC), str(HERE / "bt_app_test.c"),
+                        *(str(SRC / "core" / f) for f in ("bt_app.c", "bt_led.c", "battery.c")),
+                        "-o", str(exe)], check=True)
+        got = dict(ln.split(" ", 1) for ln in subprocess.run(
+            [str(exe)], capture_output=True, text=True, check=True).stdout.splitlines())
+        check(f"bt_app{' demo' if demo else ''}: LED states", got, want)
+
+
+
+def check_bt_boot_key() -> None:
+    """SAYO_2B3: the bootloader's boot key pin (firmware/bootloader_ch573/boards)
+    is the app's BOARD_BOOT_KEY key; key 4 = PA9, bottom row left (2026-11-13)."""
+    boot = (ROOT / "firmware" / "bootloader_ch573" / "boards" / "sayo_2b3.h").read_text(encoding="utf-8")
+    app = (SRC / "hal" / "ch573" / "sayo_2b3.h").read_text(encoding="utf-8")
+    pin = re.search(r"^#define BOARD_BOOT_KEY_PIN (\d+), (\d+)", boot, re.M)
+    key = int(re.search(r"^#define BOARD_BOOT_KEY (\d+)", app, re.M).group(1))
+    pins = re.findall(r"\{(\d+), (\d+)\}", re.search(r"^#define BOARD_KEY_PINS (.*)$", app, re.M).group(1))
+    check("sayo_2b3 boot key: bootloader pin = app key", str(pins[key]), str(pin.groups()))
+    check("sayo_2b3 boot key: key 4 (PA9)", f"{key + 1} {pin.groups()}", "4 ('0', '9')")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
@@ -633,6 +752,11 @@ def main() -> int:
             check_board(out, name)
         for header in sorted(TEST_BOARDS.glob("*.h")):
             check_board(out, "", header)
+
+        check_battery(out)
+        check_bt_led(out)
+        check_bt_app(out)
+        check_bt_boot_key()
 
     print("all passed" if failures == 0 else f"{failures} failed")
     return 1 if failures else 0

@@ -59,6 +59,8 @@
 #include "ch552/hal_ch552.h"
 #elif BOARD_HAL_CH32V20X
 #include "ch32v203/hal_ch32v203.h"
+#elif BOARD_HAL_CH573
+#include "ch573/hal_ch573.h"
 #else
 #error no HAL for this board (src/hal)
 #endif

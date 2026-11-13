@@ -38,6 +38,7 @@
 
 - 2026-11-07: 모드 개편. PWR(9키 전용)·DUMP·BOOT 실험 모드 삭제, 그 결과는 아래 "결과"·"실험" 절
 - 2026-11-13: 행·열 매트릭스 키 감지(`M` 쌍) 추가, 12키(SAYO_2X6) 시험 순서 추가
+- 2026-11-13: 논리를 CH573 시험과 같이 씀(`TEST_HAL_H`·`TEST_PINS_H`)
 
 ## 빌드
 
@@ -60,6 +61,7 @@ mingw32-make
 - Makefile을 고친 뒤에는 `rm -rf build` 후 빌드 (make가 `build/src/*.c`를 지움)
   - 본 펌웨어(`Makefile.ch32v203`)·부트로더 Makefile은 헤더 의존성(`-MMD -MP`)이 있어 헤더만 고치면 다시 빌드됨. Makefile을 고쳤을 때는 둘 다 `rm -rf build`
 - QingKe V4는 즉시값 CSR 명령(`csrrci` 등)이 없음 → 전역 인터럽트는 CSR 0x800으로 제어
+- 같은 논리(`test_ch32v203.c`)를 CH573 시험([test_ch573](../../ch573/test_ch573/README.md))이 `TEST_HAL_H`·`TEST_PINS_H`로 칩 계층·핀 표를 바꿔 다시 씀. 기본값 그대로면 CH32V203 바이너리는 같음(확인, 2026-11-13)
 
 ## 장입 방법
 
@@ -119,7 +121,7 @@ mingw32-make
 ### SAYO_2X4 (8키)
 
 - 제품: SayoDevice Keyb T8B7 (같은 계열 9키 = SAYO_3X3)
-- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_SAYO_2X4V_RGB.md](../../../../docs/board/BOARD_SAYO_2X4V_RGB.md). 아래는 시험 전에 적은 계획
+- **결과 (2026-11-07)**: 키 PA6·PA15·PB5·PB9·PA5·PA7·PB0·PA4, 음극은 9키와 같은 핀(묶음 1·2·3 / 5·6·7 / 4·8), 키별 양극 PB14·PB3·PB4·PB8·PB13·PB15·PB12·PB11, `STUCK PB02` → [BOARD_SAYO_2X4_RGB.md](../../../../docs/board/BOARD_SAYO_2X4_RGB.md). 아래는 시험 전에 적은 계획
 
 **확인된 것** (사용자 확인, 장치 시험 전)
 
@@ -147,8 +149,8 @@ mingw32-make
 
 - 사용자 확인: 2행 × 6열, 칩 **CH32V203C8U6**(2026-11-13). 아래 1~7단계 끝(2026-11-13): 보드 파일 작성, 본 펌웨어는 키 7 + HID로 설치.
 - **키 결과 (2026-11-13)**: `RST NO`, `STUCK PB02`. 모두 직접 연결(매트릭스 아님)
-  - 키 1~6: PB0·PA15·PC13·PA14·PB8·PC14, 키 7~12: PA7·PA6·PA5·PA4·PA3·PC15 → [BOARD_SAYO_2X6.md](../../../../docs/board/BOARD_SAYO_2X6.md#2-버튼-배치와-매핑)
-- **LED 결과 (2026-11-13)**: 음극은 9키와 같은 핀(묶음 1·2·3·7 / 9·10·11 / 4·5·6·12), 키별 양극 PB13·PB14·PB3·PB4·PB5·PB9·PB1·PB2·PB10·PB15·PB12·PB11. 키 8은 두 모드 모두 안 켜짐 → PB2(`STUCK`, 시험 제외)로 추정, 본 펌웨어 LED 점검으로 확인(PA11·PA12 포함) → [BOARD_SAYO_2X6.md](../../../../docs/board/BOARD_SAYO_2X6.md#4-led)
+  - 키 1~6: PB0·PA15·PC13·PA14·PB8·PC14, 키 7~12: PA7·PA6·PA5·PA4·PA3·PC15 → [BOARD_SAYO_2X6_RGB.md](../../../../docs/board/BOARD_SAYO_2X6_RGB.md#2-버튼-배치와-매핑)
+- **LED 결과 (2026-11-13)**: 음극은 9키와 같은 핀(묶음 1·2·3·7 / 9·10·11 / 4·5·6·12), 키별 양극 PB13·PB14·PB3·PB4·PB5·PB9·PB1·PB2·PB10·PB15·PB12·PB11. 키 8은 두 모드 모두 안 켜짐 → PB2(`STUCK`, 시험 제외)로 추정, 본 펌웨어 LED 점검으로 확인(PA11·PA12 포함) → [BOARD_SAYO_2X6_RGB.md](../../../../docs/board/BOARD_SAYO_2X6_RGB.md#4-led)
 - 자체 부트로더 + 앱 자리용 시험 펌웨어 설치(2026-11-13): 이후 시험 펌웨어 교체는 브리지 없이 키 7 → 아래 "부트로더 뒤에 올리기". 부트로더는 그 뒤 LED 핀이 들어간 빌드(4,472 B)로 교체(wchisp, 검증 OK)
 
 **시험할 것** (순서대로)

@@ -115,6 +115,22 @@
 10. ✅ 12키(SAYO_2X6): 부트로더(LED 핀 없는 빌드) + 앱 자리 시험 펌웨어를 `mkfull.py`로 합쳐 wchisp로 설치, 키 7 진입(`hidboot info` 부트로더 1.0, SAYO_2X6), 브리지 없이 시험 펌웨어·본 펌웨어 HID 장입 (2026-11-13)
 11. ✅ 12키: 부트로더를 LED 핀 빌드(4,472 B)로 wchisp 교체, 검증 OK → 새 본 펌웨어(12,612 B) HID 장입, CRC 확인. 키 7 진입 보라 LED 정상 (2026-11-13)
 
+## CH573 (SAYO_2B3)
+
+- `firmware/bootloader_ch573`: 이 문서의 HID 명령을 그대로 씀(`1209:C55E`, HELLO/ERASE/WRITE/CHECK/RUN) → `hidboot`·GUI 업데이트 창 그대로
+- 배치: 부트로더 0x0000(8 KB 자리, 5,204 B), 앱 정보 0x2000(4 KB 블록), 앱 0x3000~0x6FFFF(446,464 B)
+- 진입: 키 4(PA9)를 누른 채 SW1 켜기, 앱의 BOOT(`R8_GLOB_RESET_KEEP` = 0xB0 뒤 소프트 리셋), 앱 정보 없음·CRC 틀림
+- 다른 점
+  - ERASE는 정보 블록만 지우고, 앱 블록은 WRITE가 처음 닿을 때 지움
+  - HELLO [45] = 칩 ID 0x73, UID 8 B(ROM 명령 GET_UNIQUE_ID 값 → `wchisp info` UID와 다름. 앱 HELLO도 같은 값)
+  - 머무는 동안 L5 빨강(PA15) 깜빡임(CH32V203 보드는 보라)
+  - 32 kHz 크리스털 기능은 켜지 않음(PA10·PA11은 키)
+  - USB는 앱과 같은 인터럽트 방식(전용 HID 끝점 EP2, 처리기 RAM). 모르는 표준 GET_DESCRIPTOR에 STALL 대신 0 B 응답(STALL이면 Windows 코드 10)
+- 칩 의존 코드: `chip_ch57x.c`, `usb_hid.c`(CH582 재사용 대비)
+- 빌드: `firmware/bootloader_ch573`에서 `mingw32-make`. `test-app`·`ble-app`(0x3000에 링크한 핀 시험 펌웨어·SDK BLE `HID_Keyboard` 예제), `full APP=test` 또는 `APP=ble`(`mkfull.py` 첫 설치 이미지), `flash`(wchisp, ROM 부트로더: PB22 → GND + SW1)
+- 상태: **설치함·확인**(2026-11-13): 키 4 진입, `hidboot` info·flash·run → 앱 `1209:C55D` 정상. 진단용 빌드(`BL_USB_DIAG`, `BL_USB_COMPOSITE`)와 보드 쪽 내용은 [BOARD_SAYO_2X3B_RGB 5절](board/BOARD_SAYO_2X3B_RGB.md#자체-부트로더-ch573)
+  - 기판에 설치된 부트로더는 옛 이름 `BT_2X3`을 보고함 → 새 이름(`SAYO_2B3`) 앱은 `hidboot` 보드 확인에서 거부됨. GUI 별칭이 없으면 `--force` 또는 wchisp로 첫 설치 이미지(full) 다시 쓰기
+
 ## 이력
 
 - 2026-11-07: 구현, SAYO_3X3 하드웨어 시험. 이어서 진입 키·LED 핀을 보드 파일에서 읽게 바꾸고 SAYO_2X4 추가
@@ -123,6 +139,8 @@
 - 2026-11-07: 8키도 1.7.0 HID 장입 확인(보드 검사 통과, 설정 유지. 부트로더는 옛 빌드 그대로)
 - 2026-11-07: HID 장입이 보드 불일치·식별 문자열 없는 `.bin`을 거부(`--force`/`-Force`로만)
 - 2026-11-13: SAYO_2X6 추가. LED 핀이 없는 보드 파일도 빌드(LED 구동 안 함). 12키 부트로더는 LED 핀 빌드로 바꿈
+- 2026-11-13: CH573(SAYO_2B3, 옛 이름 BT_2X3) 부트로더 절 추가(같은 HID 명령, 미설치)
+- 2026-11-13: SAYO_2B3 진입 키 6 → 키 4, USB 인터럽트 방식·0 B 응답으로 고쳐 설치·확인
 
 ### 시험 중 고친 문제 (2026-11-07)
 

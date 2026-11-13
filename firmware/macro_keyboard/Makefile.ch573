@@ -1,0 +1,107 @@
+# CH573 build of the macro keyboard (board SAYO_2B3, stage 1: USB cable keyboard
+# + status LEDs + battery reading, no BLE yet): RISC-V GCC (xPack) + WCH CH573 EVT SDK.
+#   mingw32-make -f Makefile.ch573             -> build/ch573/macro_keyboard-SAYO_2B3.bin
+#   mingw32-make -f Makefile.ch573 DEMO=1      -> ...-SAYO_2B3-demo.bin: keys set the LED
+#                                                 states instead of typing (src/core/bt_app.h)
+#   mingw32-make -f Makefile.ch573 full [DEMO=1] -> ...-full.bin: bootloader + app info + app
+#                                                 (first install with wchisp; needs approval)
+# The app is linked at BOOT_APP_ADDR behind firmware/bootloader_ch573 (numbers
+# from its boot_layout.h); later updates go through that bootloader (gui/core/hidboot.py).
+# Nothing here flashes. After editing this file delete build/ch573.
+.RECIPEPREFIX = >
+
+MK_CH57X_SDK ?= C:/Users/user/tools/sdk_ch573/EVT
+SDK ?= $(MK_CH57X_SDK)
+EXAM := $(SDK)/EXAM
+DRV := $(EXAM)/SRC/StdPeriphDriver
+SDK_LD := $(EXAM)/SRC/Ld/Link.ld
+BL_DIR := ../bootloader_ch573
+BOARD := SAYO_2B3
+DEMO ?= 0
+# Config store in Data-Flash (RAM: storage.c keeps 2 copies + the HAL shadow)
+STORE_SIZE := 2048
+PYTHON ?= python
+
+layout = $(shell sed -n 's/^\#define $(1) \(0x[0-9A-Fa-f]*\)u.*/\1/p' $(BL_DIR)/boot_layout.h)
+APP_ADDR := $(call layout,BOOT_APP_ADDR)
+FLASH_SIZE := $(call layout,BOOT_FLASH_SIZE)
+APP_MAX := $(shell echo $$(($(FLASH_SIZE) - $(APP_ADDR))))
+APP_LEN := $(shell printf '0x%X' $(APP_MAX))
+
+SUFFIX := $(if $(filter 1,$(DEMO)),-demo,)
+TARGET := macro_keyboard-$(BOARD)$(SUFFIX)
+OUT := build/ch573
+BUILD := $(OUT)/obj-$(BOARD)$(SUFFIX)
+BIN := $(OUT)/$(TARGET).bin
+FULL := $(OUT)/$(TARGET)-full.bin
+BL_BIN := $(BL_DIR)/build/bootloader-$(BOARD).bin
+PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
+CC := $(PREFIX)gcc
+OBJCOPY := $(PREFIX)objcopy
+SIZE := $(PREFIX)size
+
+ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8 -mno-save-restore
+DEFS := -DMK_CHIP_CH573 -DBOARD_HEADER='"hal/ch573/sayo_2b3.h"' -DBLOB_CAPACITY=$(STORE_SIZE) \
+        -DBTLED_DEMO=$(DEMO) $(EXTRA_DEFS)
+CFLAGS := $(ARCH) $(DEFS) -MMD -MP -Os -g -ffunction-sections -fdata-sections -fno-common \
+          -Wall -Wextra -Wno-unused-parameter
+ASFLAGS := $(ARCH) -x assembler-with-cpp
+INCS := -Isrc -Isrc/core -Isrc/hal/ch573 -I$(DRV)/inc -I$(EXAM)/SRC/RVMSIS
+LDSCRIPT := $(BUILD)/app.ld
+LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map \
+           --specs=nano.specs --specs=nosys.specs
+
+SRCS_ASM := startup_CH573.S
+SRCS_C := app.c input.c led.c lock.c macro.c protocol.c storage.c battery.c bt_led.c bt_app.c \
+          hal_ch573.c led_ch573.c battery_ch573.c main.c \
+          core_riscv.c CH57x_clk.c CH57x_gpio.c CH57x_sys.c CH57x_timer0.c CH57x_pwr.c CH57x_adc.c
+
+# vpath per type (src/hal/ch32v203 has a main.c too: not searched)
+vpath %.c src/core src/hal/ch573 $(EXAM)/SRC/RVMSIS $(DRV)
+vpath %.S $(EXAM)/SRC/Startup
+OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
+
+all: $(BIN)
+full: $(FULL)
+
+# SDK link script with the app at BOOT_APP_ADDR
+$(LDSCRIPT): $(SDK_LD) Makefile.ch573 $(BL_DIR)/boot_layout.h | $(BUILD)
+> sed -e 's/ORIGIN = 0x00000000, LENGTH = 448K/ORIGIN = $(APP_ADDR), LENGTH = $(APP_LEN)/' $< > $@
+> grep -q 'ORIGIN = $(APP_ADDR)' $@
+
+$(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
+> $(CC) $(LDFLAGS) -o $@ $(OBJS) $(DRV)/libISP573.a -lc -lgcc
+> $(SIZE) $@
+
+$(BIN): $(BUILD)/$(TARGET).elf
+> $(OBJCOPY) -O binary $< $@
+> @n=$$(wc -c < $@); if [ $$n -gt $(APP_MAX) ]; then echo "ERROR: app $$n bytes > $(APP_MAX)"; rm -f $@; exit 1; fi
+> @echo "$@: $$(wc -c < $@) bytes"
+
+$(BL_BIN): FORCE
+> $(MAKE) -C $(BL_DIR) BOARD=$(BOARD)
+
+$(FULL): $(BIN) $(BL_BIN) $(BL_DIR)/mkfull.py
+> $(PYTHON) $(BL_DIR)/mkfull.py $(BL_BIN) $(BIN) $@
+
+# Stock GCC does not know the WCH interrupt attribute; "machine" gives the same mret
+$(BUILD)/src/%.c: %.c | $(BUILD)/src
+> sed -e 's/WCH-Interrupt-fast/machine/g' $< > $@
+
+$(BUILD)/%.o: $(BUILD)/src/%.c | $(BUILD)
+> $(CC) $(CFLAGS) $(INCS) -c $< -o $@
+
+$(BUILD)/%.o: %.S | $(BUILD)
+> $(CC) $(ASFLAGS) -c $< -o $@
+
+$(BUILD) $(BUILD)/src:
+> mkdir -p $@
+
+-include $(OBJS:.o=.d)
+
+clean:
+> rm -rf $(BUILD) $(BIN) $(FULL)
+
+FORCE:
+.PHONY: all full clean FORCE
+.SECONDARY:
