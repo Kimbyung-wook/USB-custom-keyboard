@@ -1,9 +1,10 @@
 """Planned boards not yet in gui/core/boards.py: the GUI must draw and edit any
 layout HELLO reports (keys, rows, knobs), not only 6/8/9 keys.
 
-SAYO_2X6 (12 keys, 2 x 6) and BT_2X3 (6 keys, 2 x 3, Bluetooth, no knob) are
-working names; their BoardSpecs live only here until the firmware has board
-headers (tests/gui/test_consistency.py compares those with boards.py).
+BT_2X3 (6 keys, 2 x 3, Bluetooth, no knob) is a working name; its BoardSpec
+lives only here until the firmware has a board header
+(tests/gui/test_consistency.py compares those with boards.py). SAYO_2X6 (12
+keys, 2 x 6) is in boards.py since 2026-11-13; its 12-key tests stay here.
 """
 import pytest
 
@@ -17,15 +18,12 @@ from gui.ui.app import MainWindow, make_mock_connector  # noqa: E402
 
 FEATURES = p.BOARD_FEATURE_RGB_LED | p.BOARD_FEATURE_LOCK | p.BOARD_FEATURE_AUTO_LOCK
 
-SAYO_2X6 = boards.BoardSpec(
-    "SAYO_2X6", "12키 (2x6), 노브 없음 (시험용)",
-    p.Board(keys=12, knobs=0, rows=2, name="SAYO_2X6", chip_id=0x19, features=FEATURES),
-    boot_config=0, boot_key="A", hidboot=True)
+SAYO_2X6 = boards.find("SAYO_2X6")
 BT_2X3 = boards.BoardSpec(
     "BT_2X3", "6키 (2x3), 노브 없음, 블루투스 (시험용)",
     p.Board(keys=6, knobs=0, rows=2, name="BT_2X3", chip_id=0x19, features=FEATURES),
     boot_config=0, boot_key="A", hidboot=True)
-PLANNED = (SAYO_2X6, BT_2X3)
+PLANNED = (BT_2X3,)
 
 
 @pytest.fixture(scope="module")
@@ -158,6 +156,6 @@ def test_flash_dialog_unknown_board_not_guessed(qapp):
     cannot tell which board it is instead of quietly picking one."""
     from gui.ui.flash_dialog import FirmwareDialog
     dlg = FirmwareDialog(lambda: "", scan_fn=lambda: [], hid_scan_fn=lambda: [], auto_scan=False,
-                         keyboard=SAYO_2X6.layout)
+                         keyboard=BT_2X3.layout)
     assert not dlg.identified
     dlg.close()

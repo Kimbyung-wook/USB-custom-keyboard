@@ -100,6 +100,8 @@
 | `BOARD_BOOT_KEY` | CH32V203: 자체 부트로더 진입 키(0부터 센 슬롯 번호, 왼쪽 아래 키 권장). 부트로더와 `tools/flash.ps1` 안내가 이 값을 읽음 |
 | LED | `BOARD_LED_COUNT`, `BOARD_KEY_LEDS`(1 = 키마다 LED). CH32V203: `BOARD_LED_ROWS`, `BOARD_LED_PINS`(음극 R·G·B), `BOARD_KEY_LED_PINS`(양극) |
 | `BOARD_LED_SELF_TEST` | 1이면 꽂을 때 색 바퀴 점검 (지금 모든 보드 1) |
+| `BOARD_LED_RING` | 키마다 LED인 보드: 꽂을 때 점검의 빛이 도는 순서(슬롯 번호, 1번 키부터 윗면에서 시계방향). 둘레에 없는 키(9키 가운데)는 계속 켜짐 |
+| `BOARD_LED_RING_CHASE` | n(1 이상) = 둘레를 흐르는 빛 n개(둘레 칸 수가 n으로 나눠져야 함), 0 = 무지개 회전. 지금 SAYO_2X6은 2, 다른 키별 LED 보드는 1 |
 
 - 기판이 기존 보드와 같으면 이름과 LED만 다른 보드 파일 하나(MK6K1NL처럼). 다르면 공통 기판 파일도 새로
 
@@ -185,11 +187,12 @@
 
 - 칩·핀·LED·부트로더를 모르는 상태에서 미리 준비하는 범위와 파일 위치. 코드 세션도 이 표를 따름
 - 임시 이름(8자 이하, 식별 뒤 바꿀 수 있음)
+- SAYO_2X6: 핀 확인 끝(2026-11-13). 아래 9-1의 "식별 후" 항목(보드 파일, `config.h`, `boards.py`, 빌드·장입 스크립트, host 시험)은 만들어짐. 그림(`buttons_<보드>.svg` 등)만 남음. 같은 칩이라 칩 표·HAL·시험 펌웨어는 새로 안 만듦
 
 | 임시 이름 | 제품 | 배치 | 알려진 것 | 문서 |
 |---|---|---|---|---|
-| `SAYO_2X6` | SayoDevice 12키 | 2행 × 6열, 12키 | 같은 계열(SAYO_3X3·SAYO_2X4)이라 CH32V203일 수 있음(미확인) | [BOARD_SAYO_2X6.md](board/BOARD_SAYO_2X6.md) |
-| `BT_2X3` | 제조사 미상 6키 | 2행 × 3열, 6키 | 블루투스. 칩 미상(WCH BLE 칩 CH582/CH592, nRF 등 가능) | [BOARD_BT_2X3.md](board/BOARD_BT_2X3.md) |
+| `SAYO_2X6` | SayoDevice 12키 | 2행 × 6열, 12키 | CH32V203C8U6, 키·LED 핀 확인, 보드 파일·자체 부트로더 있음, 본 펌웨어 확인 중(2026-11-13) | [BOARD_SAYO_2X6.md](board/BOARD_SAYO_2X6.md) |
+| `BT_2X3` | 제조사 미상 6키 | 2행 × 3열, 6키 | 블루투스. 기판 `2x3M_BLE_Ver1.1`, 칩 표기 CH573F(WCH BLE SoC, 2026-11-13). 자료표·USB·동글 확인 전 | [BOARD_BT_2X3.md](board/BOARD_BT_2X3.md) |
 
 ### 9-1. 파일 구조
 
@@ -198,8 +201,8 @@
 
 | 구분 | 기준 폴더 | 새 파일·폴더 | 언제 | 담당 |
 |---|---|---|---|---|
-| 보드 문서 | `docs/board/` | `BOARD_SAYO_2X6.md`, `BOARD_BT_2X3.md` | 지금 (초안, 생성 구역 없음) | 문서 |
-| 보드 요약 | `docs/BOARDS.md` | "준비 중 보드" 절 (생성 표 `boards`에는 안 넣음) | 지금 | 문서 |
+| 보드 문서 | `docs/board/` | `BOARD_SAYO_2X6.md`, `BOARD_BT_2X3.md` | 지금 (초안. SAYO_2X6은 보드 목록에 넣은 뒤 생성 구역 `pins-SAYO_2X6` 있음) | 문서 |
+| 보드 요약 | `docs/BOARDS.md` | "준비 중 보드" 절 (생성 표 `boards`에는 보드 목록에 넣은 뒤 나옴) | 지금 | 문서 |
 | 그림 | `docs/images/` | `buttons_<보드>.svg`, `pinmap_<보드>.svg` (`tools/draw_pinmap.py`) | 식별 후 | 문서 |
 | GUI 배치 | `gui/core/` | 2×6, 2×3 키 배치 준비 | 지금 | GUI |
 | GUI 보드 목록 | `gui/core/boards.py` | `BoardSpec` 추가 → 생성 구역 `boards`, `pins-<보드>`에 나타남 | 식별 후 | GUI |

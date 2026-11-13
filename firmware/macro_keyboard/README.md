@@ -1,6 +1,6 @@
 # macro_keyboard: 본 펌웨어 v1.7
 
-- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4). 보드별 핀은 `docs/board/BOARD_<보드>.md`
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
 - 이 문서의 예시는 MK6K1N 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
 - [gui](../../gui/) 설정 프로그램과 [PROTOCOL.md](../../docs/PROTOCOL.md) v2 규격으로 통신함
@@ -31,9 +31,10 @@
 
 - 꽂을 때 LED 점검(`BOARD_LED_SELF_TEST`, 모든 보드): 약 6.3초, `src/core/led.c`
   - 색은 색 바퀴(빨강→노랑→초록→청록→파랑→보라→빨강)를 3초 주기로 2번, 끝나면 0.3초 꺼짐
-  - 키마다 LED인 보드(`BOARD_LED_RING`): 빛 하나가 둘레를 1번 키부터 시계방향으로 흐름(이웃한 두 칸 교차 페이드: 현재 칸이 어두워지는 동안 다음 칸이 밝아짐), 한 바퀴 1초. 둘레 순서는 SAYO_3X3 1, 2, 3, 6, 9, 8, 7, 4(가운데 5번은 계속 켜짐), SAYO_2X4 1, 2, 3, 4, 8, 7, 6, 5, MK6K1NL A, B, C, F, E, D
+  - 키마다 LED인 보드(`BOARD_LED_RING`): 빛 하나가 둘레를 1번 키부터 시계방향으로 흐름(이웃한 두 칸 교차 페이드: 현재 칸이 어두워지는 동안 다음 칸이 밝아짐), 한 바퀴 1초. 둘레 순서는 SAYO_3X3 1, 2, 3, 6, 9, 8, 7, 4(가운데 5번은 계속 켜짐), SAYO_2X4 1, 2, 3, 4, 8, 7, 6, 5, SAYO_2X6 1~6, 12~7(빛 2개), MK6K1NL A, B, C, F, E, D
   - MK6K1N: LED 1개라 색 바퀴만
-  - 빌드 옵션: 보드 헤더의 `BOARD_LED_RING_CHASE 0`이면 무지개 회전(모든 칸이 켜진 채 색이 시계방향으로 이동)
+  - 빛 수: 보드 헤더의 `BOARD_LED_RING_CHASE n`(1 이상) = 빛 n개가 둘레에 고르게 떨어져 흐름. 둘레 칸 수가 n으로 나눠져야 함(아니면 빌드 실패). SAYO_2X6은 2, 다른 보드는 1
+  - `BOARD_LED_RING_CHASE 0`이면 무지개 회전(모든 칸이 켜진 채 색이 시계방향으로 이동)
 
 ### 부트로더 진입 (펌웨어 업데이트)
 
@@ -71,7 +72,7 @@
   - 2초 넘게 누르면 패턴 입력이 시작되고 문자열은 입력 안 됨
   - 패턴 암호가 없으면 누를 때 입력됨
 - 2초 누르기는 **꽂은 뒤에** (노브 없는 보드는 진입 키를 누른 채 꽂으면 부트로더)
-- **노브 없는 보드(SAYO_3X3, SAYO_2X4)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
+- **노브 없는 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)**: 위의 "노브 2초"는 **아무 키 2초** (`src/core/input.c`)
   - 패턴 단계는 키만
   - 키는 항상 누를 때 입력(뗄 때 입력은 늦게 느껴짐). 풀린 상태에서 2초 눌러 다시 잠그면 그 키가 한 번 입력됨
 - 잠긴 동안 GUI에서 읽기·테스트 입력 안 됨
@@ -89,10 +90,11 @@
 - 2026-11-07: 누르는 동안 나머지 LED 꺼짐(전에는 파랑)
 - 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴)
 - 2026-11-10: 키마다 LED인 보드의 LED 점검이 둘레를 흐르는 빛으로 회전
+- 2026-11-13: SAYO_2X6(12키) 추가, LED 점검 빛 수 `BOARD_LED_RING_CHASE n`
 
 ## 빌드
 
-- **CH32V203 보드(SAYO_3X3, SAYO_2X4)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
+- **CH32V203 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)**: `Makefile.ch32v203` 사용. xPack riscv-none-elf-gcc + `mingw32-make`, WCH EVT SDK 필요
   (경로·주의점은 [PORT_CH32V203](../../docs/old/PORT_CH32V203.md), [test_ch32v203](../../tests/hw/ch32v203/test_ch32v203/README.md)). 아래 Arduino 설명은 CH552용
   - `BOOTLOADER ?= 1`(기본): 자체 부트로더용. 앱 시작 0x08002000, 최대 52992 B. `BOOTLOADER=0`은 부트로더 없는 배치(바꾸면 `rm -rf build`)
   - 보통은 `tools\build_fw.ps1 -Board sayo_3x3` → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203](../../docs/BOOTLOADER_CH32V203.md) 빌드)
@@ -170,6 +172,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 | `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
 | `sayo_3x3.h` | SAYO_3X3: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_SAYO_3X3](../../docs/board/BOARD_SAYO_3X3V_RGB.md) |
 | `sayo_2x4.h` | SAYO_2X4: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X4](../../docs/board/BOARD_SAYO_2X4V_RGB.md) |
+| `sayo_2x6.h` | SAYO_2X6: 12키 (CH32V203), 이름 임시 | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X6](../../docs/board/BOARD_SAYO_2X6.md) (본 펌웨어 확인 중) |
 
 - **공통 기판 파일** `ch552_6k1n.h`: 두 보드가 같은 기판이라 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠
   - HAL 선택(`BOARD_HAL_CH55X`)도 여기서 정함
@@ -184,7 +187,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 |---|---|---|
 | `tools/build_fw.ps1 -Board mk6k1n` | `-DBOARD_MK6K1N` | `build/macro_keyboard-MK6K1N.hex` |
 | `tools/build_fw.ps1 -Board mk6k1nl` | `-DBOARD_MK6K1NL` | `build/macro_keyboard-MK6K1NL.hex` |
-| `tools/build_fw.ps1 -Board sayo_3x3` / `sayo_2x4` | `BOARD=SAYO_3X3` / `SAYO_2X4` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
+| `tools/build_fw.ps1 -Board sayo_3x3` / `sayo_2x4` / `sayo_2x6` | `BOARD=SAYO_3X3` / `SAYO_2X4` / `SAYO_2X6` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
 | `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1n` | – |
 
 - `macro_keyboard-<보드>.hex`는 GUI 펌웨어 업데이트 창이 먼저 고르는 파일

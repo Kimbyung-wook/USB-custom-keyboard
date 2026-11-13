@@ -22,8 +22,9 @@
 // or LED is seen at once. Needs hal_leds_rgb (CH32V203 and CH552 HALs).
 // A board with BOARD_LED_RING (slots clockwise around the keys, from key 1) has
 // the wheel laid out around the keys, turning clockwise; needs hal_led_key_rgb
-// and hal_leds_show. With BOARD_LED_RING_CHASE 1 a single light in the plain
-// wheel color flows around the ring instead; only one of the styles is built.
+// and hal_leds_show. With BOARD_LED_RING_CHASE n (1, 2, ...) n lights in the
+// plain wheel color flow around the ring instead, evenly spaced (the ring size
+// must divide by n); only one of the styles is built.
 #ifndef SELF_TEST_CYCLE_MS
 #define SELF_TEST_CYCLE_MS 3000 // one turn of the wheel (-D to try others; chosen 2026-11-07)
 #endif
@@ -82,16 +83,19 @@ static void chaseLed(uint8_t key, uint8_t level) {
                   (uint8_t)((wheelB * level) >> 5));
 }
 
-// The light flows clockwise: over one step the LED at position i fades 32 -> 0
-// while the next one fades 0 -> 32, all others off. Keys off the ring (the
+// The lights flow clockwise: over one step the LED at position i fades 32 -> 0
+// while the next one fades 0 -> 32, all others off; the same again every
+// CHASE_GAP positions. Keys off the ring (the
 // middle of a 3 x 3) stay lit in the wheel color. A new frame every 8 ms: the
 // fade needs no more, and a WS2812 frame keeps interrupts off.
 static void wheelRing(uint16_t t) {
   static __code uint8_t ring[] = {BOARD_LED_RING};
+#define CHASE_GAP (sizeof(ring) / BOARD_LED_RING_CHASE) // positions between lights
+  (void)sizeof(char[sizeof(ring) % BOARD_LED_RING_CHASE ? -1 : 1]); // lights divide the ring
   hal_sw_t rest = (hal_sw_t)((1u << BOARD_KEYS) - 1);
   uint8_t slot = (uint8_t)(now16 >> 3);
   uint16_t frac;
-  uint8_t cur = 0, next, level;
+  uint8_t cur = 0, phase, level;
   if (slot == chaseSlot) {
     return;
   }
@@ -105,11 +109,15 @@ static void wheelRing(uint16_t t) {
   if (cur >= sizeof(ring)) { // lap not divisible by the positions: its last ms
     cur = 0;
   }
-  next = (uint8_t)(cur + 1 == sizeof(ring) ? 0 : cur + 1);
   level = (uint8_t)((frac * (8192u / CHASE_STEP)) >> 8); // frac * 32 / CHASE_STEP
+  // phase: (p - cur) mod CHASE_GAP, counted up (one division per frame)
+  phase = (uint8_t)((sizeof(ring) - cur) % CHASE_GAP);
   for (uint8_t p = 0; p < sizeof(ring); p++) {
     rest &= (hal_sw_t)~(1u << ring[p]);
-    chaseLed(ring[p], p == cur ? (uint8_t)(32 - level) : p == next ? level : 0);
+    chaseLed(ring[p], phase == 0 ? (uint8_t)(32 - level) : phase == 1 ? level : 0);
+    if (++phase == CHASE_GAP) {
+      phase = 0;
+    }
   }
   for (uint8_t k = 0; k < BOARD_KEYS; k++) {
     if ((rest >> k) & 1) {

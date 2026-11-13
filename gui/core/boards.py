@@ -92,6 +92,16 @@ BOARDS = (
                            r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board sayo_2x4 -Full을 실행하세요 (wchisp)",
               flash_text=r"tools\flash.ps1 -Board sayo_2x4 -Full",
               aliases=("2X4V_RGB",)),   # until firmware 1.7.0 and bootloader 1.0 (2026-11-08)
+    # CH32V203C8U6, 12 keys (2 x 6), no knob, same scheme as SAYO_3X3; boot key 7
+    # (bottom left, PA7; docs/board/BOARD_SAYO_2X6.md). Name provisional.
+    # Pins: firmware/macro_keyboard/src/boards/sayo_2x6.h
+    BoardSpec("SAYO_2X6", "12키 (2x6), 노브 없음, 키별 RGB LED (CH32V203)",
+              Board(keys=12, knobs=0, rows=2, name="SAYO_2X6", chip_id=0x19,
+                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
+              boot_config=0, boot_key="7", hidboot=True,
+              factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) BOOT 브리지를 "
+                           r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board sayo_2x6 -Full을 실행하세요 (wchisp)",
+              flash_text=r"tools\flash.ps1 -Board sayo_2x6 -Full"),
 )
 
 

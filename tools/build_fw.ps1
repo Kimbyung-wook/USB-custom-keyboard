@@ -18,7 +18,7 @@
   tools\flash.ps1, and a copy named macro_keyboard-<BOARD>.hex, the file the
   GUI's firmware update window offers first for that board.
 
-  CH32V203 boards (sayo_3x3, sayo_2x4) build with Makefile.ch32v203 instead (xPack
+  CH32V203 boards (sayo_3x3, sayo_2x4, sayo_2x6) build with Makefile.ch32v203 instead (xPack
   riscv-none-elf-gcc, mingw32-make, WCH EVT SDK; paths in -GccBin, -Sdk).
   Result: firmware\macro_keyboard\build\ch32v203\macro_keyboard-<BOARD>.bin (app
   at 0x08002000, flashed with tools\flash.ps1 -Board sayo_3x3 or the GUI: key 7),
@@ -33,7 +33,7 @@
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board sayo_3x3
 #>
 param(
-    [ValidateSet('mk6k1n', 'mk6k1nl', 'sayo_3x3', 'sayo_2x4')]
+    [ValidateSet('mk6k1n', 'mk6k1nl', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6')]
     [string]$Board = 'mk6k1n',
     # CH32V203 only
     # environment MK_RISCV_BIN / MK_EVT_SDK first (as the Makefiles), else these defaults
@@ -48,6 +48,7 @@ $boardChips = @{
     mk6k1nl    = 'ch552'
     'sayo_3x3' = 'ch32v203'
     'sayo_2x4' = 'ch32v203'
+    'sayo_2x6' = 'ch32v203'
 }
 $chipFqbns = @{
     ch552 = 'CH55xDuino:mcs51:ch552:usb_settings=user266,bootloader_pin=p15'

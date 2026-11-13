@@ -40,11 +40,12 @@ typedef struct {
   uint8_t port, bit;
 } pin_t;
 static GPIO_TypeDef *port_of(uint8_t p) { return p == 0 ? GPIOA : p == 1 ? GPIOB : GPIOC; }
-static void pin_out(pin_t p, int high) {
+// unused on a board without LED pins
+__attribute__((unused)) static void pin_out(pin_t p, int high) {
   port_of(p.port)->BSHR = 1u << (p.bit + (high ? 0 : 16));
   pin_mode(port_of(p.port), p.bit, 0x2);
 }
-static void pin_set(pin_t p, int high) { port_of(p.port)->BSHR = 1u << (p.bit + (high ? 0 : 16)); }
+__attribute__((unused)) static void pin_set(pin_t p, int high) { port_of(p.port)->BSHR = 1u << (p.bit + (high ? 0 : 16)); }
 
 static const pin_t key_pins[] = {BOARD_KEY_PINS};
 #define boot_key (key_pins[BOARD_BOOT_KEY])

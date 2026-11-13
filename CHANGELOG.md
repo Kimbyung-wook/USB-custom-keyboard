@@ -25,6 +25,15 @@
 
 ## 미출시
 
+- [문서] BT_2X3(6키 블루투스) 사용자 관찰: 기판 `2x3M_BLE_Ver1.1`, 칩 CH573F, 안테나 핀 위치, SW1, LED L3~L8 색. 칩 표 "준비 중" 열에 CH573F 추정 값 — 문서 영향: docs/board/BOARD_BT_2X3.md, docs/CHIPS.md#칩-특성-표, docs/BOARDS.md#준비-중-보드, docs/NEW_BOARD.md#9-식별-전-보드 — 반영: ☑
+- [문서] SAYO_2X6(12키) 확인 결과 반영: 칩·UID·키·LED 핀, 칩 핀맵 표, 자체 부트로더 설치·LED 핀 빌드 교체, 본 펌웨어 LED 점검(빛 2개). 보드 목록·업데이트 표·부트로더 대상에 추가 — 문서 영향: docs/board/BOARD_SAYO_2X6.md, docs/BOARDS.md, README.md, docs/MANUAL.md, firmware/macro_keyboard/README.md, docs/NEW_BOARD.md, docs/BOOTLOADER_CH32V203.md, docs/CHIPS.md, tests/hw/ch32v203/test_ch32v203/README.md — 반영: ☑
+- [펌웨어] 꽂을 때 LED 점검: `BOARD_LED_RING_CHASE n`이면 빛 n개가 둘레에 고르게 떨어져 돎(둘레 칸 수가 n으로 나눠져야 함). SAYO_2X6은 2개(마주 보며 돎), 다른 보드는 1개 그대로 — 문서 영향: firmware/macro_keyboard/README.md, docs/MANUAL.md, docs/board/BOARD_SAYO_2X6.md#6-본-펌웨어에서의-동작 — 반영: ☑
+- [펌웨어] SAYO_2X6(12키, 2×6) 보드 파일 추가: 키 12개, 진입 키 7(PA7), 키별 RGB LED(키 8 양극 PB2, 실물 확인), 꽂을 때 LED 점검 — 문서 영향: docs/board/BOARD_SAYO_2X6.md#4-led, docs/board/BOARD_SAYO_2X6.md#6-본-펌웨어에서의-동작, docs/BOARDS.md — 반영: ☑
+- [펌웨어] CH32V203 HAL·부트로더: LED 핀이 없는 보드 파일도 빌드(LED 구동 안 함) — 문서 영향: docs/board/BOARD_SAYO_2X6.md#4-led — 반영: ☑
+- [GUI] 보드 목록에 SAYO_2X6 추가(키별 RGB LED, 진입 키 7) — 문서 영향: docs/BOARDS.md — 반영: ☑
+- [도구] `build_fw.ps1`·`flash.ps1`에 `-Board sayo_2x6`, 12키 UID 추가 — 문서 영향: docs/board/BOARD_SAYO_2X6.md#5-부팅장입 — 반영: ☑
+- [테스트] host 시험은 LED 기능이 없는 보드의 LED 검사를 건너뜀. 시험 펌웨어 `APP=1`(부트로더 뒤 0x08002000) 빌드 추가 — 문서 영향: tests/hw/ch32v203/test_ch32v203/README.md#장입-방법 — 반영: ☑
+- [테스트] CH32V203 시험 펌웨어에 행·열 매트릭스 키 감지(`M` 쌍) 추가, 12키(SAYO_2X6) 시험 순서 정리 — 문서 영향: tests/hw/ch32v203/test_ch32v203/README.md#동작 — 반영: ☑
 - [펌웨어] HID 장입 전에 `.bin` 식별 문자열의 보드가 부트로더 HELLO 보드와 같은지 검사, 다르거나 없으면 지우기 전에 거부(`--force`로만) — 문서 영향: docs/BOOTLOADER_CH32V203.md#설치업데이트, docs/MANUAL.md#gui에서-올리기-권장, docs/TROUBLESHOOTING.md#2-6-ch32v203-보드-업데이트-모드와-wchisp, gui/README.md#펌웨어-업데이트 — 반영: ☑
 - [GUI] CH32V203 보드에서 맞지 않는 펌웨어는 빨간 경고와 "강제 장입" 확인(기본 취소) — 문서 영향: docs/MANUAL.md#gui에서-올리기-권장, gui/README.md#펌웨어-업데이트 — 반영: ☑
 - [부트로더] GUI·hidboot은 부트로더 1.x만 받음(`--force`로도 안 넘어감), WRITE 최대 56 B — 문서 영향: docs/BOOTLOADER_CH32V203.md#설치업데이트 — 반영: ☑

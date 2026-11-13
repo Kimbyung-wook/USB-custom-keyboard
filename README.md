@@ -44,7 +44,7 @@
 
 | 기능 | 내용 |
 |---|---|
-| 하드웨어 조사 | ✅ 4개 보드 핀·LED·부트로더 확인 ([BOARDS.md](docs/BOARDS.md)) |
+| 하드웨어 조사 | ✅ 4개 보드 핀·LED·부트로더 확인 ([BOARDS.md](docs/BOARDS.md)) |. SAYO_2X6(12키): 핀·LED·부트로더 설치 확인, 본 펌웨어 키 입력·GUI 설정 확인 전
 | 본 펌웨어 ([firmware/macro_keyboard](firmware/macro_keyboard/)) | ✅ 키별 문자열 입력, 빌드와 PC 검사(host_test) 통과 |
 | 설정 통신 규격 | ✅ [docs/PROTOCOL.md](docs/PROTOCOL.md) |
 | 설정 GUI | ✅ 실제 장치와 동작 확인. 키보드 없이 `--mock`으로도 실행 가능 |
@@ -62,6 +62,7 @@
 - 2026-10-31 (v1.5): MK6K1NL(키마다 LED)
 - v1.6: 패턴 2단계부터(전에는 4단계), 입력 표시, 장입할 보드 고르기
 - 2026-11-07: 1.7.0(CH32V203 지원, 노브 진입 삭제, 초록 LED 변경, CH552 색 바퀴). SAYO_3X3·SAYO_2X4, 자체 HID 부트로더, 노브 없는 보드는 키를 누를 때 입력
+- 2026-11-13: SAYO_2X6(12키) 보드 파일, 칩·키·LED 핀 확인, 본 펌웨어 LED 점검 확인
 
 ## 잠금 상태도
 
@@ -152,7 +153,7 @@ stateDiagram-v2
 ## 하드웨어 요약
 
 - 보드별 칩·키·LED·부트로더·진입 키: [docs/BOARDS.md](docs/BOARDS.md)
-- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4V_RGB.md))
+- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3V_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4V_RGB.md), [SAYO_2X6](docs/board/BOARD_SAYO_2X6.md))
 
 ## 폴더 구조
 
@@ -173,7 +174,7 @@ stateDiagram-v2
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
 | 보드 세부 | [board/BOARD_SAYO_3X3V_RGB.md](docs/board/BOARD_SAYO_3X3V_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
 | 보드 세부 | [board/BOARD_SAYO_2X4V_RGB.md](docs/board/BOARD_SAYO_2X4V_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
-| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6.md](docs/board/BOARD_SAYO_2X6.md) | SayoDevice 12키(2×6), 식별 전: 식별 체크리스트 |
+| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6.md](docs/board/BOARD_SAYO_2X6.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
 | 보드 세부 (준비 중) | [board/BOARD_BT_2X3.md](docs/board/BOARD_BT_2X3.md) | 6키(2×3) 블루투스, 식별 전: 식별 체크리스트 |
 | 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |

@@ -2,6 +2,9 @@
 #   mingw32-make            -> build/test_ch32v203.bin
 #   mingw32-make SDK=<dir>  if the SDK is somewhere else
 #   mingw32-make flash      -> wchisp flash (only after `wchisp probe` works)
+#   mingw32-make APP=1      -> build/app/test_ch32v203-app.bin, linked at 0x08002000
+#                              behind our bootloader (firmware/bootloader_ch32v203):
+#                              hidboot --force writes it, no BOOT bridge
 .RECIPEPREFIX = >
 
 # Tool paths: environment MK_EVT_SDK, MK_RISCV_BIN (folder of riscv-none-elf-gcc,
@@ -13,8 +16,18 @@ PERIPH := $(EXAM)/SRC/Peripheral
 USBDIR := $(EXAM)/USB/USBFS/DEVICE/CompositeKM/User
 LDSCRIPT := $(EXAM)/SRC/Ld/Link.ld
 
+APP ?= 0
+ifeq ($(APP),1)
+# Same layout as the app (firmware/macro_keyboard/Makefile.ch32v203): flash
+# 0x2000..0xEEFF, RAM ends 16 bytes early for the bootloader RAM mark
+TARGET := test_ch32v203-app
+BUILD := build/app
+APP_LD := $(BUILD)/link.ld
+else
 TARGET := test_ch32v203
 BUILD := build
+APP_LD :=
+endif
 PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
@@ -26,7 +39,7 @@ DEFS := -DSYSCLK_FREQ_48MHz_HSI
 CFLAGS := $(ARCH) $(DEFS) -Os -g -ffunction-sections -fdata-sections -Wall -Wextra -Wno-unused-parameter
 ASFLAGS := $(ARCH) -x assembler-with-cpp
 INCS := -I. -I$(EXAM)/SRC/Core -I$(PERIPH)/inc -I$(EXAM)/SRC/Debug -I$(USBDIR)
-LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map
+LDFLAGS := $(ARCH) -T $(or $(APP_LD),$(LDSCRIPT)) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map
 
 SRCS_ASM := startup_ch32v20x_D6.S
 SRCS_C := test_ch32v203.c ch32v203_hal.c core_riscv.c system_ch32v20x.c \
@@ -39,7 +52,7 @@ OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
 
 all: $(BUILD)/$(TARGET).bin
 
-$(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
+$(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT) $(APP_LD)
 > $(CC) $(LDFLAGS) -o $@ $(OBJS) -lc -lgcc
 > $(SIZE) $@
 
@@ -65,10 +78,15 @@ $(BUILD)/src/%.S: %.S boot_check.inc | $(BUILD)/src
 $(BUILD)/%.o: $(BUILD)/src/%.S | $(BUILD)
 > $(CC) $(ASFLAGS) $(INCS) -c $< -o $@
 
+build/app/link.ld: $(LDSCRIPT) Makefile | $(BUILD)
+> sed -e 's/ORIGIN = 0x00000000, LENGTH = 64K/ORIGIN = 0x00002000, LENGTH = 52992/' -e 's/LENGTH = 20K/LENGTH = 0x4FF0/' $< > $@
+> @grep -q 'ORIGIN = 0x00002000' $@ && grep -q 'LENGTH = 0x4FF0' $@ || { echo "ERROR: link script not relocated"; rm -f $@; exit 1; }
+
 $(BUILD) $(BUILD)/src:
 > mkdir -p $@
 
 flash: $(BUILD)/$(TARGET).bin
+> @if [ "$(APP)" = 1 ]; then echo "APP=1: write it with hidboot --force (tools\flash.ps1 -Board ... -Bin ... -Force)"; exit 1; fi
 > $(WCHISP) flash $<
 
 clean:

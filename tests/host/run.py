@@ -102,8 +102,10 @@ def test_board(header: Path) -> tuple[str, p.Board, int]:
 # Power-up wheel turning around the keys: key numbers clockwise from key 1,
 # written out here so a wrong BOARD_LED_RING in the board file is caught
 LED_RING = {"SAYO_3X3": (1, 2, 3, 6, 9, 8, 7, 4), "SAYO_2X4": (1, 2, 3, 4, 8, 7, 6, 5),
+            "SAYO_2X6": (1, 2, 3, 4, 5, 6, 12, 11, 10, 9, 8, 7),
             "MK6K1NL": (1, 2, 3, 6, 5, 4), "TEST_RNG": (1, 2, 3, 6, 5, 4)}
-LED_CHASE = {"SAYO_3X3": 1000, "SAYO_2X4": 1000, "MK6K1NL": 1000}  # BOARD_LED_RING_CHASE: ms per lap of the lit LED
+# BOARD_LED_RING_CHASE: (ms per lap of a light, lights around the ring)
+LED_CHASE = {"SAYO_3X3": (1000, 1), "SAYO_2X4": (1000, 1), "SAYO_2X6": (1000, 2), "MK6K1NL": (1000, 1)}
 WHEEL_MS = 3000
 
 
@@ -121,9 +123,11 @@ def wheel_rgb(t: int) -> str:
 
 
 def check_chase(exe: Path, out: Path, blob: bytes, name: str, key_count: int) -> None:
-    """Every LED at every ms of the test: the light fades from one ring LED to the next."""
+    """Every LED at every ms of the test: each light fades from one ring LED to the next."""
     ring = LED_RING[name]
-    step = LED_CHASE[name] // len(ring)
+    lap, lights = LED_CHASE[name]
+    step = lap // len(ring)
+    gap = len(ring) // lights
 
     def dimmed(rgb: str, level: int) -> str:
         return ".".join(str(int(c) * level >> 5) for c in rgb.split("."))
@@ -139,21 +143,23 @@ def check_chase(exe: Path, out: Path, blob: bytes, name: str, key_count: int) ->
         now = i + 1
         frame = now & ~7 if now >= 8 else 1
         rgb = wheel_rgb(frame % WHEEL_MS)
-        cur, frac = divmod(frame % LED_CHASE[name], step)
+        cur, frac = divmod(frame % lap, step)
         cur %= len(ring)                                        # 1000 // 6: the lap's last ms
         level = frac * (8192 // step) >> 8
         want = {k: rgb for k in range(key_count)}               # keys off the ring: always lit
         want.update({key - 1: "0.0.0" for key in ring})
-        want[ring[cur] - 1] = dimmed(rgb, 32 - level)
-        want[ring[(cur + 1) % len(ring)] - 1] = dimmed(rgb, level)
+        for j in range(lights):
+            c = cur + j * gap
+            want[ring[c % len(ring)] - 1] = dimmed(rgb, 32 - level)
+            want[ring[(c + 1) % len(ring)] - 1] = dimmed(rgb, level)
         if colors != want:
             wrong.append(now)
         at[now] = dict(colors)
-        bright = max(ring, key=lambda k: sum(int(c) for c in colors[k - 1].split(".")))
+        bright = max(range(len(ring)), key=lambda p: sum(int(c) for c in colors[ring[p] - 1].split("."))) % gap
         if not laps or laps[-1] != bright:
             laps.append(bright)
-    check(f"{name}: the light fades between two ring LEDs, the others off, at every ms", wrong[:5], [])
-    check(f"{name}: the brightest LED steps clockwise", laps, [*ring * 7][:len(laps)])
+    check(f"{name}: {lights} light(s) fade between ring LEDs, the others off, at every ms", wrong[:5], [])
+    check(f"{name}: the brightest LED steps clockwise", laps, [p % gap for p in range(len(laps))])
     check(f"{name}: 6 laps in 6 s", len(laps) - len(ring) * 6 in (0, 1), True)
     # End of a lap: last position -> first, through the last frame before the boundary
     first, second, last = ring[0] - 1, ring[1] - 1, ring[-1] - 1
@@ -257,11 +263,15 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
         text = " ".join(run(exe, out, blob, extra=["input", f"p{i}", "w30", f"r{i}", "w300"])[3:])
         check(f"{name}: key {i + 1} types slot {i}",
               " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", text)), keys((0, 0x04 + i)))
-    text = " ".join(run(exe, out, blob, extra=["input", "w6500"])[3:])
-    wheel = wheel_colors(text)
-    check(f"{name}: color wheel 2 rounds, then off, then blue",
-          (sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b),
-           re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
+    # A board without LED pins yet (no BOARD_FEATURE_RGB_LED, e.g. SAYO_2X6
+    # before its LED test) has no power-up wheel or key LEDs to check
+    led = bool(layout.features & p.BOARD_FEATURE_RGB_LED)
+    if led:
+        text = " ".join(run(exe, out, blob, extra=["input", "w6500"])[3:])
+        wheel = wheel_colors(text)
+        check(f"{name}: color wheel 2 rounds, then off, then blue",
+              (sum(1 for a, b in zip([""] + wheel, wheel) if b == "C40.0.0" and a != b),
+               re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
     if name in LED_RING:
         check_ring(exe, out, blob, name, layout.keys)
 
@@ -281,6 +291,8 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
     check(f"{name}: wrong pattern stays locked",
           typed("p1", "w2100", "r1", "w50", "p0", "w30", "r0", "w30", f"p{last}", "w30", f"r{last}", "w300",
                 "p2", "w30", "r2", "w300"), "")
+    if not led:
+        return
     # the key LED of the pressed key only (mask of 12 keys is 3 hex digits)
     text = " ".join(run(exe, out, blob, extra=["input", "w6500", f"p{last}", "w30", f"r{last}", "w300"])[3:])
     check(f"{name}: key {last + 1} lights only its LED",

@@ -1,6 +1,6 @@
 /*
   test_ch32v203: hardware test for any CH32V203C8 (48-pin) macro keyboard:
-  the 9-key SAYO_3X3 and 8-key SAYO_2X4 so far, a new one (e.g. 12 keys) the
+  the 9-key SAYO_3X3 and 8-key SAYO_2X4 so far, the 12-key SAYO_2X6 the
   same way. Finds the key pins and the LED pins of a board whose pin map is
   unknown; it knows no key count or boot key, it walks all 31 usable pins.
   The LEDs found so far are R/G/B cathode lines per row or group (low = lit)
@@ -15,7 +15,9 @@
                      KEYS -> FIND -> ANODE -> KEYS ...
       KEYS : (start) every press types the pin name, "PA00", and every release
              "PA00 up". Press every key once here first, in order 1, 2, ...:
-             FIND and ANODE never touch those pins.
+             FIND and ANODE never touch those pins. A key wired between two
+             pins (a row/column matrix, no ground) types "M PA00 PB01" and
+             "M PA00 PB01 up" instead (see matrixScan).
       FIND : (cathode lines) every other pin is driven low for 1 s ("L"), then
              high for 1 s ("H"), then released; all other pins stay pulled up.
              A cathode line glows dimly during L (current from the pulled-up
@@ -81,6 +83,21 @@ static uint8_t findIndex = NO_PIN; // pin being driven in FIND
 static uint8_t findHigh = 0;      // 0 = driven low, 1 = driven high
 static uint32_t stepAt = 0;
 static uint8_t anodeLast = NO_PIN; // ANODE: last pin driven
+
+// Matrix keys: a key between two GPIO pins instead of a pin and ground. Every
+// MATRIX_MS each candidate pin in turn is driven low for a few microseconds;
+// another pin that follows it low is joined to it through a pressed key.
+// Pairs that read low with nothing pressed (an LED from a pulled-up pin, a
+// resistor) are learned at start (matrixLearn) and ignored. In KEYS every free
+// pin is tried; a pair once pressed becomes key pins (seenKey, matrixPin), and
+// in FIND/ANODE only those are scanned, so a matrix key can change the mode.
+// Pins: bit j of mask[i] (i < j) = pins i and j joined.
+#define MATRIX_MS 20
+static uint8_t matrixPin[NUM_PINS];
+static uint32_t matrixBase[NUM_PINS];   // joined with nothing pressed: ignored
+static uint32_t matrixLast[NUM_PINS];   // last scan
+static uint32_t matrixStable[NUM_PINS]; // debounced (two equal scans)
+static uint32_t matrixAt = 0;
 
 static void typePin(uint8_t i) {
   hal_hid_write('P');
@@ -244,13 +261,124 @@ static uint8_t isOutput(uint8_t i) {
   return 0;
 }
 
+static void settle(void) {
+  for (volatile uint16_t n = 0; n < 200; n++) {
+  }
+}
+
+// Pins the matrix scan may drive or read now
+static uint8_t matrixCandidate(uint8_t i) {
+  if (stuck[i] || isOutput(i)) {
+    return 0;
+  }
+  return mode == MODE_KEYS ? 1 : matrixPin[i];
+}
+
+// One scan: out[i] bit j (i < j) = j read low while i was driven low, or the
+// reverse (a key with a diode conducts one way only). Pins already low with
+// nothing driven (a pressed direct key) are left out.
+static void matrixScan(uint32_t out[NUM_PINS]) {
+  uint8_t idleLow[NUM_PINS];
+
+  for (uint8_t i = 0; i < NUM_PINS; i++) {
+    out[i] = 0;
+    idleLow[i] = matrixCandidate(i) && !hal_gpio_read(pinPort[i], pinBit[i]);
+  }
+  for (uint8_t i = 0; i < NUM_PINS; i++) {
+    if (!matrixCandidate(i) || idleLow[i]) {
+      continue;
+    }
+    claimPin(i);
+    settle();
+    for (uint8_t j = 0; j < NUM_PINS; j++) {
+      if (j != i && matrixCandidate(j) && !idleLow[j] && !hal_gpio_read(pinPort[j], pinBit[j])) {
+        if (i < j) {
+          out[i] |= 1u << j;
+        } else {
+          out[j] |= 1u << i;
+        }
+      }
+    }
+    hal_gpio_write(pinPort[i], pinBit[i], 1); // pull the line back up fast
+    hal_gpio_input_pullup(pinPort[i], pinBit[i]);
+    settle();
+  }
+}
+
+// At start, nothing pressed: every pair found now is a fixed connection
+static void matrixLearn(void) {
+  uint32_t m[NUM_PINS];
+
+  for (uint8_t n = 0; n < 5; n++) {
+    matrixScan(m);
+    for (uint8_t i = 0; i < NUM_PINS; i++) {
+      matrixBase[i] |= m[i];
+    }
+    hal_delay_ms(2);
+  }
+}
+
+static void typePair(uint8_t i, uint8_t j) {
+  hal_hid_print("M ");
+  typePin(i);
+  hal_hid_write(' ');
+  typePin(j);
+}
+
+static void matrixTask(void) {
+  uint32_t now = hal_millis();
+  uint32_t m[NUM_PINS];
+
+  if (now - matrixAt < MATRIX_MS) {
+    return;
+  }
+  matrixAt = now;
+  matrixScan(m);
+
+  for (uint8_t i = 0; i < NUM_PINS; i++) {
+    uint32_t cur = m[i] & ~matrixBase[i];
+    // A pair changes state after two equal scans
+    uint32_t settled = ~(cur ^ matrixLast[i]);
+    uint32_t flip = (cur ^ matrixStable[i]) & settled;
+    matrixLast[i] = cur;
+    if (!flip) {
+      continue;
+    }
+    for (uint8_t j = i + 1; j < NUM_PINS; j++) {
+      uint8_t pressed;
+
+      if (!(flip >> j & 1)) {
+        continue;
+      }
+      pressed = cur >> j & 1;
+      matrixStable[i] ^= 1u << j;
+      if (mode == MODE_KEYS) {
+        if (pressed) {
+          seenKey[i] = seenKey[j] = 1;
+          matrixPin[i] = matrixPin[j] = 1;
+        }
+        typePair(i, j);
+        hal_hid_print(pressed ? "\n" : " up\n");
+      }
+      // Long press to change the mode, as for a direct key (held by pin i)
+      if (pressed && heldIndex == NO_PIN) {
+        heldIndex = i;
+        heldAt = hal_millis();
+        heldLong = 0;
+      } else if (!pressed && i == heldIndex) {
+        heldIndex = NO_PIN;
+      }
+    }
+  }
+}
+
 static void scanInputs(void) {
   uint32_t now = hal_millis();
 
   for (uint8_t i = 0; i < NUM_PINS; i++) {
     uint8_t pressed;
 
-    if (isOutput(i) || stuck[i]) {
+    if (isOutput(i) || stuck[i] || matrixPin[i]) {
       continue;
     }
     pressed = !hal_gpio_read(pinPort[i], pinBit[i]);
@@ -327,9 +455,11 @@ int main(void) {
       hal_hid_write('\n');
     }
   }
+  matrixLearn();
   setMode(MODE_KEYS);
 
   while (1) {
+    matrixTask();
     scanInputs();
     updateLeds();
     if (mode == MODE_ANODE) {

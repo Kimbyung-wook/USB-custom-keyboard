@@ -21,7 +21,6 @@ static GPIO_TypeDef *portPtr(uint8_t port) {
 }
 
 static const uint8_t keyPins[BOARD_KEYS][2] = {BOARD_KEY_PINS};
-static const uint8_t ledPins[BOARD_LED_ROWS][3][2] = {BOARD_LED_PINS};
 
 static void pinMode(uint8_t port, uint8_t bit, GPIOMode_TypeDef mode) {
   GPIO_InitTypeDef init;
@@ -48,6 +47,11 @@ hal_sw_t hal_switches(void) {
 }
 
 // ---- LEDs: software PWM on TIM3 ----
+// A board file without BOARD_LED_PINS (LED pins not found yet, e.g. SAYO_2X6
+// before its LED test) gets the empty functions after #else: keys only.
+#ifdef BOARD_LED_PINS
+static const uint8_t ledPins[BOARD_LED_ROWS][3][2] = {BOARD_LED_PINS};
+
 // RGB LED per key. Each row has an R, G and B cathode line shared by its 3
 // keys (low = lit); each key has its own anode pin (high = lit). The R, G and
 // B of one LED share the anode current: lit together only red shows (lowest
@@ -237,6 +241,25 @@ static void ledInit(void) {
   NVIC_Init(&nv);
   TIM_Cmd(TIM3, ENABLE);
 }
+#else // no LED pins: nothing to drive
+void hal_leds(uint8_t color, hal_sw_t mask, uint8_t maskColor) {
+  (void)color;
+  (void)mask;
+  (void)maskColor;
+}
+void hal_leds_rgb(uint8_t r, uint8_t g, uint8_t b) {
+  (void)r;
+  (void)g;
+  (void)b;
+}
+void hal_led_key_rgb(uint8_t key, uint8_t r, uint8_t g, uint8_t b) {
+  (void)key;
+  (void)r;
+  (void)g;
+  (void)b;
+}
+static void ledInit(void) {}
+#endif // BOARD_LED_PINS
 
 // ---- config storage: last BLOB_CAPACITY bytes of flash, RAM shadow ----
 // Erased flash reads 0xE339E339 (not 0xFF): storage.c sees an invalid blob and

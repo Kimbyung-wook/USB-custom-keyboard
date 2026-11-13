@@ -54,6 +54,8 @@
 #include "boards/sayo_3x3.h"
 #elif defined(BOARD_SAYO_2X4)
 #include "boards/sayo_2x4.h"
+#elif defined(BOARD_SAYO_2X6)
+#include "boards/sayo_2x6.h"
 #else
 #include "boards/mk6k1n.h"
 #endif

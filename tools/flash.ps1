@@ -15,7 +15,7 @@
     P36           = D+ pull-up (1.5-2 kOhm between chip pin 12 and pin 16)
 
   CH32V203 (-Board sayo_3x3): our own HID bootloader (docs/BOOTLOADER_CH32V203.md).
-  Plug in while holding the bottom-left key (sayo_3x3: 7, sayo_2x4: 5; purple LEDs), or pass -Enter when the keyboard runs
+  Plug in while holding the bottom-left key (sayo_3x3: 7, sayo_2x4: 5, sayo_2x6: 7; purple LEDs where the board has them), or pass -Enter when the keyboard runs
   unlocked; then gui\core\hidboot.py writes -Bin (default: the tools\build_fw.ps1
   result, linked at 0x08002000) and starts it. The settings stay.
   The .bin must carry the firmware ID of the board the bootloader reports
@@ -43,7 +43,7 @@ param(
     [ValidateSet('P15', 'P36')][string]$BootPin = 'P15',
     [ValidateRange(1, 255)][int]$TimeoutSec = 60,
     # CH32V203 boards
-    [ValidateSet('', 'sayo_3x3', 'sayo_2x4')][string]$Board = '',
+    [ValidateSet('', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6')][string]$Board = '',
     [string]$Bin,        # the app (default: tools\build_fw.ps1 result)
     [switch]$Full,       # bootloader with wchisp (BOOT bridge), then the app with hidboot; settings stay
     [string]$Bootloader, # -Full: the bootloader image (default: bootloader-<BOARD>.bin)
@@ -64,7 +64,7 @@ if ($Board) {
     if (-not $m) { throw "BOARD_BOOT_KEY not found in $boardFile" }
     $bootKey = [int]$m.Matches[0].Groups[1].Value + 1
     # The keyboards we own (chip UID, as wchisp info and hidboot show it)
-    $knownUid = @{ "sayo_3x3" = "CD-AB-EE-F7-7D-BC-38-60"; "sayo_2x4" = "CD-AB-30-92-4E-BD-4B-FB" }[$Board]
+    $knownUid = @{ "sayo_3x3" = "CD-AB-EE-F7-7D-BC-38-60"; "sayo_2x4" = "CD-AB-30-92-4E-BD-4B-FB"; "sayo_2x6" = "CD-AB-6B-22-66-BD-9E-8B" }[$Board]
     if (-not $Bin) { $Bin = Join-Path $root "firmware\macro_keyboard\build\ch32v203\macro_keyboard-$name.bin" }
     if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: tools\build_fw.ps1 -Board $Board)" }
     $binPath = (Resolve-Path $Bin).Path
