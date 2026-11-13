@@ -168,6 +168,7 @@ stateDiagram-v2
 | 보드 추가 | [NEW_BOARD.md](docs/NEW_BOARD.md) | 새 키보드를 이 펌웨어로 바꾸는 절차: 식별, 안전, 진입 방법, 핀 찾기, 보드 파일, 설치·확인, 문서화 |
 | 보드 추가 | [board/_TEMPLATE.md](docs/board/_TEMPLATE.md) | 보드 문서 양식(절 순서, 표 열), 그림 다시 그리기 |
 | 작업 방식 | [WORKFLOW.md](docs/WORKFLOW.md) | 멀티에이전트 작업 방식: 역할·파일 소유권, 작업 흐름, 변경 기록·생성 구역·검사 관문, 승인, 다른 팀 도입 체크리스트 |
+| 작업 시간 | [WORK_TIME.md](docs/WORK_TIME.md) | 보드별 실제 작업 시간 표(오래된 순)와 간트 차트, 측정 방법 |
 | 출시 | [RELEASE.md](docs/RELEASE.md) | 출시 체크리스트: 문서 반영 → 버전 → 문서 생성 → 빌드 → pytest → 장치 확인 → 변경 기록 → 커밋 |
 | 출시 | [CHANGELOG.md](CHANGELOG.md) | 저장소 전체 변경 기록: `## 미출시` 항목(문서 영향·반영 표시)과 버전별 요약 |
 | 보드 세부 | [board/BOARD_MK6K1N.md](docs/board/BOARD_MK6K1N.md) | 6키 + 노브, LED 1개. 버튼 매핑, CH552G 칩 핀맵, 노브 신호 |

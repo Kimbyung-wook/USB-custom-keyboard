@@ -25,6 +25,7 @@
 
 ## 미출시
 
+- [문서] 보드별 작업 시간 기록(`docs/WORK_TIME.md`): 측정 방법, 보드별 표(오래된 순), 공통 기능, 간트 차트 — 문서 영향: docs/WORK_TIME.md, README.md#폴더-구조 — 반영: ☑
 - [문서] BT_2X3(6키 블루투스) 사용자 관찰: 기판 `2x3M_BLE_Ver1.1`, 칩 CH573F, 안테나 핀 위치, SW1, LED L3~L8 색. 칩 표 "준비 중" 열에 CH573F 추정 값 — 문서 영향: docs/board/BOARD_BT_2X3.md, docs/CHIPS.md#칩-특성-표, docs/BOARDS.md#준비-중-보드, docs/NEW_BOARD.md#9-식별-전-보드 — 반영: ☑
 - [문서] SAYO_2X6(12키) 확인 결과 반영: 칩·UID·키·LED 핀, 칩 핀맵 표, 자체 부트로더 설치·LED 핀 빌드 교체, 본 펌웨어 LED 점검(빛 2개). 보드 목록·업데이트 표·부트로더 대상에 추가 — 문서 영향: docs/board/BOARD_SAYO_2X6.md, docs/BOARDS.md, README.md, docs/MANUAL.md, firmware/macro_keyboard/README.md, docs/NEW_BOARD.md, docs/BOOTLOADER_CH32V203.md, docs/CHIPS.md, tests/hw/ch32v203/test_ch32v203/README.md — 반영: ☑
 - [펌웨어] 꽂을 때 LED 점검: `BOARD_LED_RING_CHASE n`이면 빛 n개가 둘레에 고르게 떨어져 돎(둘레 칸 수가 n으로 나눠져야 함). SAYO_2X6은 2개(마주 보며 돎), 다른 보드는 1개 그대로 — 문서 영향: firmware/macro_keyboard/README.md, docs/MANUAL.md, docs/board/BOARD_SAYO_2X6.md#6-본-펌웨어에서의-동작 — 반영: ☑
