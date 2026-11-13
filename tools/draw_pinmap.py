@@ -4,9 +4,11 @@ pinmap_*.svg: the CH552G (SOP-16) as seen from the top, pins 1-8 down the
 left side, 16-9 down the right side, each with what it is wired to.
 buttons_*.svg: the keyboard as seen from the top, each key and the knob
 with its GPIO, chip pin and slot (and LED, on boards with one per key).
-CH32V203 boards: buttons_<board>.svg (key pin, slot, anode, cathode group),
+CH32V203 boards (SAYO_3X3, SAYO_2X4, SAYO_2X6): buttons_<board>.svg (key pin, slot, anode, cathode group),
 pinmap_<board>.svg (the 48-pin chip with what each pin is wired to)
 and leds_<board>.svg (cathode lines x per-key anodes).
+SAYO_2B3 (CH573F): pinmap_sayo_2b3.svg (the 28-pin chip), buttons_sayo_2b3.svg
+(2 x 3 keys) and leds_sayo_2b3.svg (status LEDs L1-L8).
 
 Run from the repo root:  uv run python tools\\draw_pinmap.py
 """
@@ -27,6 +29,7 @@ COLORS = {
     "usb": ("#ede7f6", "#5e35b1"),
     "power": ("#f5f5f5", "#9e9e9e"),
     "none": ("#ffffff", "#bdbdbd"),
+    "radio": ("#e0f2f1", "#00897b"),
 }
 
 # pin -> (GPIO name, connection, kind); the same on both boards
@@ -229,8 +232,9 @@ def draw_buttons(board: str, title: str, key_leds: bool) -> str:
             + "".join(parts) + "</svg>\n")
 
 
-# CH32V203 boards (SAYO_3X3, SAYO_2X4): firmware/macro_keyboard/src/boards/<board>.h.
-# Per key: (key pin, anode pin, cathode group). Keys in slot order, row-major.
+# CH32V203 boards (SAYO_3X3, SAYO_2X4, SAYO_2X6): firmware/macro_keyboard/src/boards/<board>.h.
+# Per key: (key pin, anode pin, cathode group; None = group not known). Keys in
+# slot order, row-major.
 # Cathode groups: name -> (keys, red, green, blue); low = lit. Anode high = lit.
 RGB_BOARDS = {
     "SAYO_3X3": {
@@ -249,6 +253,16 @@ RGB_BOARDS = {
         "groups": [("묶음 1", "1·2·3", "PA11", "PA12", "PA13"),
                    ("묶음 2", "5·6·7", "PA8", "PA9", "PA10"),
                    ("묶음 3", "4·8", "PA0", "PA1", "PA2")],
+    },
+    "SAYO_2X6": {
+        "title": "SAYO_2X6", "desc": "12키, 노브 없음, CH32V203C8U6", "cols": 6, "boot": 6,
+        "keys": [("PB0", "PB13", 0), ("PA15", "PB14", 0), ("PC13", "PB3", 0),
+                 ("PA14", "PB4", 2), ("PB8", "PB5", 2), ("PC14", "PB9", 2),
+                 ("PA7", "PB1", 0), ("PA6", "PB2", None), ("PA5", "PB10", 1),
+                 ("PA4", "PB15", 1), ("PA3", "PB12", 1), ("PC15", "PB11", 2)],
+        "groups": [("묶음 1", "1·2·3·7", "PA11", "PA12", "PA13"),
+                   ("묶음 2", "9·10·11", "PA8", "PA9", "PA10"),
+                   ("묶음 3", "4·5·6·12", "PA0", "PA1", "PA2")],
     },
 }
 LED_RGB = (("빨강", "#e53935"), ("초록", "#43a047"), ("파랑", "#1e88e5"))
@@ -300,10 +314,12 @@ def draw_rgb_buttons(board: str) -> str:
                          f'fill="{stroke}" font-weight="bold">{note}</text>')
         led_fill, led_stroke = COLORS["led"]
         ly = y + kh - 22
+        tint = "#ffffff" if group is None else GROUP_TINT[group]
+        gname = "미확인" if group is None else b["groups"][group][0]
         parts.append(f'<rect x="{x + 12}" y="{ly - 11}" width="{kw - 24}" height="22" rx="11" '
-                     f'fill="{GROUP_TINT[group]}" stroke="{led_stroke}" stroke-width="1.5"/>')
+                     f'fill="{tint}" stroke="{led_stroke}" stroke-width="1.5"/>')
         parts.append(f'<text x="{cx}" y="{ly + 5}" text-anchor="middle" font-size="12">'
-                     f'LED 양극 {anode} · {escape(b["groups"][group][0])}</text>')
+                     f'LED 양극 {anode} · {escape(gname)}</text>')
     gy = top + body_h + 20
     parts.append(f'<text x="44" y="{gy}" font-size="13" font-weight="bold">LED 음극(낮추면 켜짐, 색마다 핀 1개를 묶음 안의 키가 공유)</text>')
     for j, (name, members, r, g, bl) in enumerate(b["groups"]):
@@ -327,7 +343,8 @@ def draw_rgb_leds(board: str) -> str:
     cw, rh = 64, 34
     left, top = 230, 120
     width = left + cw * len(keys) + 40
-    height = top + rh * 3 * len(groups) + 70
+    unknown = [i for i, (_, _, g) in enumerate(keys) if g is None]
+    height = top + rh * 3 * len(groups) + 70 + (20 if unknown else 0)
     parts = [
         f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
         f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
@@ -362,6 +379,15 @@ def draw_rgb_leds(board: str) -> str:
                 if g == gi:
                     cx = left + cw * ki + cw / 2
                     parts.append(f'<circle cx="{cx}" cy="{y}" r="8" fill="{color}" stroke="#ffffff" stroke-width="2"/>')
+        for ki in unknown:
+            cx, y = left + cw * ki + cw / 2, gy + rh * 1.5
+            parts.append(f'<circle cx="{cx}" cy="{y}" r="11" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.5" '
+                         'stroke-dasharray="3 2"/>')
+            parts.append(f'<text x="{cx}" y="{y + 5}" text-anchor="middle" font-size="13" fill="#757575">?</text>')
+    if unknown:
+        names = "·".join(str(i + 1) for i in unknown)
+        parts.append(f'<text x="32" y="{height - 34}" font-size="12" fill="#616161">'
+                     f'? = 키 {names}의 음극 묶음 미확인 (펌웨어는 색마다 모든 묶음을 함께 구동하므로 몰라도 동작)</text>')
     parts.append(f'<text x="{width - 20}" y="{height - 14}" text-anchor="end" font-size="12" fill="#757575">'
                  f'{board} · tools/draw_pinmap.py</text>')
     parts.append(f'<text x="32" y="{height - 14}" font-size="12" fill="#616161">'
@@ -485,6 +511,212 @@ def draw_ch32_pinmap(board: str) -> str:
     return svg_wrap(width, height, parts)
 
 
+# SAYO_2B3 (CH573F, QFN28): docs/board/BOARD_SAYO_2X3B_RGB.md 2-4 and
+# firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h. Pins 1-28: datasheet
+# CH573DS1 v1.12; pin 0 = the exposed pad (GND).
+CH573_PINS = (
+    "PA10", "PA11", "VDCID", "VSW", "VDD33", "PA8", "PA9",
+    "PB15", "PB14", "PB13", "PB12", "PB11", "PB10", "PB7",
+    "PB4", "PB23", "PB22", "X32MO", "X32MI", "VINTA", "ANT",
+    "VDCIA", "PA4", "PA5", "PA15", "PA14", "PA13", "PA12",
+)
+SAYO_2B3 = {
+    "keys": ["PB14", "PB13", "PB4", "PA9", "PA10", "PA11"],   # slot order, 1-3 top row
+    "boot": 3,                                                # key 4 (PA9)
+    # (name, pin or None = not an MCU pin, color name, color, what it shows)
+    "leds": [("L1", None, "초록", "#43a047", "충전 완료(추정)"),
+             ("L2", None, "빨강", "#e53935", "충전 중"),
+             ("L3", "PA4", "흰색", "#ffffff", "키 입력"),
+             ("L4", "PA5", "초록", "#43a047", "USB 유선 · 동글"),
+             ("L5", "PA15", "빨강", "#e53935", "저전압 · 부트로더"),
+             ("L6", "PA14", "파랑", "#1e88e5", "슬롯 1 · 잔량"),
+             ("L7", "PA13", "파랑", "#1e88e5", "슬롯 2 · 잔량"),
+             ("L8", "PA12", "파랑", "#1e88e5", "슬롯 3 · 잔량")],
+}
+CH573_NOTES = {"PA10": "X32KI", "PA11": "X32KO", "PB11": "UD+", "PB10": "UD−"}
+CH573_OTHER = {
+    "PB11": ("USB D+", "usb"), "PB10": ("USB D−", "usb"),
+    "PB22": ("ROM 부트로더 다운로드 핀", "boot"),
+    "ANT": ("블루투스 패치 안테나", "radio"),
+    "X32MO": ("32 MHz 크리스털", "power"), "X32MI": ("32 MHz 크리스털", "power"),
+    "VDD33": ("전원 (배터리 → D1)", "power"),
+    "VDCID": ("전원", "power"), "VSW": ("전원", "power"),
+    "VINTA": ("전원", "power"), "VDCIA": ("전원", "power"),
+}
+
+
+def ch573_label(name: str) -> tuple[str, str]:
+    """What SAYO_2B3 wires to the CH573F pin ``name``, and its kind."""
+    b = SAYO_2B3
+    leds = {led[1]: led for led in b["leds"] if led[1]}
+    if name in b["keys"]:
+        i = b["keys"].index(name)
+        boot = i == b["boot"]
+        text, kind = f"키 {i + 1} · 슬롯 {i}" + (" · 진입 키" if boot else ""), "boot" if boot else "key"
+    elif name in leds:
+        text, kind = f"{leds[name][0]} {leds[name][2]} LED", "led"
+    else:
+        text, kind = CH573_OTHER.get(name, ("미사용", "none"))
+    if name in CH573_NOTES:
+        text += f" ({CH573_NOTES[name]})"
+    return text, kind
+
+
+def draw_ch573_pinmap() -> str:
+    """CH573F (QFN28, 7 a side) from the top with what SAYO_2B3 wires to each pin."""
+    n_side, pitch, first, stub = 7, 40, 72, 16
+    side = 2 * first + (n_side - 1) * pitch
+    gap, bw, bh = 40, 230, 22
+    x0 = 30 + bw + gap
+    y0 = 100 + bw + gap
+    width, height = x0 + side + gap + bw + 30, y0 + side + gap + bw + 80
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        'SAYO_2B3 칩 핀맵 (CH573F, 윗면)</text>',
+        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#616161">'
+        '핀 번호: 자료표 CH573DS1 v1.12, QFN28. 0번 = 바닥 패드 GND</text>',
+        f'<text x="{width / 2}" y="76" text-anchor="middle" font-size="13" fill="#616161">'
+        '기판에서 1번 핀 표시를 오른쪽 위에 두고 보면 21번 ANT는 아래 변의 가장 오른쪽 핀</text>',
+        f'<rect x="{x0}" y="{y0}" width="{side}" height="{side}" rx="10" fill="#37474f" stroke="#263238" stroke-width="2"/>',
+        f'<circle cx="{x0 + 18}" cy="{y0 + 18}" r="6" fill="#cfd8dc"/>',
+        f'<text x="{x0 + side / 2}" y="{y0 + side / 2 - 8}" text-anchor="middle" font-size="22" font-weight="bold" '
+        'fill="#ffffff">CH573F</text>',
+        f'<text x="{x0 + side / 2}" y="{y0 + side / 2 + 16}" text-anchor="middle" font-size="13" fill="#cfd8dc">'
+        'QFN28 · 윗면 · ● = 1번 핀</text>',
+    ]
+    for n, name in enumerate(CH573_PINS, start=1):
+        text, kind = ch573_label(name)
+        fill, stroke = COLORS[kind]
+        dash = ' stroke-dasharray="4 4"' if kind == "none" else ""
+        k = (n - 1) % n_side
+        label = f'<tspan font-weight="bold">{n}</tspan> {name}'
+        if n <= 7:       # left side, top to bottom
+            y = y0 + first + k * pitch
+            parts.append(f'<rect x="{x0 - stub}" y="{y - 5}" width="{stub}" height="10" fill="#b0bec5" stroke="#78909c"/>')
+            parts.append(f'<text x="{x0 + 10}" y="{y + 4}" font-size="11" fill="#ffffff">{label}</text>')
+            parts.append(f'<line x1="{x0 - gap}" y1="{y}" x2="{x0 - stub}" y2="{y}" stroke="{stroke}" stroke-width="2"{dash}/>')
+            bx, by, tr = x0 - gap - bw, y - bh / 2, ""
+        elif 15 <= n <= 21:   # right side, bottom to top
+            y = y0 + side - first - k * pitch
+            parts.append(f'<rect x="{x0 + side}" y="{y - 5}" width="{stub}" height="10" fill="#b0bec5" stroke="#78909c"/>')
+            parts.append(f'<text x="{x0 + side - 10}" y="{y + 4}" text-anchor="end" font-size="11" fill="#ffffff">'
+                         f'{name} <tspan font-weight="bold">{n}</tspan></text>')
+            parts.append(f'<line x1="{x0 + side + stub}" y1="{y}" x2="{x0 + side + gap}" y2="{y}" stroke="{stroke}" '
+                         f'stroke-width="2"{dash}/>')
+            bx, by, tr = x0 + side + gap, y - bh / 2, ""
+        else:            # bottom (8-14, left to right) or top (22-28, right to left); text turned upward
+            bottom = n <= 14
+            x = x0 + first + k * pitch if bottom else x0 + side - first - k * pitch
+            if bottom:
+                parts.append(f'<rect x="{x - 5}" y="{y0 + side}" width="10" height="{stub}" fill="#b0bec5" stroke="#78909c"/>')
+                parts.append(f'<text transform="translate({x + 4} {y0 + side - 10}) rotate(-90)" font-size="11" '
+                             f'fill="#ffffff">{label}</text>')
+                parts.append(f'<line x1="{x}" y1="{y0 + side + stub}" x2="{x}" y2="{y0 + side + gap}" stroke="{stroke}" '
+                             f'stroke-width="2"{dash}/>')
+                tr = f' transform="translate({x} {y0 + side + gap}) rotate(-90)"'
+                bx, by = -bw, -bh / 2
+            else:
+                parts.append(f'<rect x="{x - 5}" y="{y0 - stub}" width="10" height="{stub}" fill="#b0bec5" stroke="#78909c"/>')
+                parts.append(f'<text transform="translate({x + 4} {y0 + 10}) rotate(-90)" text-anchor="end" font-size="11" '
+                             f'fill="#ffffff">{name} <tspan font-weight="bold">{n}</tspan></text>')
+                parts.append(f'<line x1="{x}" y1="{y0 - gap}" x2="{x}" y2="{y0 - stub}" stroke="{stroke}" '
+                             f'stroke-width="2"{dash}/>')
+                tr = f' transform="translate({x} {y0 - gap}) rotate(-90)"'
+                bx, by = 0, -bh / 2
+        parts.append(f'<g{tr}><rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="5" fill="{fill}" '
+                     f'stroke="{stroke}" stroke-width="1.5"/>'
+                     f'<text x="{bx + bw / 2}" y="{by + 15}" text-anchor="middle" font-size="12">{escape(text)}</text></g>')
+    legend = [("key", "키"), ("boot", "진입 키 · 다운로드"), ("led", "LED"), ("usb", "USB"),
+              ("radio", "안테나"), ("power", "전원 · 크리스털"), ("none", "미사용")]
+    lx = 20
+    for kind, label in legend:
+        fill, stroke = COLORS[kind]
+        parts.append(f'<rect x="{lx}" y="{height - 52}" width="16" height="16" rx="3" fill="{fill}" stroke="{stroke}"/>')
+        parts.append(f'<text x="{lx + 22}" y="{height - 39}" font-size="13">{label}</text>')
+        lx += 46 + sum(14 if ord(c) > 127 else 8 for c in label)
+    parts.append(f'<text x="20" y="{height - 14}" font-size="12" fill="#616161">'
+                 'PA10·PA11(X32KI·X32KO)을 키로 씀 → 32 kHz 크리스털 없음 · PB0·PB6은 28핀에 없음</text>')
+    parts.append(f'<text x="{width - 20}" y="{height - 14}" text-anchor="end" font-size="12" fill="#757575">'
+                 'SAYO_2B3 · tools/draw_pinmap.py</text>')
+    return svg_wrap(width, height, parts)
+
+
+def draw_2b3_buttons() -> str:
+    """SAYO_2B3 seen from the top: 2 x 3 keys, each with its pin and slot."""
+    b = SAYO_2B3
+    cols, keys = 3, b["keys"]
+    rows = len(keys) // cols
+    kw, kh, gap = 168, 110, 22
+    top = 80
+    width = 760
+    body_h = rows * kh + (rows - 1) * gap + 48
+    height = top + body_h + 50
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        'SAYO_2B3 키 배치 (윗면, 6키, 노브 없음, CH573F)</text>',
+        f'<rect x="20" y="56" width="{width - 40}" height="{body_h}" rx="16" fill="#fafafa" '
+        'stroke="#9e9e9e" stroke-width="2"/>',
+    ]
+    x0 = (width - (cols * kw + (cols - 1) * gap)) / 2
+    for i, pin in enumerate(keys):
+        kind = "boot" if i == b["boot"] else "key"
+        fill, stroke = COLORS[kind]
+        x = x0 + (i % cols) * (kw + gap)
+        y = top + (i // cols) * (kh + gap)
+        cx = x + kw / 2
+        parts.append(f'<rect x="{x}" y="{y}" width="{kw}" height="{kh}" rx="10" fill="{fill}" '
+                     f'stroke="{stroke}" stroke-width="2"/>')
+        parts.append(f'<text x="{cx}" y="{y + 40}" text-anchor="middle" font-size="26" font-weight="bold">'
+                     f'{i + 1}</text>')
+        parts.append(f'<text x="{x + 12}" y="{y + 22}" font-size="12" fill="#616161">키 {i + 1}</text>')
+        parts.append(f'<text x="{cx}" y="{y + 66}" text-anchor="middle" font-size="14">{pin} · 슬롯 {i}</text>')
+        if kind == "boot":
+            parts.append(f'<text x="{cx}" y="{y + 88}" text-anchor="middle" font-size="12" '
+                         f'fill="{stroke}" font-weight="bold">부트로더 진입 키</text>')
+    parts.append(f'<text x="32" y="{height - 30}" font-size="12" fill="#616161">'
+                 '키: 누르면 낮음(내부 풀업), 매트릭스 아님 · 진입: 키 4를 누른 채 전원(SW1) 켜기 · '
+                 '키 1 + 키 6을 1초: 배터리 잔량</text>')
+    parts.append(f'<text x="32" y="{height - 12}" font-size="12" fill="#616161">'
+                 '키 밑 LED 없음 · 상태 LED L3~L8은 옆면(leds_sayo_2b3.svg) · USB는 PB11/PB10</text>')
+    parts.append(f'<text x="{width - 20}" y="{height - 12}" text-anchor="end" font-size="12" fill="#757575">'
+                 'SAYO_2B3 · tools/draw_pinmap.py</text>')
+    return svg_wrap(width, height, parts)
+
+
+def draw_2b3_leds() -> str:
+    """SAYO_2B3 LEDs L1-L8 in board-marking order: color, pin (high = on) and meaning."""
+    leds = SAYO_2B3["leds"]
+    cw, left, top = 112, 30, 80
+    width = left * 2 + cw * len(leds)
+    height = top + 220
+    parts = [
+        f'<rect width="{width}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{width / 2}" y="32" text-anchor="middle" font-size="20" font-weight="bold">'
+        'SAYO_2B3 LED (단색, 핀 높음 = 켜짐)</text>',
+        f'<text x="{width / 2}" y="56" text-anchor="middle" font-size="13" fill="#616161">'
+        'L3~L8: 펌웨어가 켜는 상태 표시(옆면) · L1·L2: 충전 IC TP4057이 켬 · 기판 표기 순</text>',
+    ]
+    for i, (name, pin, color_name, color, meaning) in enumerate(leds):
+        cx = left + cw * i + cw / 2
+        mcu = pin is not None
+        fill, stroke = COLORS["led" if mcu else "power"]
+        dash = "" if mcu else ' stroke-dasharray="4 4"'
+        parts.append(f'<rect x="{cx - cw / 2 + 6}" y="{top}" width="{cw - 12}" height="180" rx="10" '
+                     f'fill="{fill if mcu else "#fafafa"}" stroke="{stroke}" stroke-width="1.5"{dash}/>')
+        parts.append(f'<text x="{cx}" y="{top + 26}" text-anchor="middle" font-size="16" font-weight="bold">{name}</text>')
+        parts.append(f'<circle cx="{cx}" cy="{top + 62}" r="20" fill="{color}" stroke="#616161" stroke-width="1.5"/>')
+        parts.append(f'<text x="{cx}" y="{top + 106}" text-anchor="middle" font-size="13">{color_name}</text>')
+        parts.append(f'<text x="{cx}" y="{top + 128}" text-anchor="middle" font-size="13" font-weight="bold">'
+                     f'{pin if mcu else "MCU 핀 아님"}</text>')
+        parts.append(f'<text x="{cx}" y="{top + 154}" text-anchor="middle" font-size="12" fill="#424242">'
+                     f'{escape(meaning)}</text>')
+    parts.append(f'<text x="{width - 20}" y="{height - 12}" text-anchor="end" font-size="12" fill="#757575">'
+                 'SAYO_2B3 · tools/draw_pinmap.py</text>')
+    return svg_wrap(width, height, parts)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     files = {
@@ -494,6 +726,9 @@ def main() -> None:
         "leds_sayo_3x3.svg": draw_rgb_leds("SAYO_3X3"),
         "buttons_sayo_2x4.svg": draw_rgb_buttons("SAYO_2X4"),
         "leds_sayo_2x4.svg": draw_rgb_leds("SAYO_2X4"),
+        "pinmap_sayo_2x6.svg": draw_ch32_pinmap("SAYO_2X6"),
+        "buttons_sayo_2x6.svg": draw_rgb_buttons("SAYO_2X6"),
+        "leds_sayo_2x6.svg": draw_rgb_leds("SAYO_2X6"),
         "pinmap_ch552g.svg": draw("MK6K1N · MK6K1NL", "CH552G 핀맵 (두 보드 공통)",
                                   "LED 데이터 (WS2812 체인)", None),
         "pinmap_mk6k1n.svg": draw("MK6K1N", "MK6K1N 핀맵 (6키 + 노브, LED 1개)",
@@ -503,6 +738,9 @@ def main() -> None:
                                    [f"LED {i} · 키 {k} 아래" for i, k in enumerate("ABCDEF")]),
         "buttons_mk6k1n.svg": draw_buttons("MK6K1N", "MK6K1N 버튼 별 맵핑 (윗면)", False),
         "buttons_mk6k1nl.svg": draw_buttons("MK6K1NL", "MK6K1NL 버튼 별 맵핑 (윗면)", True),
+        "pinmap_sayo_2b3.svg": draw_ch573_pinmap(),
+        "buttons_sayo_2b3.svg": draw_2b3_buttons(),
+        "leds_sayo_2b3.svg": draw_2b3_leds(),
     }
     for name, svg in files.items():
         (OUT / name).write_text(svg, encoding="utf-8")

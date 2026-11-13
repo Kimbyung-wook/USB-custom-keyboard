@@ -24,6 +24,11 @@ CHIPS = {c.chip_id: c for c in (
     # the app info 256 B and the config the last 4 KB (boot_layout.h): the app
     # gets 52992 B. id 0x19 = the family byte of wchisp's CH32V203C8U6[0x3019] (chip 0x30; checked on SAYO_3X3). Flashed by gui/core/hidboot.py (.bin)
     Chip(0x19, "CH32V203", 52992, False, "vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH32V203.md)"),
+    # CH573: code flash 448 KB. Our bootloader takes the first 8 KB and the app
+    # info the next 4 KB (firmware/bootloader_ch573/boot_layout.h): the app gets
+    # 446464 B from 0x3000; the config lives in the separate data EEPROM.
+    # id 0x73 = BOARD_CHIP_ID of SAYO_2B3 (src/hal/ch573/sayo_2b3.h, bootloader HELLO byte 45)
+    Chip(0x73, "CH573", 446464, False, "vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH573.md)"),
 )}
 
 

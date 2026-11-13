@@ -40,13 +40,13 @@
 ## 준비 중 보드
 
 - SAYO_2X6: 칩·키·LED 핀 확인 끝, 보드 파일 있음 → 위 생성 표와 아래 업데이트 표에 들어감. 본 펌웨어 키 입력·GUI 설정은 확인 전
-- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4) 설치·확인. 본 펌웨어 1단계(USB 유선, BLE 없음, `Makefile.ch573`) 데모판 확인. 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`)는 빌드만, 미장입. GUI 보드 목록 등록 전 → 위 생성 표와 아래 업데이트 표에는 아직 없음
+- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 1단계(USB 유선, BLE 없음, `Makefile.ch573`) 데모판 확인. 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록 등록 전 → 위 생성 표와 아래 업데이트 표에는 아직 없음
 - SAYO_2X6 이름은 확정(기판 `2x6_RGB`). SAYO_2B3 이름도 확정(옛 이름 BT_2X3, 2026-11-13). 파일 위치와 할 일: [NEW_BOARD.md 9절](NEW_BOARD.md#9-식별-전-보드)
 
 | 이름 | 제품 | 배치 | 칩 | 문서 |
 |---|---|---|---|---|
 | SAYO_2X6 | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열 | CH32V203C8U6 (핀 확인 끝, 본 펌웨어 확인 중) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
-| SAYO_2B3 | SayoDevice 6키, 무선(별도 USB 동글), 기판 `2x3M_BLE_Ver1.1` | 2행 × 3열 | CH573F (QFN28), 동글 CH582F | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md) |
+| SAYO_2B3 | SayoDevice 6키, 무선(별도 USB 동글), 기판 `2x3M_BLE_Ver1.1` | 2행 × 3열 | CH573F (QFN28), 동글 CH582F | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
 
 ## 펌웨어 업데이트
 

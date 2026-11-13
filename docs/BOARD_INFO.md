@@ -120,11 +120,17 @@ class Board:
 | 0x52 | CH552 | 14,336 B | 예 | - |
 | 0x54 | CH554 | 14,336 B | 아니오 | 확인하지 않은 칩 |
 | 0x19 | CH32V203 | 52,992 B | 아니오 | vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH32V203.md) |
+| 0x73 | CH573 | 446,464 B | 아니오 | vnproch55x로는 올리지 못합니다. 자체 부트로더(hidboot)로 올립니다 (docs/BOOTLOADER_CH573.md) |
 <!-- /gen:chips -->
 
 - 표는 `tools/gen_docs.py`가 `gui/core/chips.py`에서 만듦. "지원"은 vnproch55x로 올릴 수 있는지
 - 업로드 도구: CH551·CH552·CH554는 vnproch55x `-t <칩>`(CH554는 확인 필요). CH32V203은 자체 HID 부트로더(`hidboot.py`, `.bin`), 처음 한 번만 wchisp + BOOT 브리지 ([BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md))
-- CH32V203은 SAYO_3X3, SAYO_2X4에서 지원(자체 부트로더)
+- CH32V203은 SAYO_3X3, SAYO_2X4, SAYO_2X6에서 지원(자체 부트로더)
+- CH573(칩 ID `0x73`, 준비 중 SAYO_2B3): 칩 표에 있음(앱 영역 446,464 B, vnproch55x 미지원, 자체 HID 부트로더 `hidboot`로 올림). 보드 목록(`boards.py`) 등록은 아직
+  - 자체 HID 부트로더(`1209:C55E`, CH32V203과 같은 명령)가 HELLO 바이트 45로 `0x73`, 21~28로 8바이트 UID를 알림([BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)). 처음 설치는 wchisp(ROM 부트로더, WinUSB 드라이버)
+- 보드 목록 등록 전 보드의 옛 이름 별칭: `gui/core/boards.py`의 `PENDING_ALIASES`(`BT_2X3` → `SAYO_2B3`)
+  - 기판 부트로더가 옛 이름 `BT_2X3`을 알려도 `hidboot` 보드 확인 통과, 화면은 `SAYO_2B3 (옛 이름 BT_2X3)`
+  - 보드를 목록에 등록할 때 그 보드의 별칭(aliases)으로 옮김. pytest가 이름·별칭 8자 이하, 중복 없음을 검사
 
 - **업데이트 모드 칩 목록**: 부트로더 Detect가 돌려준 칩 ID로 이 표를 찾아 최대 크기와 업로드 도구를 정함
   - 표에 없거나 "미지원"이면 [장입]을 막고 이유를 보여 줌
@@ -188,6 +194,8 @@ class Board:
 - MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
 - SAYO_3X3: 9키(3x3), SAYO_2X4: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
 - 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
+- SAYO_2B3(CH573, 6키 무선, 준비 중): 목록 등록 전 → 위 표에 없음. 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`). 진입 키 4(누른 채 SW1 켜기)
+  - 이미 설치된 자체 부트로더는 옛 이름 `BT_2X3`을 알림 → `gui/core/boards.py`의 `PENDING_ALIASES`로 같은 보드로 봄
 
 - 핀 배치 그림·표: 보드 문서 2·3절 ([BOARDS.md](BOARDS.md))
 
@@ -294,6 +302,7 @@ class Board:
 
 | 날짜 | 상태 |
 |---|---|
+| 2026-11-13 | 준비 중 CH573 보드 SAYO_2B3: 칩 ID `0x73`, 자체 부트로더 HELLO(45 = 칩, 21~28 = UID), 옛 이름 `BT_2X3` 별칭(`PENDING_ALIASES`). 칩 표에 CH573 추가, 보드 목록 등록 전 |
 | 2026-11-07 | CH32V203 칩 ID `0x19` 확인(wchisp `0x3019`). CH32V203 보드는 맞지 않는 `.bin`을 지우기 전에 거부(`--force`로만). CH552 보드의 "노브를 누른 채 꽂기" 진입 없앰. 진행 순서 **5~6번 완료**: 8키·9키 모두 CH32V203C8U6, 펌웨어 이식과 자체 HID 부트로더 ([PORT_CH32V203.md](old/PORT_CH32V203.md)) |
 | 2026-10-31 | 진행 순서 **1~4번 완료**. 두 번째 보드 **MK6K1NL**(키마다 LED, 펌웨어·GUI 1.5.0) 추가. GUI 1.6.0: 업데이트 창에 **장입할 보드** 선택(처음 설치 포함). 펌웨어 HAL 분리([펌웨어 README 코드 구조](../firmware/macro_keyboard/README.md#코드-구조)). 보드별 값은 [BOARDS.md](BOARDS.md) |
 | 2026-10-26 | "정할 것" 5가지 모두 **권장안**으로 정함. 진행 순서 **1~3번 완료**: 펌웨어 1.3.0이 HELLO 바이트 17~35로 보드 정보를 보내고 hex에 식별 문자열을 넣음. GUI는 그 배치로 화면을 만들고, 업데이트 창은 칩 표(`gui/core/chips.py`)와 보드 목록(`gui/core/boards.py`)으로 칩·업로더 옵션·진입 방법을 고르고 hex 식별 문자열을 확인함 |

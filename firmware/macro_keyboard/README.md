@@ -103,9 +103,8 @@
   - 목적 파일: 보드별 `build/ch32v203/obj-<BOARD>/`. `.bin`은 `build/ch32v203/macro_keyboard-<BOARD>.bin`. `build_fw.ps1`은 그 보드의 파일만 지우고 다시 빌드
   - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
   - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
-- **CH573 보드(SAYO_2B3)**: `mingw32-make -f Makefile.ch573` → `build/ch573/macro_keyboard-SAYO_2B3.bin`. 1단계(USB 유선 키보드, BLE 없음), 자체 부트로더 뒤 0x3000
-  - `DEMO=1` → `…-SAYO_2B3-demo.bin`(키가 상태 LED를 바꾸는 시험판), `full` → `…-full.bin`(부트로더 + 앱 정보 + 앱). 자세한 내용: [BOARD_SAYO_2X3B_RGB 6절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작)
   - 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
+- **CH573 보드(SAYO_2B3, 준비 중)**: `Makefile.ch573`, SDK 경로 `MK_CH57X_SDK` → [아래 CH573 빌드](#ch573-빌드-sayo_2b3-준비-중), 부트로더 [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md)
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요
@@ -131,6 +130,26 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - **Sketch → Export Compiled Binary** → `build\CH55xDuino.mcs51.ch552\macro_keyboard.ino.hex` 생성
 - 빌드 날짜가 안 들어감(GUI에 `빌드 날짜 없음`)
 
+### CH573 빌드 (SAYO_2B3, 준비 중)
+
+- 단계: **1단계**(USB 유선 키보드 + 상태 LED + 배터리 측정, BLE 없음). BLE는 2단계(계획 중)
+- 도구: xPack riscv-none-elf-gcc, `mingw32-make`, WCH CH573 EVT SDK(`MK_CH57X_SDK`, 기본 `C:/Users/user/tools/sdk_ch573/EVT`). `tools\build_fw.ps1`에는 아직 없음
+- `firmware\macro_keyboard`에서
+
+| 명령 | 결과 |
+|---|---|
+| `mingw32-make -f Makefile.ch573` | `build/ch573/macro_keyboard-SAYO_2B3.bin` (앱, 0x3000에 링크) |
+| `mingw32-make -f Makefile.ch573 DEMO=1` | `…-SAYO_2B3-demo.bin`: 키가 입력 대신 상태 LED를 바꾸는 시험판 |
+| `mingw32-make -f Makefile.ch573 full` | `…-SAYO_2B3-full.bin`: 자체 부트로더 + 앱 정보 + 앱(`firmware/bootloader_ch573/mkfull.py`). 처음 설치용(wchisp) |
+
+- 배치: 자체 부트로더 뒤 0x3000, 최대 446,464 B. 숫자는 `firmware/bootloader_ch573/boot_layout.h`에서 읽음
+- 설정 저장: Data-Flash 0~2,047(블롭 2048 B, `STORE_SIZE`). BLE 짝 정보 자리(0x7E00~)와 안 겹침
+- 보드 헤더: `src/hal/ch573/sayo_2b3.h`(GUI 보드 목록 등록 전이라 `src/boards` 밖, `-DBOARD_HEADER`로 넘김). 칩 정의 `MK_CHIP_CH573`
+- 소스: `src/core/`(공통) + `battery.c`·`bt_led.c`·`bt_app.c`(이 보드만) + `src/hal/ch573/` + SDK 드라이버(clk, gpio, sys, timer0, pwr, adc)
+- Makefile을 고친 뒤에는 `build/ch573` 지우기
+- 장입: 아직 GUI 업데이트 창·`flash.ps1` 대상 아님 → 자체 부트로더에 `uv run python -m gui.core.hidboot flash firmware/macro_keyboard/build/ch573/macro_keyboard-SAYO_2B3.bin` (진입: 키 4를 누른 채 SW1 켜기). 처음 설치는 [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md#처음-설치복구-rom-부트로더-wchisp)
+- 동작·LED: [BOARD_SAYO_2X3B_RGB 6절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작)
+
 ### 버전과 빌드 날짜
 
 - **버전**: `src/config.h`의 `FW_MAJOR`, `FW_MINOR`, `FW_PATCH`를 직접 고침(지금 `1.7.0`)
@@ -142,6 +161,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 ### 크기
 
 - 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). SAYO_3X3 앱 12,304바이트, SAYO_2X4 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
+- 준비 중 SAYO_2B3(CH573, 1단계): 앱 12,460바이트(앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트
 
 **이력 (크기)**
 
@@ -211,6 +231,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 **스크립트 (CH552 보드)**
 
 - CH32V203 보드: [사용 설명서 8장 "스크립트로 올리기"](../../docs/MANUAL.md#스크립트로-올리기)
+- CH573 보드(SAYO_2B3, 준비 중): [CH573 빌드](#ch573-빌드-sayo_2b3-준비-중)의 장입
 
 1. 저장소 폴더에서 실행
 2. **키 D를 누른 채** 키보드 연결

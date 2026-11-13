@@ -168,7 +168,7 @@
 ## 8. 새 칩 (CH552·CH32V203 외)
 
 - 기능 코드(`src/core/`)는 칩과 무관. 칩마다 **HAL**을 새로 구현해야 함
-- 인터페이스: `firmware/macro_keyboard/src/hal/hal.h`. 구현 예: `src/hal/ch552/`, `src/hal/ch32v203/`
+- 인터페이스: `firmware/macro_keyboard/src/hal/hal.h`. 구현 예: `src/hal/ch552/`, `src/hal/ch32v203/`, `src/hal/ch573/`
 
 | HAL 영역 | 할 일 |
 |---|---|
@@ -181,7 +181,17 @@
 | 부트로더 | `hal_enter_bootloader` (BOOT 명령). ROM 부트로더에 소프트웨어로 못 들어가면 자체 부트로더 필요 |
 
 - 빌드 체계(Makefile 또는 Arduino 코어), `tools/build_fw.ps1`의 칩 분기, 장입 도구, `gui/core/chips.py` 칩 표도 추가
-- 참고 기록: CH32V203 이식 [old/PORT_CH32V203.md](old/PORT_CH32V203.md), 자체 부트로더 [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md)
+- 참고 기록: CH32V203 이식 [old/PORT_CH32V203.md](old/PORT_CH32V203.md), 자체 부트로더 [BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md), CH573 [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)
+
+### 8-1. CH573에서 배운 점 (BLE SoC)
+
+- 빌드: 칩마다 Makefile을 따로 둠(`firmware/macro_keyboard/Makefile.ch573`, SDK 경로 `MK_CH57X_SDK`). `tools/build_fw.ps1`에는 아직 없음
+- 보드 헤더: GUI 보드 목록(`gui/core/boards.py`)에 넣기 전에는 `src/boards/`가 아닌 HAL 폴더에 둠(`src/hal/ch573/sayo_2b3.h`, `-DBOARD_HEADER`로 지정). 보드 목록과 맞추는 교차 검사를 피하려는 것
+- 설정 저장: 코드 플래시와 따로 있는 Data-Flash 32 KB를 씀 → 앱을 업데이트해도 설정 유지. BLE 짝 정보(SNV)는 같은 Data-Flash 끝(0x7E00)이라 겹치지 않게 배치
+- ROM 부트로더: 핀(PB22)을 GND에 댄 채 전원을 켜야 들어가고 몇 초 뒤 앱으로 돌아감. wchisp는 WinUSB 드라이버(Zadig) 필요 → 자체 HID 부트로더를 먼저 올리고 이후는 키 진입·BOOT 명령으로 업데이트
+- USB 장치 구현: 모르는 GET_DESCRIPTOR 요청에 STALL하면 Windows가 코드 10을 낼 수 있음 → 0바이트로 답함([BOOTLOADER_CH573.md](BOOTLOADER_CH573.md#windows-코드-10-고친-문제-2026-11-13))
+- 저속 클록: 32 kHz 크리스털 핀이 다른 용도(키)면 내부 LSI로 BLE를 돌림. 시험 펌웨어에서 크리스털 핀부터 확인
+- 동글이 있는 무선 보드: 동글 칩(CH582F)도 같은 계열 SDK로 따로 펌웨어를 만듦(`firmware/dongle_ch582`). 동글 핀 시험은 `tests/hw/ch582_dongle`
 
 ## 9. 식별 전 보드
 
@@ -192,7 +202,9 @@
 | 이름 | 제품 | 배치 | 알려진 것 | 문서 |
 |---|---|---|---|---|
 | `SAYO_2X6` | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열, 12키 | CH32V203C8U6, 키·LED 핀 확인, 보드 파일·자체 부트로더 있음, 본 펌웨어 확인 중(2026-11-13) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
-| `SAYO_2B3` | SayoDevice 6키 | 2행 × 3열, 6키 | 블루투스. 기판 `2x3M_BLE_Ver1.1`, CH573F. 키·LED 핀 확인, 자체 부트로더 설치, 본 펌웨어 1단계(USB 유선), 동글 CH582F 미장입(2026-11-13) | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md) |
+| `SAYO_2B3` | SayoDevice 6키 | 2행 × 3열, 6키 | 블루투스. 기판 `2x3M_BLE_Ver1.1`, CH573F. 키·LED 핀 확인, 자체 부트로더 설치, 본 펌웨어 1단계(USB 유선), 동글 CH582F 미장입(2026-11-13) | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
+
+- SAYO_2B3 파일 위치(지금): 보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`, HAL `src/hal/ch573/`, 빌드 `firmware/macro_keyboard/Makefile.ch573`, 자체 부트로더 `firmware/bootloader_ch573/`, 시험 펌웨어 `tests/hw/ch573/test_ch573/`, 동글 `firmware/dongle_ch582/`·`tests/hw/ch582_dongle/`. GUI 보드 목록·칩 표·`build_fw.ps1`에는 아직 없음
 
 ### 9-1. 파일 구조
 
@@ -221,5 +233,7 @@
 
 - 이 프로젝트의 설정 통신은 USB Vendor HID([PROTOCOL.md](PROTOCOL.md)). 블루투스만으로 설정하는 방식은 아직 없음
 - USB 포트가 충전 전용이면 장입·설정 방법부터 따로 정해야 함 → 식별 체크리스트에서 먼저 확인
-- 별도 USB 동글이 있으면(SAYO_2B3) 2.4G 전용 방식일 수 있음 → 키보드만 바꾸면 무선 입력이 끊길 수 있음. 동글은 맨 마지막에 건드림
+- 별도 USB 동글이 있으면 공장 동글은 그 키보드 전용 방식일 수 있음 → 키보드만 바꾸면 무선 입력이 끊길 수 있음. 동글은 맨 마지막에 건드림
+  - SAYO_2B3: 동글 칩도 BLE SoC(CH582F) → 동글에 우리 펌웨어(일반 BLE HID central)를 올려 표준 BLE 키보드로 맞춤. 동글 첫 장입은 공장 펌웨어·짝 정보를 영구 삭제하므로 따로 승인
+  - 동글 없이도 PC 블루투스에 바로 짝지을 수 있게 키보드는 표준 BLE HID(HOGP)로 만듦(2단계, 계획 중·코드 없음)
 - 별도 BLE 모듈 + MCU면 MCU 쪽만 바꿀 수도 있음. 단일 BLE SoC면 BLE 스택·부트로더까지 칩 SDK를 따름
