@@ -29,6 +29,9 @@
 //      reset; hal_init calls VCM_DET_EN(0) first. PB2 held low at power-on
 //      keeps the chip from starting (FAQ): no LED or transistor base there,
 //      a key there only if not held while powering on
+//   PB1: SDK isd_config.ini "RESET = PB01_08_0" = the image sets PB1 as the
+//      long-press reset pin (8 s low, UNCONFIRMED reading): the test's 1 s
+//      FIND pulse is shorter; a key there resets the chip if held 8 s
 //   Default pull-up: PB2, PB1. PB3 also MCLR, PB1 also LVD (low-voltage
 //   detect) in the datasheet: the SDK leaves both as plain GPIO unless enabled
 //   PB8 / PB9: 32K_OSCO / 32K_OSCI (32.768 kHz crystal, if any is fitted:

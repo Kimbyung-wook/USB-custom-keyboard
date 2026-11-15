@@ -159,6 +159,78 @@ def test_bd19_loader_backup_and_write(tmp_path):
     assert j.loader_path("bd19", "X:/sdk").as_posix() == "X:/sdk/cpu/bd19/tools/bd19loader.bin"
 
 
+def test_bd19_config_block_bytes():
+    """As measured on JUZH_3B4 (PM, 2026-11-15)."""
+    block = j.config_block({"SPI": "2_3_0_0"})
+    assert block[:16] == bytes.fromhex("55494D4D5441472D12789BE8CA311B61")
+    assert block[16:34] == bytes(18)
+    assert block[34:47] == b"\x07SPI\x002_3_0_0\x00" and block[47:] == bytes(17) and len(block) == 64
+    with pytest.raises(ValueError):
+        j.config_block({"X" * 20: "Y" * 30})
+
+
+def test_bd19_loader_start_order():
+    """Loader file as it is at 0x2000, then the encoded settings block at
+    0x7A00 (read back), then the jump; first loader command FC14; no FC09."""
+    fake, u, info = open_fake(vendor="BD19", flash_size=64 * 1024)
+    assert bytes(fake.ram[0x2000 + i] for i in range(len(LOADER))) == LOADER   # not encoded again
+    raw = bytes(fake.ram[j.CONFIG_ADDR + i] for i in range(64))
+    assert raw == j.mengli_cipher(j.config_block({"SPI": "2_3_0_0"})) != j.config_block({"SPI": "2_3_0_0"})
+    assert fake.config == j.config_block({"SPI": "2_3_0_0"}) and not fake.stuck
+    jump = fake.log.index(j.JUMP_TO_MEMORY)
+    assert fake.log[jump - 2:jump] == [j.WRITE_MEMORY, j.READ_MEMORY]          # block, read back
+    assert fake.log[jump + 1] == j.GET_USB_BUFF_SIZE
+    assert j.READ_KEY not in fake.log and info.chip_key == 0                     # not checked on BD19
+    assert j.READ_KEY in open_fake()[0].log                                      # BR23 still reads it
+
+
+def test_bd19_without_config_block_stalls():
+    fake = j.FakeUboot(vendor="BD19", flash_size=64 * 1024)
+    u = j.Uboot(fake)
+    u.run_loader(LOADER, 0x2000, 1)          # no settings block
+    assert fake.stuck
+    with pytest.raises(j.UbootError):
+        u.read_id()
+
+
+def test_commands_without_handler_never_sent():
+    fake, u, info = open_fake(vendor="BD19", flash_size=64 * 1024)
+    for cmd in (j.GET_LOADER_VER, 0xFC0F, 0xFC16):
+        with pytest.raises(j.UbootError, match="없는 명령"):
+            u._exec(cmd)
+        assert cmd not in fake.log
+    assert u.read_id() == fake.flash_id          # still alive
+
+
+def test_idle_loader_refused():
+    fake, u, info = open_fake(vendor="BD19", flash_size=64 * 1024)
+    now = [100.0]
+    u.clock = lambda: now[0]
+    u.keep_alive()
+    now[0] += 2.0
+    u.keep_alive()                               # within 2.5 s: fine, and resets the timer
+    now[0] += 2.6
+    sent = len(fake.log)
+    with pytest.raises(j.UbootError, match="3초"):
+        u.read_id()
+    assert len(fake.log) == sent and not u.loader_running
+
+
+def test_entry_finds_factory_and_test_firmware(monkeypatch):
+    from gui.core import transport
+
+    class Hid:
+        @staticmethod
+        def enumerate(vid, pid):
+            return [{"path": f"{vid:04X}:{pid:04X}:{up:04X}".encode(), "usage_page": up}
+                    for up in (0x0001, 0xFF00)
+                    if (vid, pid) in ((0x514C, 0x8850), (0x4A4C, 0x4155))]
+    monkeypatch.setattr(transport, "_hid", lambda: Hid)
+    assert j.factory_paths() == [b"514C:8850:FF00", b"4A4C:4155:FF00"]
+    with pytest.raises(j.UbootError, match="4A4C:4155"):
+        j.enter_factory(paths=[])
+
+
 class FakeHid:
     def __init__(self, n=65, fail=False):
         self.sent, self.closed, self.n, self.fail = [], False, n, fail

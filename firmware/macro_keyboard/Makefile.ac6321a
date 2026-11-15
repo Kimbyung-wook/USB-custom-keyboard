@@ -1,0 +1,21 @@
+# AC6321A build of the macro keyboard (board JUZH_3B4), UNVERIFIED on a chip:
+# a JieLi SDK app (fw-AC63_BT_SDK, cpu/bd19). The work is in
+# jl_build_ac6321a.sh (bash): it copies the SDK parts it needs to a work tree
+# (the SDK clone stays as it is), patches the config there, adds src/, runs the
+# SDK make with its post-build script off (that script runs isd_download
+# -tonorflash, which writes to a connected chip) and packs the app binary.
+#   mingw32-make -f Makefile.ac6321a          -> build/ac6321a/macro_keyboard-JUZH_3B4.bin
+#   mingw32-make -f Makefile.ac6321a BLE=0    -> the same, USB only
+# Env: MK_JL_SDK, MK_JL_WORK, MK_JL_TOOLCHAIN (see the script).
+# No flash target on purpose: the .bin is not a flash image (isd_download adds
+# uboot, config and partitions), and flashing waits for the user's ok.
+.RECIPEPREFIX = >
+BLE ?= 1
+
+.PHONY: build clean
+
+build:
+>BLE=$(BLE) bash jl_build_ac6321a.sh
+
+clean:
+>rm -rf build/ac6321a

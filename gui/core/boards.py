@@ -38,6 +38,19 @@ class BoardSpec:
     power_switch: str = ""
     # What the board shows while our bootloader waits (hidboot boards)
     boot_led: str = "LED가 보라색입니다"
+    # Flashed through the JieLi ROM's USB download mode (gui/core/jluboot.py)
+    # instead of a WCH bootloader
+    jieli: bool = False
+    chip_text: str = ""    # chip name when chips.py has no entry for it (yet)
+    # Knobs in a column right of the keys, one above the other (else right, side by side)
+    knob_column: bool = False
+    # The board is also used turned 90 degrees counter-clockwise: the window
+    # offers a portrait view (same slots, only the picture turns)
+    rotatable: bool = False
+    # LEDs the GUI explains: (name, what it shows). Hardware-only LEDs (charging) are left out
+    leds: tuple[tuple[str, str], ...] = ()
+    # Status LEDs drawn between the knobs (knob_column boards), e.g. the BT slots 1-3
+    knob_leds: int = 0
 
     @property
     def chip(self) -> chips.Chip | None:
@@ -45,7 +58,7 @@ class BoardSpec:
 
     @property
     def chip_name(self) -> str:
-        return chips.name_of(self.layout.chip_id)
+        return self.chip_text or chips.name_of(self.layout.chip_id)
 
     @property
     def firmware_file(self) -> str:
@@ -53,6 +66,11 @@ class BoardSpec:
         if self.hidboot:    # build/<chip>/, e.g. build/ch32v203/, build/ch573/
             return f"{self.chip_name.lower()}/macro_keyboard-{self.name}.bin"
         return f"macro_keyboard-{self.name}.hex"
+
+    @property
+    def led_help(self) -> str:
+        """The LED explanation, one "name: meaning" line each."""
+        return "\n".join(f"{name}: {text}" for name, text in self.leds)
 
     @property
     def boot_hint(self) -> str:
@@ -158,6 +176,36 @@ BOARDS = (
 )
 
 
+# Bluetooth slot LEDs, the same rules as SAYO_2B3 (docs/board/BOARD_SAYO_2X3B_RGB.md, LED table)
+BT_SLOT_LED_RULES = ("페어링 대기 = 빠르게 깜빡임(0.2초), 재연결 중 = 느리게 깜빡임(1초), "
+                     "연결됨 = 3초 켜진 뒤 꺼짐, 슬롯 바꿈 = 그 슬롯이 1초 켜짐. "
+                     "광고는 60초 뒤 멈추고 LED도 꺼짐")
+
+
+# Boards the GUI draws and flashes before the firmware has a board file for
+# them (tests/gui/test_consistency.py checks BOARDS against the board files).
+# A board moves into BOARDS with its board file.
+PREPARING = (
+    # JieLi AC6321A (family BD19), 12 keys (3 x 4) and 2 knobs in a column on the
+    # right with the BT slot LEDs between them; also used turned 90 degrees
+    # counter-clockwise (knobs on top, keys 4 x 3 below), Bluetooth (docs/board/BOARD_KEY12_JUZHEN_V01.md). No WCH bootloader:
+    # the ROM's USB download mode (UBOOT disk 4C4A:3442), reached over the same
+    # USB cable: 03 EF EF on the factory firmware's vendor HID, BOOT on ours.
+    # HELLO chip ID not decided yet (0: "unknown")
+    BoardSpec("JUZH_3B4", "12키 (3x4) + 노브 2개, 블루투스 (AC6321A)",
+              Board(keys=12, knobs=2, rows=3, name="JUZH_3B4", chip_id=0,
+                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
+              boot_config=0, jieli=True, chip_text="AC6321A", knob_column=True, knob_leds=3, rotatable=True,
+              boot_text="USB를 꽂은 채 GUI의 [UBOOT로 전환]으로",
+              factory_boot="공장 펌웨어 상태면 USB를 꽂고 업데이트 창에서 진입 방법 "
+                           "'공장 펌웨어'로 [UBOOT로 전환]을 누르세요 (벤더 HID 명령 03 EF EF)",
+              leds=(("노브 사이 LED 1·2·3", "블루투스 연결 슬롯 1·2·3. " + BT_SLOT_LED_RULES),
+                    ("충전 LED", "충전 회로가 직접 켜는 표시라 GUI·펌웨어와 상관없음"))),
+)
+
+ALL_BOARDS = BOARDS + PREPARING
+
+
 # Earlier names of boards not in BOARDS yet: earlier name -> current name.
 # A board's aliases move into its BoardSpec when it is added to BOARDS.
 PENDING_ALIASES: dict[str, str] = {}
@@ -166,7 +214,7 @@ PENDING_ALIASES: dict[str, str] = {}
 def find(name: str) -> BoardSpec | None:
     """The board called ``name`` now or under an earlier name (aliases)."""
     name = PENDING_ALIASES.get(name, name)
-    for spec in BOARDS:
+    for spec in ALL_BOARDS:
         if spec.name == name or name in spec.aliases:
             return spec
     return None

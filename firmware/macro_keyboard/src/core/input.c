@@ -10,9 +10,10 @@
 // hal_ms() read once per loop() (a 32-bit millis() read on CH55x)
 __data uint16_t now16;
 
-// Switches: the keys (switch i types slot i), then the knob switch (if any)
+// Switches: the keys (switch i types slot i), then the knob switch of each
+// knob (switch BOARD_KEYS + n = knob n)
 #define NUM_SWITCHES (BOARD_KEYS + BOARD_KNOBS)
-#define KNOB_SWITCH BOARD_KEYS // index of the knob switch
+#define KNOB_SWITCH BOARD_KEYS // index of the (first) knob switch
 // Every switch needs a bit of hal_sw_t (CH55x 8, CH32V 16). Not under SDCC:
 // hal_ch552.c has its own #error for 8 and code size there stays as it is
 #ifndef __SDCC
@@ -30,11 +31,17 @@ static __xdata uint16_t keyChangedAt[NUM_SWITCHES];
 // Quadrature decoder: index = (prev << 2) | curr, value = step direction.
 // On this board a clockwise turn counts negative (checked with test_pinmap).
 static __code int8_t encTable[16] = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0};
+#define ENC_MIN_STEPS 2 // quadrature steps that make a detent (of 4)
+#if BOARD_KNOBS > 1
+// One decoder per knob (no SDCC board has two knobs)
+static uint8_t encPrev[BOARD_KNOBS];
+static int8_t encCount[BOARD_KNOBS];
+#else
 // Small state sits in indirect internal RAM (__idata): shorter code than
 // xdata, and __data is already used by macro.c and lock.c
 static __idata uint8_t encPrev;
 static __idata int8_t encCount;
-#define ENC_MIN_STEPS 2 // quadrature steps that make a detent (of 4)
+#endif
 #endif
 
 // Hold switch: holding it for LOCK_HOLD_MS starts a pattern entry. It is the
@@ -42,7 +49,11 @@ static __idata int8_t encCount;
 // stored, the knob press is typed on release so that a hold can start the
 // entry instead. A key on a board without a knob is typed on press anyway
 // (typing on release felt late); holding it to relock types it once first.
-#if BOARD_KNOBS
+#if BOARD_KNOBS > 1
+// Either knob switch is a hold switch
+#define IS_HOLD_SWITCH(i) ((i) >= KNOB_SWITCH)
+#define SWITCH_SLOT(i) ((i) < KNOB_SWITCH ? (i) : SLOT_KNOB_N((i) - KNOB_SWITCH) + 2)
+#elif BOARD_KNOBS
 #define IS_HOLD_SWITCH(i) ((i) == KNOB_SWITCH)
 #define SWITCH_SLOT(i) ((i) == KNOB_SWITCH ? SLOT_KNOB_PRESS : (i))
 #else
@@ -55,7 +66,12 @@ static __idata uint16_t heldAt;
 
 void input_init(void) {
   heldSwitch = NO_SWITCH;
-#if BOARD_KNOBS
+#if BOARD_KNOBS > 1
+  uint8_t lines = hal_encoder();
+  for (uint8_t n = 0; n < BOARD_KNOBS; n++) {
+    encPrev[n] = (lines >> (2 * n)) & 3;
+  }
+#elif BOARD_KNOBS
   encPrev = hal_encoder();
 #endif
 }
@@ -136,7 +152,29 @@ static void scanSwitches(void) {
   }
 }
 
-#if BOARD_KNOBS
+#if BOARD_KNOBS > 1
+// The same decoding as below, for knob n (curr = A << 1 | B of that knob)
+static void stepEncoder(uint8_t n, uint8_t curr) {
+  if (curr == encPrev[n]) {
+    return;
+  }
+  encCount[n] += encTable[(encPrev[n] << 2) | curr];
+  encPrev[n] = curr;
+  if (curr == 3) {
+    if (encCount[n] >= ENC_MIN_STEPS || encCount[n] <= -ENC_MIN_STEPS) {
+      input_action(SLOT_KNOB_N(n) + (encCount[n] < 0 ? 0 : 1)); // CW : CCW
+    }
+    encCount[n] = 0;
+  }
+}
+
+static void scanEncoder(void) {
+  uint8_t lines = hal_encoder();
+  for (uint8_t n = 0; n < BOARD_KNOBS; n++) {
+    stepEncoder(n, (lines >> (2 * n)) & 3);
+  }
+}
+#elif BOARD_KNOBS
 static void scanEncoder(void) {
   uint8_t curr = hal_encoder();
 

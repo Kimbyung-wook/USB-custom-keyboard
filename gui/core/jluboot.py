@@ -303,6 +303,48 @@ LOADERS = {
 
 # UBOOT on USB (seen on JUZH_3B4, 2026-11-15): "BD19 UBOOT1.00"
 UBOOT_VID, UBOOT_PID = 0x4C4A, 0x3442
+
+# The loader's settings block (isd_config.ini [SYS_CFG_PARAM]), written to RAM
+# before the jump. Without it the bd19 loader reads garbage RAM as settings
+# and stops at the first command (PM, 2026-11-15). 64 B: 16 B mark, zeros to
+# offset 34, entries [value length][key NUL][value], 0 to end; MengLi encoded.
+CONFIG_ADDR = 0x7A00
+CONFIG_MARK = b"UIMMTAG-" + bytes.fromhex("12789BE8CA311B61")
+CONFIG_SIZE = 64
+CONFIG_ENTRIES_AT = 34
+
+
+def config_block(entries: dict[str, str]) -> bytes:
+    """The plain settings block, e.g. {"SPI": "2_3_0_0"}."""
+    body = b"".join(bytes([len(v)]) + k.encode() + b"\x00" + v.encode() for k, v in entries.items())
+    block = CONFIG_MARK.ljust(CONFIG_ENTRIES_AT, b"\x00") + body + b"\x00"
+    if len(block) > CONFIG_SIZE:
+        raise ValueError("설정 블록이 64바이트를 넘습니다")
+    return block.ljust(CONFIG_SIZE, b"\x00")
+
+
+LOADER_CONFIG = {
+    "bd19": {"SPI": "2_3_0_0"},     # checked on JUZH_3B4: flash read works
+}
+
+# Commands a loader has no handler for: it never answers, the transfer times
+# out and the 3 s idle timer resets the chip. Refused before sending
+NO_HANDLER = {
+    "bd19": frozenset({GET_LOADER_VER, 0xFC0F, 0xFC16}),
+}
+# Commands the loader has but that must never be sent on this board
+# (FB02 erases the whole chip, BTIF at 0x3E000 included)
+FORBIDDEN = {
+    "bd19": frozenset({ERASE_FLASH_CHIP}),
+}
+# Commands not checked on the chip yet: left out (their value reads as 0)
+UNCHECKED = {
+    "bd19": frozenset({READ_KEY}),
+}
+# The loader resets the chip when no command comes for about 3 s
+LOADER_IDLE_S = 2.5
+LOADER_IDLE_TEXT = ("로더가 3초 넘게 명령을 받지 않아 칩이 다시 시작했을 수 있습니다. "
+                    "[UBOOT로 전환]부터 다시 하세요")
 DEFAULT_SDK = r"C:\Users\user\tools\sdk\fw-AC63_BT_SDK"
 
 
@@ -343,22 +385,47 @@ class Uboot:
         self.q = q or inquiry(dev)
         self.loader_running = self.q.product != "UBOOT1.00"
         self.chunk = 512
+        self.clock = time.monotonic       # tests: a fake clock
+        self._last = self.clock()
 
     def close(self) -> None:
         self.dev.close()
 
     # ----- raw
+    def _send(self, cmd: int, c: bytes, data_out: bytes | None = None, data_in: int = 0) -> bytes:
+        """Every command goes here: refuses what this chip's loader cannot
+        answer and anything after it may have reset for being idle."""
+        if self.loader_running:
+            if cmd in NO_HANDLER.get(self.q.chip, ()):
+                raise UbootError(f"이 칩의 로더에 없는 명령입니다 ({cmd:04X}): 보내면 칩이 다시 시작합니다")
+            if cmd in FORBIDDEN.get(self.q.chip, ()):
+                raise UbootError(f"이 보드에서 쓰지 않는 명령입니다 ({cmd:04X}): 블루투스 정보(BTIF)까지 지웁니다")
+            if self.clock() - self._last > LOADER_IDLE_S:
+                self.loader_running = False
+                raise UbootError(LOADER_IDLE_TEXT)
+        try:
+            return self.dev.execute(c, data_out=data_out, data_in=data_in)
+        finally:
+            self._last = self.clock()
+
     def _exec(self, cmd: int, args: bytes = b"") -> bytes:
-        r = self.dev.execute(cdb(cmd, args), data_in=16)
+        r = self._send(cmd, cdb(cmd, args), data_in=16)
         if int.from_bytes(r[:2], "big") != cmd:
             raise UbootError(f"UBOOT 응답이 명령과 다릅니다 ({cmd:04X} → {r[:2].hex()})")
         return r[2:]
 
     def _out(self, cmd: int, args: bytes, data: bytes) -> None:
-        self.dev.execute(cdb(cmd, args), data_out=data)
+        self._send(cmd, cdb(cmd, args), data_out=data)
 
     def _in(self, cmd: int, args: bytes, n: int) -> bytes:
-        return self.dev.execute(cdb(cmd, args), data_in=n)
+        return self._send(cmd, cdb(cmd, args), data_in=n)
+
+    def keep_alive(self) -> None:
+        """A harmless command (online device) so the loader's 3 s timer does not run out."""
+        self.online_device()
+
+    def checked(self, cmd: int) -> bool:
+        return cmd not in UNCHECKED.get(self.q.chip, ())
 
     @staticmethod
     def _rw_args(addr: int, n: int) -> bytes:
@@ -379,12 +446,25 @@ class Uboot:
     def mem_jump(self, addr: int, arg: int = 0) -> None:
         self._exec(JUMP_TO_MEMORY, addr.to_bytes(4, "big") + arg.to_bytes(2, "big"))
 
-    def run_loader(self, blob: bytes, addr: int, arg: int, block: int = LOADER_BLOCK) -> None:
-        """Write the RAM loader and run it (UBOOT1.00 only)."""
+    def write_config(self, entries: dict[str, str]) -> None:
+        """The settings block at CONFIG_ADDR, MengLi encoded; read back to check
+        (the ROM reads it back still encoded)."""
+        data = mengli_cipher(config_block(entries))
+        self.mem_write(CONFIG_ADDR, data)
+        if self.mem_read(CONFIG_ADDR, len(data)) != data:
+            raise UbootError("로더 설정 블록을 다시 읽은 값이 다릅니다")
+
+    def run_loader(self, blob: bytes, addr: int, arg: int, block: int = LOADER_BLOCK,
+                   config: dict[str, str] | None = None) -> None:
+        """Write the RAM loader and run it (UBOOT1.00 only). The SDK file is
+        already encoded for the ROM's memory write: it goes as it is. The first
+        command follows within 3 s (the loader's idle timer)."""
         if self.loader_running:
             return
         for off in range(0, len(blob), block):
             self.mem_write(addr + off, blob[off:off + block])
+        if config:
+            self.write_config(config)
         self.mem_jump(addr, arg)
         time.sleep(0.2)
         self.loader_running = True
@@ -406,7 +486,7 @@ class Uboot:
                 blob = path.read_bytes()
             except OSError as e:
                 raise UbootError(f"로더 파일을 읽을 수 없습니다: {path} ({e}). MK_JL_SDK를 확인하세요") from e
-        self.run_loader(blob, addr, arg)
+        self.run_loader(blob, addr, arg, config=LOADER_CONFIG.get(self.q.chip))
 
     # ----- loader
     def usb_buffer_size(self) -> int:
@@ -418,7 +498,10 @@ class Uboot:
         return int.from_bytes(self._exec(READ_ID)[:3], "big")
 
     def chip_key(self) -> int:
+        """0 where READ_KEY is not checked on the chip yet (bd19)."""
         self._need_loader()
+        if not self.checked(READ_KEY):
+            return 0
         r = self._exec(READ_KEY, (0xAC6900).to_bytes(4, "big"))
         return int.from_bytes(mengli_cipher(r[4:6][::-1]), "little")
 
@@ -447,6 +530,13 @@ class Uboot:
     def erase_block(self, addr: int) -> None:
         self._need_loader()
         self._exec(ERASE_FLASH_BLOCK, addr.to_bytes(4, "big"))
+
+    def flash_crc(self, addr: int, n: int) -> int:
+        """FC0E: the loader's CRC16 of flash [addr, addr + n).
+        CDB and answer layout are a guess (address 4 B, length 2 B -> CRC 2 B
+        big-endian after the echoed command) until the firmware session checks them"""
+        self._need_loader()
+        return int.from_bytes(self._exec(FLASH_CRC16, self._rw_args(addr, n))[:2], "big")
 
     def run_app(self, arg: int = 1) -> None:
         """Leave UBOOT and start the firmware (the chip resets)."""
@@ -535,16 +625,70 @@ def write_image(u: Uboot, addr: int, data: bytes, progress: Progress | None = No
             raise UbootError(f"확인 읽기가 다릅니다 (0x{addr + bad:06X}). 다시 쓰세요 (UBOOT는 ROM이라 다시 들어갈 수 있습니다)")
 
 
+@dataclass(frozen=True)
+class WritePlan:
+    """How a board's flash is rewritten.
+    [0, erase_end) is erased in 64 KiB blocks (FB00) whatever the image size,
+    the image must fit in it and nothing after it is touched (BTIF, settings).
+    ``piece``: the most bytes per FB04 (4 KiB multiples, from address 0).
+    ``crc_each``: FC0E after every piece. A restore writes the backup's [0, erase_end)"""
+    erase_end: int
+    piece: int = 0x8000
+    crc_each: bool = True
+
+
+WRITE_PLANS = {
+    # JUZH_3B4: jl_isd.bin (0x15000 B) from isd_download, written as it is.
+    # 0x3E000 BTIF stays
+    "bd19": WritePlan(erase_end=0x30000),
+}
+
+
+def write_planned(u: Uboot, plan: WritePlan, data: bytes, progress: Progress | None = None) -> None:
+    """Erase [0, erase_end) in blocks, write from 0 in pieces with a CRC per
+    piece, then read everything back."""
+    if len(data) > plan.erase_end:
+        raise UbootError(f"이미지({len(data)}바이트)가 쓰기 영역(0x{plan.erase_end:X} = {plan.erase_end}바이트)보다 큽니다")
+    if plan.erase_end % BLOCK:
+        raise UbootError(f"지우기 영역은 64 KiB 단위여야 합니다 (0x{plan.erase_end:X})")
+    piece = min(plan.piece, u.chunk)
+    piece -= piece % SECTOR
+    if piece <= 0:
+        raise UbootError(f"로더 버퍼({u.chunk} B)가 4 KiB보다 작아 쓸 수 없습니다")
+    steps = 2 * len(data)
+    for a in range(0, plan.erase_end, BLOCK):
+        u.erase_block(a)
+    done = 0
+    for off in range(0, len(data), piece):
+        part = data[off:off + piece]
+        u.flash_write(off, part)
+        if plan.crc_each:
+            got = u.flash_crc(off, len(part))
+            if got != crc16(part):
+                raise UbootError(f"조각 CRC가 다릅니다 (0x{off:06X}, 칩 {got:04X} / 파일 {crc16(part):04X}). "
+                                 "다시 쓰거나 백업으로 되돌리세요")
+        done += len(part)
+        if progress:
+            progress(done, steps)
+    back = read_flash(u, 0, len(data), (lambda d, t: progress(len(data) + d, steps)) if progress else None)
+    if back != data:
+        bad = next(i for i in range(len(data)) if back[i] != data[i])
+        raise UbootError(f"확인 읽기가 다릅니다 (0x{bad:06X}). 다시 쓰세요 (UBOOT는 ROM이라 다시 들어갈 수 있습니다)")
+
+
 # ---------------------------------------------------------------- entering UBOOT
 
 # How a keyboard is sent into UBOOT over its own USB cable (no adapter, no dongle)
-ENTRY_FACTORY = "factory"   # factory firmware: vendor HID report 3 = EF EF
+ENTRY_FACTORY = "factory"   # factory or test firmware: vendor HID report 3 = EF EF
 ENTRY_APP = "app"           # our firmware: protocol BOOT (0x06)
 ENTRY_METHODS = {
-    ENTRY_FACTORY: "공장 펌웨어 (벤더 HID 명령 03 EF EF)",
+    ENTRY_FACTORY: "공장·시험 펌웨어 (벤더 HID 명령 03 EF EF)",
     ENTRY_APP: "우리 펌웨어 (BOOT 명령)",
 }
 FACTORY_VID, FACTORY_PID = 0x514C, 0x8850
+# Firmware that takes 03 EF EF on its vendor HID: the factory one, and our
+# AC6321A pin test firmware (SDK default IDs "JL"/"UA", tests/hw/ac6321a)
+ENTRY_HIDS = ((FACTORY_VID, FACTORY_PID), (0x4A4C, 0x4155))
 FACTORY_USAGE_PAGE = 0xFF00
 FACTORY_REPORT_ID = 0x03
 FACTORY_ENTER = bytes([FACTORY_REPORT_ID, 0xEF, 0xEF]).ljust(65, b"\x00")   # report ID + 64 B
@@ -552,7 +696,7 @@ FACTORY_ENTER = bytes([FACTORY_REPORT_ID, 0xEF, 0xEF]).ljust(65, b"\x00")   # re
 
 def factory_paths() -> list[bytes]:
     from .transport import _hid
-    return [d["path"] for d in _hid().enumerate(FACTORY_VID, FACTORY_PID)
+    return [d["path"] for vid, pid in ENTRY_HIDS for d in _hid().enumerate(vid, pid)
             if d.get("usage_page") == FACTORY_USAGE_PAGE]
 
 
@@ -567,7 +711,8 @@ def enter_factory(open_path: Callable[[bytes], object] | None = None,
     except TransportError as e:
         raise UbootError(str(e)) from e
     if not paths:
-        raise UbootError(f"공장 펌웨어 키보드({FACTORY_VID:04X}:{FACTORY_PID:04X})를 찾을 수 없습니다. "
+        ids = ", ".join(f"{v:04X}:{p_:04X}" for v, p_ in ENTRY_HIDS)
+        raise UbootError(f"공장·시험 펌웨어 키보드({ids})를 찾을 수 없습니다. "
                          "USB를 꽂고 전원을 켜세요")
     if open_path is None:
         def open_path(path: bytes):
@@ -629,6 +774,147 @@ def identity_problem(info: ChipInfo, known: str | None) -> str:
     return f"다른 기판입니다: 기록 {known}, 지금 {info.identity}. 보드를 확인하세요"
 
 
+# ---------------------------------------------------------------- admin rights
+
+ADMIN_TEXT = ("UBOOT 장치(USB 저장장치)에 명령을 보내려면 Windows 관리자 권한이 필요합니다. "
+              "[관리자로 다시 실행]을 누르고 사용자 계정 컨트롤 창에서 [예]를 누르세요")
+
+
+def relaunch_as_admin(argv: list[str] | None = None, shell_execute=None) -> bool:
+    """Start this program again elevated (Windows asks the user: UAC). True when
+    it started; the caller then closes this one. ``shell_execute``: tests."""
+    if sys.platform != "win32" and shell_execute is None:
+        return False
+    import subprocess
+    argv = list(sys.argv if argv is None else argv)
+    # Built program (PyInstaller): the .exe itself. From source: python gui/main.py …
+    args = argv[1:] if getattr(sys, "frozen", False) else [os.path.abspath(argv[0])] + argv[1:]
+    params = subprocess.list2cmdline(args)
+    exe = sys.executable
+    if shell_execute is None:
+        import ctypes
+        shell_execute = ctypes.windll.shell32.ShellExecuteW
+    return int(shell_execute(None, "runas", exe, params, os.getcwd(), 1)) > 32
+
+
+# ---------------------------------------------------------------- the update, step by step
+
+# Writing the firmware is not ready: the flash image and how isd_download lays
+# it out (uboot.boot, app.bin, cfg, keys) are being worked out by the firmware
+# session, and the RAM loader has not run on the board yet. Until then
+# JlFlasher.write refuses, so nothing is erased.
+WRITE_READY = False
+WRITE_PENDING_TEXT = ("펌웨어 쓰기는 아직 준비 중입니다 (플래시 이미지 형식·로더 확인 중). "
+                      "진입·장치 찾기·백업까지만 할 수 있습니다")
+
+STAGE_IDLE, STAGE_ENTER, STAGE_WAIT, STAGE_OPEN, STAGE_BACKUP, STAGE_WRITE, STAGE_RESTART, STAGE_DONE = range(8)
+STAGE_TEXT = {
+    STAGE_IDLE: "대기",
+    STAGE_ENTER: "UBOOT로 전환 중",
+    STAGE_WAIT: "UBOOT 장치 찾는 중",
+    STAGE_OPEN: "로더 실행·칩 확인 중",
+    STAGE_BACKUP: "백업 중 (두 번 읽어 비교)",
+    STAGE_WRITE: "지우기·쓰기·확인 중",
+    STAGE_RESTART: "새 펌웨어 시작",
+    STAGE_DONE: "완료",
+}
+
+
+class JlFlasher:
+    """The JieLi update in the order the window runs it: enter -> wait for the
+    UBOOT disk -> loader and chip info -> backup -> write -> restart. Every
+    device access goes through the injected functions (tests: FakeUboot)."""
+
+    def __init__(self, *, open_fn: Callable[[str], ScsiDevice] = Win32Scsi,
+                 paths: list[str] | None = None, sdk: str | None = None,
+                 loader: bytes | None = None, log: Callable[[str], None] | None = None,
+                 wait_s: float = 20.0, poll_s: float = 0.5):
+        self.open_fn, self.paths, self.sdk, self.loader = open_fn, paths, sdk, loader
+        self.log = log or (lambda line: None)
+        self.wait_s, self.poll_s = wait_s, poll_s
+        self.stage = STAGE_IDLE
+        self.found: Found | None = None
+        self.uboot: Uboot | None = None
+        self.info: ChipInfo | None = None
+        self.backup_path: Path | None = None
+
+    def set_stage(self, stage: int) -> None:
+        self.stage = stage
+        self.log(STAGE_TEXT[stage])
+
+    def find(self) -> list[Found]:
+        return find_uboot(self.paths, open_fn=self.open_fn)
+
+    def enter(self, method: str, **kw) -> None:
+        self.set_stage(STAGE_ENTER)
+        enter_uboot(method, **kw)
+
+    def wait(self) -> Found:
+        self.set_stage(STAGE_WAIT)
+        self.found = wait_uboot(self.wait_s, self.poll_s, paths=self.paths, open_fn=self.open_fn)
+        q = self.found.inquiry
+        self.log(f"UBOOT 장치: {q.vendor} {q.product} ({self.found.path})")
+        return self.found
+
+    def open(self) -> ChipInfo:
+        if self.found is None:
+            self.wait()
+        self.set_stage(STAGE_OPEN)
+        self.uboot, self.info = open_uboot(self.found, self.open_fn, self.sdk, self.loader)
+        i = self.info
+        self.log(f"칩 {i.chip} · 플래시 ID {i.flash_id:06X} ({i.flash_size // 1024} KB) · 칩 키 {i.chip_key:04X}")
+        return i
+
+    def backup(self, folder: Path, progress: Progress | None = None) -> Path:
+        if self.uboot is None:
+            self.open()
+        self.set_stage(STAGE_BACKUP)
+        b = backup(self.uboot, self.info.flash_size, progress)
+        self.backup_path = save_backup(b, Path(folder), self.info)
+        self.log(f"백업 저장: {self.backup_path} (SHA-256 {b.sha256[:16]}…)")
+        return self.backup_path
+
+    def write(self, image: bytes, progress: Progress | None = None, addr: int = 0) -> None:
+        if not WRITE_READY:
+            raise UbootError(WRITE_PENDING_TEXT)
+        if self.uboot is None:
+            self.open()
+        if self.info.flash_size and addr + len(image) > self.info.flash_size:
+            raise UbootError(f"이미지({len(image)}바이트)가 플래시({self.info.flash_size}바이트)보다 큽니다")
+        self.set_stage(STAGE_WRITE)
+        plan = WRITE_PLANS.get(self.info.chip.lower())
+        if plan is None:
+            write_image(self.uboot, addr, image, progress)
+        elif addr:
+            raise UbootError(f"이 보드는 0번지부터만 씁니다 (0x{addr:X})")
+        else:
+            write_planned(self.uboot, plan, image, progress)
+
+    def restore(self, backup_file: Path, progress: Progress | None = None) -> None:
+        """Put a backup back: its [0, erase_end) with the same erase/write/check."""
+        data = Path(backup_file).read_bytes()
+        if self.uboot is None:
+            self.open()
+        plan = WRITE_PLANS.get(self.info.chip.lower())
+        if plan is None:
+            raise UbootError("이 칩은 되돌리기 범위가 정해지지 않았습니다")
+        if self.info.flash_size and len(data) != self.info.flash_size:
+            raise UbootError(f"백업 크기({len(data)}바이트)가 플래시({self.info.flash_size}바이트)와 다릅니다")
+        self.write(data[:plan.erase_end], progress)
+
+    def restart(self) -> None:
+        self.set_stage(STAGE_RESTART)
+        if self.uboot is not None:
+            self.uboot.run_app()
+        self.close()
+        self.set_stage(STAGE_DONE)
+
+    def close(self) -> None:
+        if self.uboot is not None:
+            self.uboot.close()
+            self.uboot = None
+
+
 # ---------------------------------------------------------------- fake device
 
 class FakeUboot(ScsiDevice):
@@ -652,6 +938,10 @@ class FakeUboot(ScsiDevice):
         self.ran_app: int | None = None
         self.log: list[int] = []
         self.closed = False
+        self.config: bytes | None = None   # the decoded settings block seen at the jump
+        self.stuck = False
+        self.writes: list[tuple[int, int]] = []   # (address, size) of every FB04
+        self.erases: list[int] = []
 
     def _resp(self, cmd: int, body: bytes = b"") -> bytes:
         return (cmd.to_bytes(2, "big") + body).ljust(16, b"\x00")
@@ -672,12 +962,21 @@ class FakeUboot(ScsiDevice):
         if cmd == READ_MEMORY:
             return bytes(self.ram.get(addr + i, 0) for i in range(n))
         if cmd == JUMP_TO_MEMORY:
-            at = LOADERS.get(self.vendor.lower(), (None, 0x12000))[1]
+            chip = self.vendor.lower()
+            at = LOADERS.get(chip, (None, 0x12000))[1]
             if addr == at and self.ram.get(at) is not None:
                 self.loader, self.product = True, "UBOOT2.00"
+                if chip in LOADER_CONFIG:
+                    # bd19: the settings block, else garbage settings and no answers
+                    raw = bytes(self.ram.get(CONFIG_ADDR + i, 0) for i in range(CONFIG_SIZE))
+                    self.config = mengli_cipher(raw)
+                    self.stuck = not self.config.startswith(CONFIG_MARK)
             return self._resp(cmd)
         if not self.loader:
             raise ScsiError("ROM has no such command")
+        if self.stuck or cmd in NO_HANDLER.get(self.vendor.lower(), ()):
+            self.stuck = True     # no answer: the transfer times out, the chip resets
+            raise ScsiError(f"{cmd:04X}: 응답 없음 (시간 초과)")
         if cmd == GET_USB_BUFF_SIZE:
             return self._resp(cmd, self.usb_buffer.to_bytes(4, "big"))
         if cmd == READ_ID:
@@ -689,13 +988,17 @@ class FakeUboot(ScsiDevice):
             return self._resp(cmd, bytes([1, 0]) + self.flash_id.to_bytes(4, "little"))
         if cmd in (ERASE_FLASH_SECTOR, ERASE_FLASH_BLOCK):
             size = SECTOR if cmd == ERASE_FLASH_SECTOR else BLOCK
-            if addr % size:
-                raise ScsiError("unaligned erase")
+            if addr % size or addr + size > len(self.flash):
+                raise ScsiError("unaligned erase or past the flash end")
             self.flash[addr:addr + size] = b"\xff" * size
+            self.erases.append(addr)
             return self._resp(cmd)
         if cmd == WRITE_FLASH:
             if crc16(data_out) != int.from_bytes(c[9:11], "little") or n != len(data_out) or n > self.usb_buffer:
                 raise ScsiError("bad write")
+            if addr + n > len(self.flash):
+                raise ScsiError("write past the flash end")
+            self.writes.append((addr, n))
             for i, b in enumerate(data_out):
                 self.flash[addr + i] &= b      # NOR: only clears bits
             return b""
@@ -705,6 +1008,8 @@ class FakeUboot(ScsiDevice):
                 self.flaky_reads -= 1
                 data = bytes([data[0] ^ 1]) + data[1:]
             return data
+        if cmd == FLASH_CRC16:
+            return self._resp(cmd, crc16(bytes(self.flash[addr:addr + n])).to_bytes(2, "big"))
         if cmd == RUN_APP:
             self.ran_app = addr
             return self._resp(cmd)

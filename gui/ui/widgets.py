@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ..core import macro
+from ..core import boards, macro
 from ..core import protocol as p
 
 SYNTAX_HELP = (
@@ -96,12 +96,18 @@ class DeviceView(QFrame):
         self.board = board
         self._layout = QHBoxLayout(self)
         self._body: QWidget | None = None
+        self.portrait = False   # asked for; drawn turned only on rotatable boards (self.turned)
+        self.turned = False
         self.set_board(board)
 
-    def set_board(self, board: p.Board) -> None:
-        if self._body is not None and board == self.board:
+    def set_board(self, board: p.Board, portrait: bool | None = None) -> None:
+        """Draw ``board``. ``portrait``: the board turned 90 degrees counter-clockwise
+        (only boards with spec.rotatable; None keeps the current view)."""
+        portrait = self.portrait if portrait is None else portrait
+        if self._body is not None and board == self.board and portrait == self.portrait:
             return
         self.board = board
+        self.portrait = portrait
         if self._body is not None:
             for btn in self.buttons:
                 self.group.removeButton(btn)
@@ -110,25 +116,34 @@ class DeviceView(QFrame):
             self._body.deleteLater()
         self.buttons = []
         self._body = QWidget()
-        row = QHBoxLayout(self._body)
-        row.setContentsMargins(0, 0, 0, 0)
+
+        spec = boards.find(board.name)
+        # (the chip ID is not compared: JUZH_3B4's is not decided yet)
+        if spec and (spec.layout.keys, spec.layout.knobs) != (board.keys, board.knobs):
+            spec = None
+        turned = bool(portrait and spec and spec.rotatable)
+        self.turned = turned
 
         # Keys keep one size on every board (the 6-key picture's), so 8/9-key
-        # boards look the same; only boards with many keys get smaller ones
+        # boards look the same; only boards with many keys get smaller ones.
+        # Turned counter-clockwise, the key at (row, col) moves to (cols-1-col, row)
         keys = QGridLayout()
         keys.setSpacing(8)
+        self.key_grid = keys
         size = self.SMALL_KEY if board.keys > 9 else self.KEY
         for slot in range(board.keys):
             btn = self._make_button(slot)
             btn.setFixedSize(*size)
-            keys.addWidget(btn, slot // board.cols, slot % board.cols)
-        row.addLayout(keys)
-        row.addStretch(1)
+            r, c = divmod(slot, board.cols)
+            keys.addWidget(btn, *((board.cols - 1 - c, r) if turned else (r, c)))
 
         # Each knob in a 2x2 grid: counter-clockwise top left, clockwise top
-        # right, the knob bottom left, press bottom right. Rows of key height,
-        # so it lines up with the key rows.
+        # right, the knob bottom left, press bottom right (the knob turns with
+        # the board, so the arrows keep their meaning). Rows of key height, so
+        # it lines up with the key rows. Buttons are made in slot order
+        # (self.buttons[slot]) wherever they are placed.
         h = size[1]
+        knob_boxes = []
         for n in range(board.knobs):
             knob_box = QGridLayout()
             knob_box.setSpacing(8)
@@ -141,11 +156,78 @@ class DeviceView(QFrame):
                 btn = self._make_button(board.knob_slot(n, action))
                 btn.setFixedSize(self.KNOB_KEY_WIDTH, h)
                 knob_box.addWidget(btn, r, c)
-            row.addSpacing(16)
-            row.addLayout(knob_box)
+            knob_boxes.append(knob_box)
+
+        self.status_leds: list[QLabel] = []
+        leds = spec.knob_leds if spec and spec.knob_column else 0
+        if turned:
+            # Turned: what was on the right is on top, first knob on the left,
+            # the LEDs between the knobs in a row; the keys below
+            body = QVBoxLayout(self._body)
+            body.setContentsMargins(0, 0, 0, 0)
+            top = QHBoxLayout()
+            for n, knob_box in enumerate(knob_boxes):
+                if n:
+                    top.addSpacing(16)
+                    if n == 1 and leds:
+                        top.addLayout(self._leds(spec, vertical=False))
+                        top.addSpacing(16)
+                top.addLayout(knob_box)
+            top.addStretch(1)
+            body.addLayout(top)
+            body.addSpacing(8)
+            keys_row = QHBoxLayout()
+            keys_row.addLayout(keys)
+            keys_row.addStretch(1)
+            body.addLayout(keys_row)
+        else:
+            row = QHBoxLayout(self._body)
+            row.setContentsMargins(0, 0, 0, 0)
+            row.addLayout(keys)
+            row.addStretch(1)
+            if spec and spec.knob_column:
+                # A column right of the keys: knob 1, the LEDs one above the other, knob 2
+                col = QVBoxLayout()
+                col.setSpacing(8)
+                for n, knob_box in enumerate(knob_boxes):
+                    if n == 1 and leds:
+                        col.addLayout(self._leds(spec, vertical=True))
+                    col.addLayout(knob_box)
+                row.addSpacing(16)
+                row.addLayout(col)
+            else:
+                for knob_box in knob_boxes:
+                    row.addSpacing(16)
+                    row.addLayout(knob_box)
 
         self._layout.addWidget(self._body)
         self.buttons[0].setChecked(True)
+
+    LED_SIZE = 22
+
+    def _leds(self, spec: boards.BoardSpec, vertical: bool) -> QHBoxLayout:
+        """The LEDs between the knobs (not buttons): 1, 2, 3 with what they show."""
+        outer = QHBoxLayout()
+        outer.setSpacing(8)
+        outer.addStretch(1)
+        inner = QVBoxLayout() if vertical else QHBoxLayout()
+        inner.setSpacing(6 if vertical else 12)
+        tip = spec.led_help
+        for n in range(spec.knob_leds):
+            led = QLabel(str(n + 1))
+            led.setAlignment(Qt.AlignCenter)
+            led.setFixedSize(self.LED_SIZE, self.LED_SIZE)
+            led.setStyleSheet(f"border: 2px solid palette(mid); border-radius: {self.LED_SIZE // 2}px; "
+                              "font-size: 9pt;")
+            led.setToolTip(f"슬롯 {n + 1} LED\n{tip}")
+            self.status_leds.append(led)
+            inner.addWidget(led, 0, Qt.AlignCenter)
+        outer.addLayout(inner)
+        caption = QLabel("BT 슬롯\nLED" if vertical else "BT 슬롯 LED")
+        caption.setToolTip(tip)
+        outer.addWidget(caption)
+        outer.addStretch(1)
+        return outer
 
     def _make_button(self, slot: int) -> QPushButton:
         btn = QPushButton()

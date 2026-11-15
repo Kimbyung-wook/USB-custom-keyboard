@@ -6,7 +6,7 @@ import html
 import sys
 from typing import Callable
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QGroupBox, QHBoxLayout, QLabel, QMainWindow,
@@ -19,6 +19,7 @@ from ..core.device import DeviceClient, DeviceError, DeviceStatusError, NotConne
 from ..core.transport import HidTransport, MockDevice, Transport, TransportError
 from ..core.version import VERSION, version_text
 from .flash_dialog import FirmwareDialog
+from .jl_flash_dialog import JlFlashDialog
 from .widgets import DeviceView, LockPatternEditor, MacroEditor, WrapLabel
 
 APP_TITLE = "매크로 키보드 설정"
@@ -38,8 +39,10 @@ SAMPLE_SLOTS = [
 
 class MainWindow(QMainWindow):
     def __init__(self, connect_fn: Callable[[], Transport], *, auto_reconnect: bool = True,
-                 mock_label: str = ""):
+                 mock_label: str = "", settings: QSettings | None = None):
         super().__init__()
+        # GUI settings (the portrait view per board); tests pass an .ini of their own
+        self.settings = settings if settings is not None else QSettings(SETTINGS_ORG, SETTINGS_APP)
         self._mock_label = mock_label
         self.setWindowTitle(f"{APP_TITLE} v{VERSION}")
         self.resize(900, 780)
@@ -101,8 +104,9 @@ class MainWindow(QMainWindow):
         self.board_combo = QComboBox()
         self.board_combo.setToolTip(BOARD_COMBO_HINT)
         # Short names keep the status text beside it wide; the description is the item tooltip
-        for spec in boards.BOARDS:
-            self._add_board_item(spec.name, spec.description)
+        for spec in boards.ALL_BOARDS:   # boards still being prepared last
+            self._add_board_item(spec.name, spec.description
+                                 + (f"\n{spec.led_help}" if spec.leds else ""))
         self.board_combo.activated.connect(self._on_board_picked)
         conn.addWidget(self.conn_label, 1)
         conn.addWidget(self.board_combo)
@@ -116,6 +120,17 @@ class MainWindow(QMainWindow):
         dev_lay = QVBoxLayout(dev_box)
         self.device_view = DeviceView()
         self.device_view.slotSelected.connect(self.select_slot)
+        # Boards also used turned 90 degrees (spec.rotatable): the same slots, drawn turned
+        self.portrait_btn = QPushButton("세로 보기")
+        self.portrait_btn.setCheckable(True)
+        self.portrait_btn.setToolTip("보드를 반시계 방향으로 90도 돌려 쓸 때의 그림으로 바꿉니다. "
+                                     "키·노브 번호와 설정은 그대로입니다")
+        self.portrait_btn.toggled.connect(self.set_portrait)
+        self.portrait_btn.setVisible(False)
+        view_row = QHBoxLayout()
+        view_row.addStretch(1)
+        view_row.addWidget(self.portrait_btn)
+        dev_lay.addLayout(view_row)
         dev_lay.addWidget(self.device_view)
         # Keep the key picture at full height; the macro editor takes the spare space
         dev_box.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -271,6 +286,9 @@ class MainWindow(QMainWindow):
             tip = self.client.transport.description if self.client.transport else ""
             if self.battery:
                 tip = "\n".join(t for t in (self.battery.detail, tip) if t)
+            spec = boards.find(info.board.name)
+            if spec and spec.leds:
+                tip = "\n".join(t for t in (tip, spec.led_help) if t)
             self.conn_label.setToolTip(tip)
             self.connect_btn.setText("연결 끊기")
         else:
@@ -373,13 +391,37 @@ class MainWindow(QMainWindow):
         self._refresh_capacity()
         self._update_title()
 
+    # ------------------------------------------------------------ portrait view
+    def _view_key(self, board: p.Board) -> str:
+        return f"view/{boards.current_name(board.name)}/portrait"
+
+    def _apply_view(self) -> None:
+        """Draw self.board in the view remembered for it (portrait only on rotatable boards)."""
+        spec = boards.find(self.board.name)
+        rotatable = bool(spec and spec.rotatable)
+        portrait = rotatable and str(self.settings.value(self._view_key(self.board), "false")).lower() == "true"
+        self.portrait_btn.blockSignals(True)
+        self.portrait_btn.setChecked(portrait)
+        self.portrait_btn.blockSignals(False)
+        self.portrait_btn.setVisible(rotatable)
+        self.portrait_btn.setText("가로 보기" if portrait else "세로 보기")
+        self.device_view.set_board(self.board, portrait=portrait)
+        self.device_view.select(self.current if self.current < len(self.device_view.buttons) else 0)
+
+    def set_portrait(self, on: bool) -> None:
+        """[세로 보기]: redraw turned (or back) and remember it for this board."""
+        self.settings.setValue(self._view_key(self.board), "true" if on else "false")
+        self.settings.sync()
+        self._apply_view()
+        self._refresh_all()     # the new buttons get their text, the current slot stays selected
+
     def set_board(self, board: p.Board) -> None:
         """Rebuild the key/knob picture and the pattern buttons for another
         keyboard; the slots on screen are emptied (they belong to the old one)."""
         if board == self.board:
             return
         self.board = board
-        self.device_view.set_board(board)
+        self._apply_view()
         self.lock_editor.set_board(board)
         self.editor.board = board
         self.current = 0
@@ -750,6 +792,13 @@ class MainWindow(QMainWindow):
         return FirmwareDialog(self.prepare_bootloader, self.flash_command_fn, self,
                               keyboard=self.board, identified=self.board_identified)
 
+    def make_jl_dialog(self, spec: boards.BoardSpec, **kw) -> JlFlashDialog:
+        """JieLi boards (JUZH_3B4): UBOOT over the same USB cable. Our firmware
+        connected: BOOT through prepare_bootloader; otherwise the factory entry."""
+        ours = self.connected and not self.device_locked
+        return JlFlashDialog(spec, enter_app=self.prepare_bootloader if ours else None,
+                             our_firmware=ours, parent=self, **kw)
+
     def update_firmware(self) -> bool:
         if self._mock:
             self.inform("펌웨어 업데이트", "모의 장치에서는 펌웨어를 올릴 수 없습니다.")
@@ -760,7 +809,8 @@ class MainWindow(QMainWindow):
             return False
         self._flashing = True
         try:
-            dlg = self.make_firmware_dialog()
+            spec = boards.find(self.board.name)
+            dlg = self.make_jl_dialog(spec) if spec and spec.jieli else self.make_firmware_dialog()
             dlg.exec()
             ok = dlg.succeeded
         finally:
@@ -795,13 +845,18 @@ def make_mock_connector(mock: MockDevice) -> Callable[[], Transport]:
 
 
 def parse_board(text: str) -> p.Board:
-    """'12x2' (keys x knobs) or '12x2x3' (… x rows) for --mock-board."""
-    parts = [int(x) for x in text.lower().split("x")]
+    """'12x2' (keys x knobs), '12x2x3' (… x rows) or a board name (JUZH_3B4) for --mock-board."""
+    spec = boards.find(text.upper())
+    if spec:
+        return spec.layout
+    parts =[int(x) for x in text.lower().split("x")]
     keys, knobs = parts[0], parts[1] if len(parts) > 1 else 1
     rows = parts[2] if len(parts) > 2 else (1 if keys <= 4 else 2 if keys <= 8 else 3)
     return p.Board(keys=keys, knobs=knobs, rows=rows, name=f"MOCK{keys}K{knobs}N",
                    features=MOCK_FEATURES)
 
+
+SETTINGS_ORG, SETTINGS_APP = "MacroKeyboard", "MacroKeyboardGUI"
 
 # The mock acts like the newest firmware
 BOARD_COMBO_HINT = "연결 전에 보드를 골라 화면 구성을 미리 볼 수 있습니다. 연결되면 자동으로 맞춰집니다"

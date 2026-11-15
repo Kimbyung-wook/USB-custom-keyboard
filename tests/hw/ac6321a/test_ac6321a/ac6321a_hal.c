@@ -15,7 +15,7 @@
 // ---- SDK glue: every name of the JieLi SDK is here ---------------------------
 #include "asm/gpio.h"     // header: include_lib/driver/cpu/bd19/asm/gpio.h
 #include "asm/adc_api.h"  // header: include_lib/driver/cpu/bd19/asm/adc_api.h
-#include "asm/power_interface.h" // header: power_reset_source_dump()
+#include "asm/power_interface.h" // header: get_reset_source_value()
 #include "system/timer.h" // header: sys_timer_get_ms()
 #include "asm/cpu.h"
 // bd19 asm/cpu.h declares clr_wdt() only inside a macro (cpu.h:44), the
@@ -86,16 +86,27 @@ static void SDK_busy_ms(void) {
   }
 }
 
-// header (power_interface.h): u8 power_reset_source_dump(void), which prints
-// and returns the source; the meaning of its value (P3_RST_SRC register 0x12
-// in p33.h) is not in the headers. TODO(SDK): map it to 1 pin, 2 power-on,
-// 4 software, 8 watchdog (PA9 long press = pin). Until then 0 ("?").
+// header (power_interface.h): u32 get_reset_source_value(void) (cpu.a; the
+// power_reset_source_dump() of the same header is not in the bd19 libraries).
+// The enum at the top of that header numbers the sources; the value is taken
+// as a bit mask of those numbers (TODO(chip): confirm with a known reset).
+// 1 pin: P33_PPINR_RST (PA9 long press), P33_VCM_RST; 2 power-on: VDDIO /
+// DVDD / PVDD POR; 4 software: MSYS / P11 / P33 soft, exception, assert;
+// 8 watchdog: P11_WDT_RST; 32 wake: MSYS_P11_RST_RTC_WAKEUP.
 static uint8_t SDK_reset_cause(void) {
-  (void)power_reset_source_dump(); // the SDK prints it on its debug UART
-  return 0;
+  u32 v = get_reset_source_value();
+  uint8_t c = 0;
+  if (v & (BIT(P33_PPINR_RST) | BIT(P33_VCM_RST))) c |= 1;
+  if (v & (BIT(P33_VDDIO_POR_RST) | BIT(MSYS_DVDD_POR_RST) | BIT(P11_PVDD_POR_RST))) c |= 2;
+  if (v & (BIT(MSYS_SOFT_RST) | BIT(P11_SOFT_RST) | BIT(P33_SOFT_RST) |
+           BIT(P33_EXCEPTION_SOFT_RST) | BIT(P33_ASSERT_SOFT_RST))) c |= 4;
+  if (v & BIT(P11_WDT_RST)) c |= 8;
+  if (v & BIT(MSYS_P11_RST_RTC_WAKEUP)) c |= 32;
+  return c;
 }
 
-// USB full speed HID keyboard, 8-byte boot report (no report ID).
+// USB full speed HID: keyboard (report 1) + vendor (report 3), map below.
+// Device 4A4C:4155 ("JL", "UA": SDK descriptor.c), not the factory 514C:8850.
 // SDK: the user-HID class of apps/hid/examples/standard_keyboard/usb_hid_devices.c
 // (built when CONFIG_APP_STANDARD_KEYBOARD, TCFG_PC_ENABLE and
 // TCFG_USB_SLAVE_USER_HID are on: sdk_setup.sh sets them). The SDK's own
@@ -110,13 +121,32 @@ extern void usb_hid_set_repport_map(const u8 *map, int size);
 extern void usb_hid_register_state_callback(void *callback);
 extern u32 hid_send_data(const void *p, u32 len);
 
+// Two top-level collections, so Windows gives the vendor one its own HID
+// device that a program can open (the keyboard one is the system's):
+//   report 1 keyboard: in 8 B (boot layout), out 1 B (LEDs)
+//   report 3 vendor (usage page 0xFF00): out 64 B, the factory firmware's
+//     "03 EF EF" way to the ROM UBOOT (gui/core/jluboot.py FACTORY_ENTER
+//     writes ID + 64 B with hidapi = interrupt OUT, 16 B packets)
+// The SDK ignores SET_REPORT on EP0 (hid_recv_output_report only prints it):
+// output reports must come on the interrupt OUT endpoint (hidapi write /
+// WriteFile, not HidD_SetOutputReport).
+#define KBD_REPORT_ID 1
+#define VENDOR_REPORT_ID 3
 static const u8 kbdReportMap[] = {
   0x05, 0x01, 0x09, 0x06, 0xA1, 0x01,       // Generic Desktop, Keyboard, Application
+  0x85, KBD_REPORT_ID,
   0x05, 0x07, 0x19, 0xE0, 0x29, 0xE7,       // modifiers E0-E7
   0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08, 0x81, 0x02,
   0x95, 0x01, 0x75, 0x08, 0x81, 0x01,       // reserved byte
   0x95, 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0x65,
   0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00, // 6 key codes
+  0x95, 0x05, 0x75, 0x01, 0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02, // LEDs out
+  0x95, 0x01, 0x75, 0x03, 0x91, 0x01,       // LED padding
+  0xC0,
+  0x06, 0x00, 0xFF, 0x09, 0x01, 0xA1, 0x01, // vendor page 0xFF00, usage 1, Application
+  0x85, VENDOR_REPORT_ID,
+  0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40, // 64 bytes 0-255
+  0x09, 0x01, 0x91, 0x02,                   // output
   0xC0,
 };
 
@@ -127,8 +157,57 @@ static void SDK_usb_state(u8 state) {
   usbConnected = (state == 1);
 }
 
+// Ways back to the ROM UBOOT without a button (the test firmware has no BOOT
+// command): vendor report "03 EF EF" (as the factory firmware), or the host
+// toggles Scroll Lock BOOT_TOGGLES times within
+// BOOT_WINDOW_MS (keyboard LED output report, bit 2; a GUI can do it with
+// SendInput, no driver). Then go_mask_usb_updata()
+// (apps/common/device/usb/device/msd_upgrade.c: nvram_set_boot_state(USB soft
+// key) and restart, same as the factory 03 EF EF) from the test task.
+extern void usb_hid_set_output_callback(void *cb);
+extern void go_mask_usb_updata(void);
+#define BOOT_TOGGLES 6
+#define BOOT_WINDOW_MS 3000
+static volatile uint8_t bootRequest;
+static uint8_t lastLeds, toggles;
+static uint32_t firstToggleMs;
+
+// called by usb_hid_devices.c hid_rx_data() with one OUT packet (up to 16 B):
+// "01 LEDs" (keyboard) or a 16 B piece of the 65 B vendor report: the first
+// piece starts "03 EF EF", the others (zeros) are dropped
+static void SDK_usb_out(u8 *buf, u16 len) {
+  uint32_t now;
+  uint8_t leds;
+  if (len >= 3 && buf[0] == VENDOR_REPORT_ID && buf[1] == 0xEF && buf[2] == 0xEF) {
+    bootRequest = 1; // factory-compatible way back to UBOOT
+    return;
+  }
+  if (len < 2 || buf[0] != KBD_REPORT_ID) return;
+  leds = buf[1];
+  if (!((leds ^ lastLeds) & 0x04)) {
+    lastLeds = leds;
+    return;
+  }
+  lastLeds = leds;
+  now = sys_timer_get_ms();
+  if (!toggles || now - firstToggleMs > BOOT_WINDOW_MS) {
+    toggles = 0;
+    firstToggleMs = now;
+  }
+  if (++toggles >= BOOT_TOGGLES) {
+    bootRequest = 1;
+  }
+}
+
+static void SDK_boot_check(void) {
+  if (bootRequest) {
+    go_mask_usb_updata(); // does not return
+  }
+}
+
 static void SDK_usb_start(void) {
   usbConnected = 0;
+  usb_hid_set_output_callback(SDK_usb_out);
   usb_hid_register_state_callback(SDK_usb_state);
   usb_hid_set_repport_map(kbdReportMap, sizeof(kbdReportMap));
   usb_start();
@@ -139,7 +218,10 @@ static uint8_t SDK_usb_ready(void) {
 }
 
 static uint8_t SDK_usb_send(const uint8_t report[8]) {
-  return hid_send_data(report, 8) != 0;
+  uint8_t r[9];
+  r[0] = KBD_REPORT_ID;
+  memcpy(r + 1, report, 8);
+  return hid_send_data(r, 9) != 0;
 }
 
 // ADC. header (adc_api.h): u32 adc_add_sample_ch(u32 ch), u32 adc_get_voltage(u32 ch);
@@ -239,6 +321,7 @@ uint32_t hal_millis(void) {
 
 void hal_idle(void) {
   SDK_watchdog();
+  SDK_boot_check(); // Scroll Lock x6: back to the ROM UBOOT
   if (hal_millis() - lastYield >= 10) {
     lastYield = hal_millis();
     SDK_yield_tick();
@@ -248,6 +331,7 @@ void hal_idle(void) {
 void hal_delay_ms(uint32_t ms) {
   while (ms >= 10) {
     SDK_watchdog();
+    SDK_boot_check();
     SDK_yield_tick();
     ms -= 10;
   }

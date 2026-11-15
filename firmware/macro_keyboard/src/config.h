@@ -57,6 +57,9 @@
 #include "boards/sayo_2x4.h"
 #elif defined(BOARD_SAYO_2X6)
 #include "boards/sayo_2x6.h"
+#elif defined(BOARD_JUZH_3B4)
+// Kept beside its HAL (not yet in gui/core/boards.py BOARDS): jl_build_ac6321a.sh
+#include "hal/ac6321a/juzh_3b4.h"
 #else
 #include "boards/mk6k1n.h"
 #endif
@@ -68,9 +71,12 @@
 typedef char board_name_fits[sizeof(BOARD_NAME) <= 9 ? 1 : -1];
 #endif
 
-// Slots (docs/BOARD_INFO.md 1): keys, then CW, CCW, PRESS of the knob (if any)
-#if BOARD_KNOBS > 1
-#error the sketch reads at most one knob
+// Slots (docs/BOARD_INFO.md 1): keys, then CW, CCW, PRESS of each knob
+// (knob n at BOARD_KEYS + 3n). Two knobs at most: hal_encoder() packs the
+// lines of knob n in bits 2n+1 (A) and 2n (B) of one byte, and input.c has
+// one path for one knob (the CH552 code as it was) and one for two.
+#if BOARD_KNOBS > 2
+#error the sketch reads at most two knobs
 #endif
 #define SLOT_COUNT (BOARD_KEYS + 3 * BOARD_KNOBS)
 #if BOARD_KNOBS
@@ -78,6 +84,7 @@ typedef char board_name_fits[sizeof(BOARD_NAME) <= 9 ? 1 : -1];
 #define SLOT_KNOB_CCW (BOARD_KEYS + 1)
 #define SLOT_KNOB_PRESS (BOARD_KEYS + 2)
 #endif
+#define SLOT_KNOB_N(n) (BOARD_KEYS + 3 * (n)) // knob n: + 0 CW, + 1 CCW, + 2 PRESS
 #if SLOT_COUNT > 63
 #error too many slots (docs/BOARD_INFO.md 1)
 #endif

@@ -44,7 +44,7 @@ def window(spec: boards.BoardSpec, **kw) -> MainWindow:
 
 def key_cells(w: MainWindow) -> dict[int, tuple[int, int]]:
     """Slot -> (row, col) of the key buttons on screen."""
-    grid = w.device_view._body.layout().itemAt(0).layout()
+    grid = w.device_view.key_grid
     assert isinstance(grid, QGridLayout)
     slot_of = {id(b): s for s, b in enumerate(w.device_view.buttons)}
     return {slot_of[id(grid.itemAt(k).widget())]: grid.getItemPosition(k)[:2]
@@ -125,7 +125,7 @@ def test_switch_between_boards(qapp):
     """Picking boards while disconnected rebuilds the picture each time."""
     w = MainWindow(make_mock_connector(MockDevice()), auto_reconnect=False)
     combo = w.board_combo
-    assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.BOARDS]
+    assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.ALL_BOARDS]
     for name in ("SAYO_2X6", "MK6K1N", "SAYO_2B3", "SAYO_3X3", "SAYO_2X6"):
         i = combo.findData(name)
         w._on_board_picked(i)

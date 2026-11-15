@@ -12,9 +12,10 @@
 //   uint16_t hal_ms()                  milliseconds since start, wraps at 65536
 // Inputs (from the board file's pins)
 //   hal_sw_t hal_switches()            (uint8_t, 16 bits on CH32V) bit i = switch i pressed: the keys in
-//                                      slot order, then the knob switch
+//                                      slot order, then the knob switch(es)
 //   uint8_t hal_encoder()              knob lines: A << 1 | B, 1 = high (knob
-//                                      boards only, BOARD_KNOBS > 0)
+//                                      boards only, BOARD_KNOBS > 0); knob n
+//                                      in bits 2n+1 (A), 2n (B)
 // LEDs
 //   hal_leds(color, mask, maskColor)   every LED in hal_palette[color], the
 //                                      LEDs in mask (bit i = LED i) in
@@ -61,6 +62,8 @@
 #include "ch32v203/hal_ch32v203.h"
 #elif BOARD_HAL_CH573
 #include "ch573/hal_ch573.h"
+#elif BOARD_HAL_AC6321A
+#include "ac6321a/hal_ac6321a.h"
 #else
 #error no HAL for this board (src/hal)
 #endif

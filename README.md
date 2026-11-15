@@ -26,7 +26,7 @@
 - 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
 - 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6321A, 이식 준비 중)
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6321A, 시험 장입 뒤 복구 불가로 보류)
 
 ## 핵심 요구사항
 
@@ -205,7 +205,7 @@ stateDiagram-v2
 | [tests/hw/mk6k1nl/test_mk6k1nl/](tests/hw/mk6k1nl/test_mk6k1nl/) | MK6K1NL(키마다 LED) 하드웨어 확인용 테스트 펌웨어: LED 체인 순서와 키 핀 |
 | [tests/hw/ch32v203/test_ch32v203/](tests/hw/ch32v203/test_ch32v203/) | CH32V203 보드(8키, 9키, 12키) 하드웨어 확인: GPIO 감시, LED 핀 탐색 |
 | [tests/hw/ch573/test_ch573/](tests/hw/ch573/test_ch573/) | CH573 보드(SAYO_2B3) 하드웨어 확인: 키·LED 핀, 전압(ADC) |
-| [tests/hw/ac6321a/test_ac6321a/](tests/hw/ac6321a/test_ac6321a/) | AC6321A 보드(JUZH_3B4) 하드웨어 확인, **미검증 초안**(빌드·장입 안 함) |
+| [tests/hw/ac6321a/test_ac6321a/](tests/hw/ac6321a/test_ac6321a/) | AC6321A 보드(JUZH_3B4) 하드웨어 확인, **미검증 초안**(장입 뒤 USB·BLE 안 잡힘, 보류) |
 | [tests/hw/ch582_dongle/](tests/hw/ch582_dongle/) | CH582 동글 핀 시험: 쓰는 USB 포트, 32 kHz 크리스털 |
 | [firmware/bootloader_ch573/](firmware/bootloader_ch573/) | CH573 자체 HID 부트로더 ([BOOTLOADER_CH573.md](docs/BOOTLOADER_CH573.md)) |
 | [firmware/dongle_ch582/](firmware/dongle_ch582/) | CH582 블루투스 동글 펌웨어 (빌드·PC 검사·장입 방법 포함) |

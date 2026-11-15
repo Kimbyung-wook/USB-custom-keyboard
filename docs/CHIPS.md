@@ -35,6 +35,31 @@
 
 - CH32V203 보조 펌웨어: JieLi USB_KEY 어댑터 [firmware/jl_usbkey_ch32v203](../firmware/jl_usbkey_ch32v203/README.md)(JUZH_3B4용, **보류**: 공장 벤더 HID `03 EF EF`로 UBOOT 진입이 돼 불필요). `1209:C560` "JieLi USB_KEY adapter", 우리 부트로더 없이 칩 전체 이미지(0x08000000~, 3,428 B), 자체 부트로더의 `usb_hid.c`를 PID·제품 이름만 바꿔 씀
 
+## JieLi AC6321A (JUZH_3B4, 준비 중)
+
+- 칩: JieLi AC6321A, 계열 AC632N, 내부 코드 **BD19**, 아키텍처 q32s(JL clang pi32), BLE 전용, QFN32 4×4, 24 MHz 크리스털
+- 이 프로젝트 보드: JUZH_3B4(칩 각인 `BP3D136-21A4`, [보드 문서](board/BOARD_KEY12_JUZHEN_V01.md))
+- 확정 근거(2026-11-15, 자세히 [칩 식별](board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀))
+  - UBOOT SCSI INQUIRY "BD19 UBOOT1.00"
+  - 실크 점 = 1번 핀. RF 8·OSC 9/10(PCB 패턴), USB0 14/15(도통)
+  - 바닥 패드 VSS(= GND) 도통, 23번 PB8 비접지
+  - AC632N 계열에서 QFN32 4×4는 AC6321A뿐(SDK 자료표 8종 대조)
+- GPIO: PA0~PA9, PB0~PB9, USB1DP·USB1DM(29·28, GPIO로 바꿀 수 있음), PP0(LDOIN, 4번)
+- ADC: PA1·PA3·PA5·PA7·PA8·PA9, PB1·PB4·PB6, USB1 DP·DM. 내부 VBAT·LDO5V 1/4
+- 주의 핀: 고전압 내성 핀(PB0·PA0·PB7·PB5·PB3, P00), PA9(기본 풀업, 길게 낮추면 리셋), PB3(MCLR). 전체 표는 [보드 문서 3절](board/BOARD_KEY12_JUZHEN_V01.md#3-칩-핀맵)·[ac6321a_pins.h](../tests/hw/ac6321a/test_ac6321a/ac6321a_pins.h)
+- 부트로더: 칩 마스크 ROM의 **UBOOT1.00**(USB 저장장치 `4C4A:3442`). 지울 수 없음 → 벽돌 위험 낮음. 자체 부트로더는 만들지 않고 이것을 씀
+  - 진입: 공장 펌웨어 = 벤더 HID `03 EF EF`. 우리 펌웨어 = BOOT 명령(또는 `03 EF EF`) → SDK `go_mask_usb_updata()`(ROM `nvram_set_boot_state` 0x106f40)
+- UBOOT1.00 명령(PM 시험)
+  - 동작 확인: `FB06` RAM 쓰기(+CRC16), `FD07` RAM 읽기, `FB08` 점프
+  - 플래시 명령(`FC0B` 등)은 ROM이 거부 → RAM 로더 필요. `bd19loader.bin`(SDK `cpu/bd19/tools`, 공개 것과 같은 파일)을 0x2000에 올리고, RAM 0x7A00에 설정 블록(`UIMMTAG-` + `SPI=2_3_0_0`, MengLi 인코딩)을 쓴 뒤 `FC14`부터 보내면 동작(PM 확인, 2026-11-15). `FC16`은 응답 없음
+  - 플래시: SPI NOR, ID `CD 71 13`, 512 KiB(추정). 공장 펌웨어 백업 완료(두 번 읽어 일치). `FC0B` 응답 ID = 바이트 3..5
+  - 로더 명령(PM 실측): `FB00` 지우기(64 KiB), `FB04` 쓰기(4 KiB씩), `FD05` 읽기, `FC0E` CRC = crc16(다항 0x1021, 초기 0), `FC0C` 리셋. 시험 이미지 쓰기·검증 성공(2026-11-15). 실행 뒤 USB·BLE 안 잡힘 → 보드 보류
+  - ROM 진입 조건(`rom.lst`, PM): USB 키(D+/D− `0x16EF`), UART 키(`0x68AF`), 앱 헤더 CRC 실패 때 USB 폴백뿐. 앱이 USB를 못 열면 하드웨어 없이는 UBOOT로 못 돌아감 → 플래시에 쓰기 전에 RAM 실행 시험
+  - Windows SPTI(SCSI 직접 명령)는 관리자 권한 필요
+- 개발 환경: SDK fw-AC63_BT_SDK(`cpu/bd19`, `apps/hid`, 대상 `ac632n_hid`), JL 툴체인 2.5.3(`C:\JL`, clang pi32), Code::Blocks
+  - **빌드 뒤 스크립트(`RUN_POST_SCRIPT`)는 반드시 끔**: `download.bat` → `isd_download`가 꽂힌 칩에 자동으로 씀
+- 자료: SDK 폴더 doc/datasheet/AC632N/AC6321A(Datasheet V1.3, BLE 참고 원리도 V2.0, 마우스 표준 원리도 V1.0)
+
 ## 우리 펌웨어의 사용량
 
 - 근거: [firmware/macro_keyboard/README.md](../firmware/macro_keyboard/README.md#크기) "크기" (빌드 시각에 따라 ±4 B), 동글은 [firmware/dongle_ch582/README.md](../firmware/dongle_ch582/README.md)
@@ -51,3 +76,7 @@
 - 2026-11-08: 처음 만듦 (자료표 CH552 V1F, CH32V203 V2.6)
 - 2026-11-13: CH573F(SAYO_2B3)·CH582F(동글) 열 추가, 추정 값에서 시작
 - 2026-11-13: CH573F·CH582F를 SDK·코드·실제 장치 값으로 바꿈("준비 중"·"추정" 열 이름 삭제). 저속 클록·ROM 진입·VID:PID 행 추가
+- 2026-11-15: JieLi AC6321A(JUZH_3B4) 절 추가: 확정 근거, GPIO·ADC·주의 핀, ROM UBOOT1.00(진입·동작 명령·로더 안 됨), 개발 환경
+- 2026-11-15: AC6321A RAM 로더 동작 확인(설정 블록 0x7A00 + FC14), 플래시 SPI NOR `CD 71 13`·512 KiB(추정), 공장 펌웨어 백업 완료
+- 2026-11-15: AC6321A 플래시 쓰기 성공(로더 명령 FB00·FB04·FD05·FC0E·FC0C, CRC 규칙), FC0B ID 위치
+- 2026-11-15: AC6321A ROM 진입 조건(USB 키·UART 키·헤더 CRC 폴백), 시험 장입 뒤 USB 안 잡혀 보드 보류

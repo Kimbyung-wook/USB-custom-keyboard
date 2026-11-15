@@ -117,7 +117,7 @@ def test_main_window_shows_an_old_keyboard_by_its_new_name():
     assert "SAYO_2X4 (옛 이름 2X4V_RGB) (키 8)" in w.conn_label.text()
     assert "SAYO_2X4 (키 8)" in w.windowTitle() and "2X4V_RGB" not in w.windowTitle()
     names = [w.board_combo.itemData(i) for i in range(w.board_combo.count())]
-    assert names == [b.name for b in boards.BOARDS]               # listed once, new name
+    assert names == [b.name for b in boards.ALL_BOARDS]               # listed once, new name
     w.close()
 
 

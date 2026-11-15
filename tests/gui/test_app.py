@@ -406,20 +406,21 @@ def test_key_picture_not_squeezed(qapp):
     w.close()
 
 
-# Every board in boards.BOARDS must show up wherever the GUI lists boards
-@pytest.mark.parametrize("name", [b.name for b in boards.BOARDS])
+# Every board in boards.ALL_BOARDS (BOARDS, then those being prepared) must
+# show up in the main window's list
+@pytest.mark.parametrize("name", [b.name for b in boards.ALL_BOARDS])
 def test_every_board_listed_and_drawn(win, name):
     from PySide6.QtWidgets import QGridLayout
     spec = boards.find(name)
     combo = win.board_combo
-    assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.BOARDS]
+    assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.ALL_BOARDS]
     i = combo.findData(name)
     combo.setCurrentIndex(i)
     win._on_board_picked(i)
     b = spec.layout
     assert win.board == b and len(win.slots) == b.slot_count
     # Keys drawn in rows x cols (e.g. SAYO_2X4: 2 rows of 4)
-    grid = win.device_view._body.layout().itemAt(0).layout()
+    grid = win.device_view.key_grid
     assert isinstance(grid, QGridLayout)
     cells = {grid.getItemPosition(k)[:2] for k in range(grid.count())}
     assert cells == {(s // b.cols, s % b.cols) for s in range(b.keys)}

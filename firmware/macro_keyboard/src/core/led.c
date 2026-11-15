@@ -174,7 +174,14 @@ static __idata uint16_t pressAt;
 static __idata uint16_t blinkAt; // start of the current locked blink period
 // Switches whose press typed (bit = switch, as input_down): green while down
 static __idata hal_sw_t greenSw;
-#if BOARD_KNOBS
+#if BOARD_KNOBS > 1
+// Knob n's PRESS slot = switch BOARD_KEYS + n; a turn has no switch
+#define SW_OF(slot)                                                            \
+  ((slot) < BOARD_KEYS ? (hal_sw_t)(1u << (slot))                              \
+   : ((slot) - BOARD_KEYS) % 3 == 2                                            \
+       ? (hal_sw_t)(1u << (BOARD_KEYS + ((slot) - BOARD_KEYS) / 3))            \
+       : (hal_sw_t)0)
+#elif BOARD_KNOBS
 #define SW_OF(slot)                                                            \
   ((slot) < BOARD_KEYS ? (hal_sw_t)(1u << (slot))                              \
    : (slot) == SLOT_KNOB_PRESS ? (hal_sw_t)(1u << BOARD_KEYS) : (hal_sw_t)0)

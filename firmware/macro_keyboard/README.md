@@ -155,6 +155,34 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - 장입: GUI 업데이트 창 또는 `tools\flash.ps1 -Board sayo_2b3`(자체 부트로더, 진입: 키 4를 누른 채 SW1 켜기 또는 `-Enter`). 처음 설치는 `-Full`(PB22 + wchisp, UID 확인) → [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md#설치업데이트)
 - 동작·LED: [BOARD_SAYO_2X3B_RGB 6절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작)
 
+### AC6321A 빌드 (JUZH_3B4, 준비 중, 칩 미검증)
+
+- 구조: JieLi SDK 앱(fw-AC63_BT_SDK, `cpu/bd19`, `ac632n_hid`). `main()`·USB·BLE 스택은 SDK, `src/hal/ac6321a/`가 SDK 앱 "standard_keyboard" 자리에 등록하고 RTOS 태스크 하나에서 core를 돌림
+- 도구: JL 툴체인 2.5.3(`C:\JL`, clang pi32), bash, `mingw32-make`
+- `firmware\macro_keyboard`에서
+
+| 명령 | 결과 |
+|---|---|
+| `mingw32-make -f Makefile.ac6321a` (= `bash jl_build_ac6321a.sh`) | `build/ac6321a/macro_keyboard-JUZH_3B4.bin`·`.elf` (앱만) |
+| `mingw32-make -f Makefile.ac6321a BLE=0` | 같은 파일, USB만(BLE 스택 부르지 않음) |
+
+- 환경 변수: `MK_JL_SDK`(SDK 원본, 손대지 않음), `MK_JL_WORK`(작업 사본, 기본 `C:/Users/user/tools/jieli/mk_sdk`), `MK_JL_TOOLCHAIN`(기본 `C:/JL/pi32/bin`)
+- 작업 사본에서 매번 SDK 설정을 새로 복사해 고침: 보드 `AC6321A_STAND_KEYBOARD`, USB 장치 켬, 디버그 UART0 끔(TX = USB0 DP), SDK 행렬 키·외부 MCU 끔, BLE는 `BLE=` 값
+- SDK 키보드 앱·HID 클래스(`usb_hid_devices.c`)·장치 서술자(`descriptor.c`)는 빼고 `usb_ac6321a.c`로 대체
+- 빌드 뒤 스크립트(`RUN_POST_SCRIPT`)는 끔: SDK `download.bat`이 `isd_download -tonorflash`로 꽂힌 칩에 씀. 장입 대상 없음(일부러)
+- `.bin`은 앱만. 플래시 이미지(uboot·설정·파티션)는 `isd_download`가 만듦
+- 보드 헤더: `src/hal/ac6321a/juzh_3b4.h`(GUI 보드 표 등록 전이라 `src/boards` 밖). **핀은 모두 `PIN_NONE`**(측정 뒤 채움)
+- 기능(초안)
+  - USB: 부트 키보드 + 벤더 HID 64 B, `1209:C55D`
+  - BLE HID: SDK HOGP, Report ID 1, 본딩 1개
+  - 설정 저장: SDK VM 항목(2 KB = 256 B × 8)
+  - 입력: 3×4 행렬 키, 노브 2개
+  - 슬롯 LED 3개(임시 대응: 파랑 = 슬롯, 초록 LED2, 빨강 LED3, 흰색 LED1, 확인 필요)
+  - 업데이트 진입: BOOT 명령, 공장과 같은 `03 EF EF`(Report ID 없는 64 B만) → `go_mask_usb_updata()` → ROM UBOOT
+  - HELLO 칩 ID 미정(0)
+- core 노브 2개: `BOARD_KNOBS > 1`일 때만 쓰는 경로, 노브 n의 슬롯은 K + 3n(K = 키 수). 노브 1개 보드 코드는 그대로
+- 보드 문서: [BOARD_KEY12_JUZHEN_V01](../../docs/board/BOARD_KEY12_JUZHEN_V01.md#6-본-펌웨어에서의-동작)
+
 ### 버전과 빌드 날짜
 
 - **버전**: `src/config.h`의 `FW_MAJOR`, `FW_MINOR`, `FW_PATCH`를 직접 고침(지금 `1.7.0`)

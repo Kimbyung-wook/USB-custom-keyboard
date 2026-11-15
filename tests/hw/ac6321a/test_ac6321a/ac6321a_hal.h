@@ -1,12 +1,13 @@
-// UNVERIFIED DRAFT (2026-11-15): compiles against the SDK, never run.
+// UNVERIFIED DRAFT (2026-11-15): links into the SDK app (jl_build.sh), never run.
 // SDK: public fw-AC63_BT_SDK, platform cpu/bd19 = AC632N (see ac6321a_hal.c).
 // Chip layer for the shared pin test logic on the JieLi AC6321A (JUZH_3B4
 // keyboard). Same names as tests/hw/ch573/test_ch573/ch573_hal.h; implemented
-// in ac6321a_hal.c on top of the JieLi SDK (see Makefile for the build).
+// in ac6321a_hal.c on top of the JieLi SDK (build: jl_build.sh).
+// Back to the ROM UBOOT: the host toggles Scroll Lock 6 times within 3 s.
 //
 // Differences from the other chips:
-// - The SDK runs an RTOS: the test runs in its own task (ac6321a_hal.c starts
-//   it from the SDK's app entry), and the shared loop must give the CPU back
+// - The SDK runs an RTOS: the test runs in its own task (ac6321a_hal.c
+//   registers the SDK app that starts it), and the shared loop must give the CPU back
 //   now and then (hal_idle, HAL_HAS_IDLE) and keep the watchdog fed.
 // - Port 0 = A, 1 = B, PORT_USB1 (ac6321a_pins.h) = the second USB pair as
 //   GPIO, typed "PU00" (DP1) and "PU01" (DM1).

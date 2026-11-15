@@ -67,6 +67,9 @@ uv run python -m gui --mock-board 12x2
   - 보드 정보: 키 수, 노브 수, 키 행 수, 보드 이름
 - 보드 정보를 보내지 않는 펌웨어(1.0~1.2.x): 지금 키보드(키 6 + 노브 1, 2행)로 봄
 - 배치가 다른 키보드를 연결하면 화면을 그 키보드에 맞게 다시 만듦. 저장하지 않은 편집이 있으면 먼저 물음
+- **[세로 보기]** 단추: `BoardSpec.rotatable` 보드만 보임(지금은 JUZH_3B4). 보드를 반시계 90° 돌린 그림(키 4행 × 3열 아래, 노브는 위쪽에 노브 1 왼쪽·노브 2 오른쪽, 슬롯 LED는 노브 사이 가로)
+  - 그림만 돌림. 키·노브 번호, 설정, 회전 방향 표시는 그대로
+  - 보드별 선택은 GUI 설정(QSettings `view/<보드>/portrait`)에 기억
 
 ## 테스트
 
@@ -220,10 +223,22 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - CH32V203 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)·CH573 보드(SAYO_2B3): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
   - 앱 영역만 지움 → 설정 유지. 끊기면 다음에 꽂을 때 부트로더에 머묾
-- JUZH_3B4(JieLi AC6321A, 준비 중): core만 있음, 화면·보드 목록 등록은 아직([보드 문서](../docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-sdk장입-조사))
+- JUZH_3B4(JieLi AC6321A, 준비 중): 보드 목록 `boards.py`의 "준비 중" 목록 `PREPARING`(보드 헤더가 생기면 `BOARDS`로 옮김. 메인 창 보드 목록·`find`는 `ALL_BOARDS` = 둘 다)([보드 문서](../docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-sdk장입-조사))
+  - 그림: 키 3×4 + 오른쪽 열에 노브 2개 위·아래, 그 사이 BT 슬롯 LED 1·2·3(툴팁·보드 목록·연결 정보에 뜻, SAYO_2B3 규칙과 같음). 충전 LED는 하드웨어 표시라 안 그림
+  - 업데이트 창 `ui/jl_flash_dialog.py`(core `jluboot.JlFlasher`): 진입 방법(공장 `03 EF EF` / 우리 BOOT) → UBOOT `4C4A:3442` 찾기 → 백업 → 쓰기 → 재시작. 관리자 권한 안내·[관리자로 다시 실행]
+  - **쓰기는 자리만**(`WRITE_READY=False`): 이미지 형식·쓰기 방식이 정해지면 맞춤. [백업만] 뒤에는 로더가 리셋되므로 다시 전환하라고 안내
+  - 쓰기 순서는 준비됨(`WRITE_PLANS`·`write_planned`, 실행은 여전히 막음)
+    - `jl_isd.bin`을 그대로 0번지부터 씀. `FB00` 64 KiB 블록 0x00000·0x10000·0x20000 지우기(0x3E000 BTIF는 남김)
+    - `FB04` 조각(≤0x8000, 4 KiB 정렬)마다 `FC0E` CRC 대조, 끝에 `FD05`로 전체 다시 읽어 비교
+    - 되돌리기 `JlFlasher.restore`: 백업의 0–0x30000을 같은 순서로 다시 씀
+    - `FB02`(전체 지우기)는 보내기 전에 거부. `FC0E` CDB·응답 형식은 가정(PM 실측: crc16 0x1021, 초기 0, 맞춤 필요)
+  - HELLO 칩 ID 미정(보드 정의 0)
   - `core/jluboot.py`: ROM USB 다운로드 모드(UBOOT, USB 저장장치)에 SCSI 명령. jl-uboot-tool 일부 이식(MIT 고지). Windows SPTI, 드라이버 변경 없음(읽기·쓰기로 열 때 관리자 권한이 필요할 수 있음)
-  - 진입(USB만, 어댑터·동글 없음, `ENTRY_METHODS`·`enter_uboot`): 공장 펌웨어 = 벤더 HID(`514C:8850` Report 3)에 `03 EF EF` + 0 채움 65 B, 우리 펌웨어 = BOOT 명령. UBOOT 장치 `4C4A:3442`, 이름 "UBOOT"
-  - 순서: RAM 로더 실행(BD19 `bd19loader.bin`, 0x2000) → 칩·플래시 ID 대조 → 전체 백업(두 번 읽어 비교, SHA-256) → 지우기·쓰기·확인 읽기 → 재시작. 단 BD19 로더는 이 칩에서 동작 안 함(PM 시험, 2026-11-15) → 플래시 단계는 다시 설계 필요
+  - 진입(USB만, 어댑터·동글 없음, `ENTRY_METHODS`·`enter_uboot`): 공장 펌웨어 = 벤더 HID(`514C:8850` Report 3)에 `03 EF EF` + 0 채움 65 B, 우리 펌웨어 = BOOT 명령. 시험 펌웨어(`4A4C:4155`)도 진입 HID로 찾음. UBOOT 장치 `4C4A:3442`, 이름 "UBOOT"
+  - 순서: RAM 로더 실행(BD19 `bd19loader.bin`, 0x2000) → 칩·플래시 ID 대조 → 전체 백업(두 번 읽어 비교, SHA-256) → 지우기·쓰기·확인 읽기 → 재시작. BD19 로더는 RAM 0x7A00에 설정 블록(`UIMMTAG-` + `SPI=2_3_0_0`)을 먼저 쓰고 첫 명령 `FC14`로 동작(PM 확인, 2026-11-15, 읽기·백업 성공). 쓰기는 설계 중
+  - 로더 실측 경로(`jluboot.py`): `bd19loader.bin`을 0x2000에 그대로 씀 → 설정 블록(64 B)을 MengLi 인코딩해 0x7A00에 쓰고 되읽어 확인 → 점프
+    - 로더에 처리기가 없는 `FC15`·`FC0F`·`FC16`은 보내기 전에 거부. BD19는 READ_KEY(`FC09`) 생략
+    - 명령 사이가 2.5초를 넘으면 "다시 전환" 안내로 거부(로더는 3초 유휴면 리셋)
   - `core/jl_usbkey.py`: USB_KEY 어댑터(`1209:C560`) 명령. 어댑터는 보류(화면·보드 목록에서 안 씀)
   - 가짜 장치 시험: `tests/gui/test_jluboot.py`
   - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내. SAYO_2B3는 `flash.ps1 -Board sayo_2b3 -Full`을 먼저 실행한 뒤 PB22-GND + SW1 켜기(ROM 부트로더 6~15초 제한)
@@ -312,6 +327,7 @@ uv run python tools\capture_screens.py
 | `core/chips.py` | 칩 표: 칩 ID별 이름, 플래시 용량(CH32V203은 앱 영역), 지원 여부 |
 | `core/bootloader.py` | 업데이트 모드 칩 검색: WCH 드라이버(`CH375DLL64.dll`)로 Detect/ReadConfig만 보내 파트 번호, 칩 ID, 부트로더 버전을 읽음 |
 | `core/version.py` | GUI 버전(`VERSION`)과 빌드 일자 표시. 빌드 일자는 빌드 때 생성되는 `_build_info.py`(gui/ 바로 아래)에서 읽음 |
+| `ui/jl_flash_dialog.py` | JieLi 보드(JUZH_3B4) 업데이트 창: UBOOT 진입·백업·쓰기(자리만)·재시작, 관리자 권한 안내 |
 | `ui/flash_dialog.py` | [펌웨어 업데이트] 창 (인식된 칩 목록, [장입] 시 QProcess로 업로더 실행, CH32V203은 `hidboot`) |
 | `ui/widgets.py`, `ui/app.py` | PySide6 UI (장치 그림, 매크로 편집기, 패턴 암호·자동 잠금 편집기) |
 
