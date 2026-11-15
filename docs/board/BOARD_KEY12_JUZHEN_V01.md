@@ -1,7 +1,7 @@
 # KEY12-JUZHEN_V01 (12키 + 노브 2)
 
 - 요약 표: [BOARDS.md](../BOARDS.md#준비-중-보드). 같은 무선 보드: [SAYO_2B3](BOARD_SAYO_2X3B_RGB.md). 새 보드 절차: [NEW_BOARD.md](../NEW_BOARD.md#9-식별-전-보드)
-- **상태: 칩 AC6321A 확정. **복구 불가, 보류**(2026-11-15): 시험 펌웨어 `jl_isd.bin`(DCDC15·LVD 공장값, BLE 끔) 장입·검증 성공 → 리셋 뒤 USB·BLE 모두 안 잡힘(장치 관리자에 알 수 없는 장치도 없음). 되살리려면 납땜 지원 또는 JieLi USB 업데이터 동글([공장 펌웨어](#공장-펌웨어-지워도-됨))**. 칩은 JieLi **AC6321A**(BD19 = AC632N 계열, BLE 전용, QFN32 4×4). 근거: UBOOT 이름 "BD19 UBOOT1.00", 실크 점 = 1번 핀, RF 8·OSC 9/10·USB0 14/15 배치, 23번 PB8 비접지(사용자 확인). 앞의 AC6956C 판단은 철회. UBOOT 진입은 PC USB만으로 됨(`03 EF EF`, 확인). 이식 가능성은 판단 보류([JieLi SDK·장입](#jieli-sdk장입-조사))
+- **상태: 칩 AC6321A 확정. **복구 불가, 보류**(2026-11-15): 시험 펌웨어 `jl_isd.bin`(DCDC15·LVD 공장값, BLE 끔) 장입·검증 성공 → 리셋 뒤 USB·BLE 모두 안 잡힘(장치 관리자에 알 수 없는 장치도 없음). 되살리려면 [Blue Pill 송신기](../../firmware/jl_usbkey_bluepill/README.md)(납땜 없음, 실물 미시험), 납땜 지원 또는 JieLi USB 업데이터 동글([공장 펌웨어](#공장-펌웨어-지워도-됨))**. 칩은 JieLi **AC6321A**(BD19 = AC632N 계열, BLE 전용, QFN32 4×4). 근거: UBOOT 이름 "BD19 UBOOT1.00", 실크 점 = 1번 핀, RF 8·OSC 9/10·USB0 14/15 배치, 23번 PB8 비접지(사용자 확인). 앞의 AC6956C 판단은 철회. UBOOT 진입은 PC USB만으로 됨(`03 EF EF`, 확인). 이식 가능성은 판단 보류([JieLi SDK·장입](#jieli-sdk장입-조사))
 
 ## 1. 개요
 
@@ -303,6 +303,7 @@
   - ROM(`rom.lst`)의 UBOOT 진입 조건: USB 키(D+/D− 신호 `0x16EF`), UART 키(`0x68AF`), 앱 헤더 CRC 실패 때 USB 폴백뿐. 버튼·핀·USB 선만으로는 못 들어감
   - 납땜·어댑터·SAYO 보드는 쓸 수 없음(사용자) → USB 키·UART 키 못 만듦
   - 되살릴 조건: 납땜 지원(USB 키 어댑터 `jl_usbkey_ch32v203` 또는 UART 키) 또는 JieLi USB 업데이터 동글
+    - **Blue Pill**: [Blue Pill 송신기](../../firmware/jl_usbkey_bluepill/README.md)(STM32F103 + 선 3가닥을 패드에 잠깐 대기, 납땜 없음, 펌웨어 준비됨·실물 미시험). 리셋 뒤 10초 동안 USB 키 `0x16EF`를 PA0(D+)·PA1(D−)로 보냄, JUZH USB 선은 PC에 꽂아 둔 채. 장입은 USB2UART(`flash_uart.ps1`)
   - 남겨 둔 것: 공장 펌웨어 백업(저장소 밖)과 로더 쓰기 절차(위 UBOOT 장입)
   - **다음 장입 원칙**: 플래시에 쓰기 전에 로더로 RAM에서 실행해 USB가 열리는지 먼저 시험(`FB06` + 점프). 전원·클럭 설정은 보드와 대조
 - 벤더 HID 채널 쓰기(설정 바꾸기)는 이제 이식에 필요 없음. 보낼 때는 사용자 승인 뒤
@@ -315,6 +316,7 @@
 - 2026-11-15: 공장 설정 프로그램(`MINI_KEYBOARD`)·`ch57x-keyboard-tool` 대조 → 884x 계열 설정 프로토콜 추정. 읽기 조회 `03 FB` 시험, 쓰기 명령 조사 시작(장치에 안 보냄)
 - 2026-11-15: π 마크 = JieLi 로고(사용자 확인), 칩 4 × 4 mm. AC6956C 데이터시트 대조로 핀 패턴 일치
 - 2026-11-15: 시험 펌웨어 SDK 앱 링크·`app.bin` 빌드(펌웨어 세션): 플래시 정보 줄 `FLS`, Scroll Lock 6번 UBOOT 복귀, PB2 VCM 리셋 막기
+- 2026-11-15: 되살릴 조건에 Blue Pill(STM32F103) USB 키 송신기 추가(펌웨어 준비됨, 실물 미시험)
 - 2026-11-15: 시험 펌웨어 장입 뒤 USB·BLE 안 잡힘 → **복구 불가, 보류**(L1·배터리·24 MHz 확인, 남은 후보 = 앱 USB 시작·HID 서술자, ROM 진입은 USB 키·UART 키·헤더 CRC 폴백뿐). 전원 설정 공장값 DCDC15/LVD로 되돌림(LDO 패치는 오판). 되살릴 조건·다음 장입 원칙
 - 2026-11-15: GUI 쓰기 순서 준비(실행은 막음), 시험 펌웨어 전원 설정 LDO·VBAT 검사·잠들기 끔(빌드만)
 - 2026-11-15: RAM 로더로 플래시 쓰기 성공(PM, 사용자 승인 장입): FC0E CRC = crc16(0x1021, 초기 0), 0x40000 시험, 0·0x10000·0x20000 지우고 `jl_isd.bin` 4 KiB씩 FB04, FD05 일치, 0x3E000 BTIF 보존, FC0C 리셋. FC0B ID 바이트 3..5. 시험 펌웨어 실행 확인 중

@@ -1,6 +1,6 @@
 # jl_usbkey_ch32v203: JieLi USB_KEY 어댑터 (CH32V203)
 
-> ⏸ **보류**(2026-11-15): 공장 펌웨어에서 벤더 HID `03 EF EF`로 UBOOT 진입이 확인돼 처음 설치에 필요 없음. 사용자: 어댑터·동글 부품 구입 불가. 앱이 USB 전에 멈추는 복구용으로만 남김([보드 문서 5절](../../docs/board/BOARD_KEY12_JUZHEN_V01.md#5-부팅장입))
+> ⏸ **보류**(2026-11-15): 공장 펌웨어에서 벤더 HID `03 EF EF`로 UBOOT 진입이 확인돼 처음 설치에 필요 없음. 사용자: 어댑터·동글 부품 구입 불가. 앱이 USB 전에 멈추는 복구용으로만 남김. 납땜 없이 쓰는 Blue Pill판: [jl_usbkey_bluepill](../jl_usbkey_bluepill/README.md)([보드 문서 5절](../../docs/board/BOARD_KEY12_JUZHEN_V01.md#5-부팅장입))
 >
 > ⚠️ **초안**(2026-11-15). 빌드만 함(`build/jl_usbkey.bin` 3,428 B), 장입·실물 시험 안 함. 장입은 사용자가 "ㄱㄱ"라고 한 뒤에만
 
