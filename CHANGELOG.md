@@ -26,13 +26,20 @@
 
 ## 미출시
 
-- [문서] JUZH_3B4 제조사 JieLi(π 마크가 JieLi 로고와 일치, 사용자 확인), 형번 미정(AC63 계열 추정), 1번 핀은 실크 점뿐이라 추정 유지, 체크리스트 16(형번 확정) 추가, 이식 메모(자체 SDK·장입 도구, 백업 방법 미확인) — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-후보-모두-추정-크리스털-주파수로-구별, docs/BOARDS.md#준비-중-보드 — 반영: ☑
-- [문서] JUZH_3B4 칩 4 × 4 mm 반영: Telink TLSR8258 불일치 3곳(USB·사이 핀·크기)으로 낮음, JieLi 32핀 배치와 한 변 차이로 맞아 유력(추정, 1번 핀 재확인 필요). 체크리스트 1·13 완료, 15 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-32핀-핀-배치-대조-pm-분석-추정-2026-11-15, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 JieLi SDK·장입 조사 반영(PM, 웹 자료, 미검증): BR23 계열, 공식 fw-AC63_BT_SDK, ROM USB 장입(UBOOT, USB_KEY 신호), jl-uboot-tool 백업 가능성, 위험·사용자 결정 항목. 5절·체크리스트 18·보존 원칙 갱신 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-sdk장입-조사, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 칩을 JieLi AC6956C로 판단(31번–GND 도통 없음 → JL7016C8 제외, 사용자 측정): 상태·1절·칩 식별·3절(11 BT_AVDD, 31 VDDIO)·7절·BOARDS.md 갱신, 구별 표에 결과 칸, 체크리스트 16 완료, 먼저 볼 것 17·18 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 AC6956C·JL7016C8 구별 방법(31번–GND 도통 먼저, 11번 전압 1.3/3.0 V, 12번 PB3/DCVDD), 측정 주의(핀 간격 0.4 mm), 체크리스트 16 갱신 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#ac6956cjl7016c8-구별-pm-데이터시트-표준-번호-2026-11-15 — 반영: ☑
+- [문서] JUZH_3B4 실크 점 = AC6956C 8번과 9번 사이 모서리(사용자 확인): 그 모서리 기준 예측 번호, AC6321A 제외 근거, 맞는 JieLi 32핀 없음 → AC6956C 또는 JL7016C8 유지(실크 점은 풋프린트 표시 차이, 추정), 사용자 계수는 실제 = 9 − 계수로 설명(41 − 계수 식 대체), 체크리스트 15 완료 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀 — 반영: ☑
+- [문서] JUZH_3B4 실크 점은 AC6956C 1번 핀 모서리와 다름(사용자 관찰) → 판단 근거를 핀 기능으로, JieLi 32핀 비교 표(PM) 추가, 칩을 "AC6956C 또는 JL7016C8"로, 체크리스트 15 확인 대기 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 칩을 JieLi AC6956C(또는 AC695x)로 판단(사용자 도통 확인: USB 23·24, VBAT 10, BT_AVDD 11 일치), 3절 핀 표를 표준 번호로 통일, 체크리스트 6·15·16 완료·17(핀 이름 정리)·18(SDK·장입 조사) 추가, 문서 정리(제외한 후보 표로 묶음) — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 AC6956C 데이터시트 대조: 안테나-크리스털이 모서리 건너 붙는 핀 패턴 일치, 유력 형번 AC6956C(추정), 변환식(41 − 사용자 계수)과 확인용 예측 핀(USB 18·17, VBAT 31, BT_AVDD 30), 체크리스트 16 갱신 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 제조사 JieLi(π 마크가 JieLi 로고와 일치, 사용자 확인), 형번 미정(AC63 계열 추정), 1번 핀은 실크 점뿐이라 추정 유지, 체크리스트 16(형번 확정) 추가, 이식 메모(자체 SDK·장입 도구, 백업 방법 미확인) — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 칩 4 × 4 mm 반영: Telink TLSR8258 불일치 3곳(USB·사이 핀·크기)으로 낮음, JieLi 32핀 배치와 한 변 차이로 맞아 유력(추정, 1번 핀 재확인 필요). 체크리스트 1·13 완료, 15 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#제외한-후보, docs/BOARDS.md#준비-중-보드 — 반영: ☑
 - [문서] JUZH_3B4 쓰기 명령 조사 중간 결과(공개 도구 884x 03 FE 형식·키ID·LED 패킷, 공장 프로그램의 03 FA·EF·FC 명령과 기종 분기, FA 변형 가능성) 조사 중으로 기록 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#쓰기-명령-조사-중-2026-11-15 — 반영: ☑
 - [문서] JUZH_3B4 공장 채널 읽기 시험 결과: 조회 명령 03 FB FB FB → 응답 03 FB 0C 02 0B(키 12·노브 2 추정), 수동 대기·0 채운 패킷은 응답 없음, 쓰기 미시험 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#공장-채널-읽기-시험-2026-11-15 — 반영: ☑
 - [문서] JUZH_3B4 공장 설정 프로그램(MINI_KEYBOARD, 문자열만 봄)과 ch57x-keyboard-tool 소스 대조: 설정 프로토콜 884x 계열 추정(Report ID 3, 64바이트), 장입 없이 키 설정만 바꾸는 길(사용자 승인 뒤) 기록 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#공장-설정-프로그램프로토콜-884x-계열-추정 — 반영: ☑
 - [문서] JUZH_3B4 USB 열거(514C:8850, 벤더 HID + 키보드·마우스·Consumer)와 크리스털-안테나 사이 핀 없음 반영. Telink 32핀도 낮음, 조건(USB + BLE + 24 MHz + 32핀)을 맞는 후보 미확정. 체크리스트 3·11 완료, 14(벤더 HID 프로토콜) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
-- [문서] JUZH_3B4 Telink TLSR8258 데이터시트 대조(24 MHz·32핀·USB 핀 없음 일치, 안테나-크리스털 사이 AVDD1V2 한 핀 불일치) 반영, 식별 체크리스트 11~13(사이 핀, 안테나 인덕터 연결 핀, 5 × 5 mm) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-후보-모두-추정-크리스털-주파수로-구별 — 반영: ☑
+- [문서] JUZH_3B4 Telink TLSR8258 데이터시트 대조(24 MHz·32핀·USB 핀 없음 일치, 안테나-크리스털 사이 AVDD1V2 한 핀 불일치) 반영, 식별 체크리스트 11~13(사이 핀, 안테나 인덕터 연결 핀, 5 × 5 mm) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-식별-jieli-32핀 — 반영: ☑
 - [문서] JUZH_3B4 핀 번호: 1번 핀(왼쪽 위, 흰 점), 크리스털·안테나 핀을 사용자 계수(시계 방향 23·24·25)와 QFN 표준 번호(반시계, 추정 11·10·9)로 함께 적음 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#3-칩-핀맵 — 반영: ☑
 - [문서] JUZH_3B4 관찰 반영: 크리스털 24 MHz, 32핀(QFN32 추정), π 마크, 안테나 25번 핀(22번에서 정정), 공장 펌웨어 USB 안 잡힘. 칩 후보는 Telink TLSR825x 유력, JieLi AC63x는 32핀 칩 RF 핀(8/16/17번)이 25번과 달라 낮음 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
 - [문서] 새 보드 JUZH_3B4(12키 + 노브 2 무선, 기판 KEY12-JUZHEN_V01, 칩 BP3D136-21A4 식별 중) 문서: 칩 후보 표, 식별 체크리스트, 공장 펌웨어 보존 주의. 준비 중 보드 목록에 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md, docs/BOARDS.md#준비-중-보드, docs/NEW_BOARD.md#9-식별-전-보드, README.md — 반영: ☑
