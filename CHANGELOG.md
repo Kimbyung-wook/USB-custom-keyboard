@@ -26,6 +26,8 @@
 
 ## 미출시
 
+- [문서] JUZH_3B4 공장 설정 프로그램(MINI_KEYBOARD, 문자열만 봄)과 ch57x-keyboard-tool 소스 대조: 설정 프로토콜 884x 계열 추정(Report ID 3, 64바이트), 장입 없이 키 설정만 바꾸는 길(사용자 승인 뒤) 기록 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#공장-설정-프로그램프로토콜-884x-계열-추정 — 반영: ☑
+- [문서] JUZH_3B4 USB 열거(514C:8850, 벤더 HID + 키보드·마우스·Consumer)와 크리스털-안테나 사이 핀 없음 반영. Telink 32핀도 낮음, 조건(USB + BLE + 24 MHz + 32핀)을 맞는 후보 미확정. 체크리스트 3·11 완료, 14(벤더 HID 프로토콜) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
 - [문서] JUZH_3B4 Telink TLSR8258 데이터시트 대조(24 MHz·32핀·USB 핀 없음 일치, 안테나-크리스털 사이 AVDD1V2 한 핀 불일치) 반영, 식별 체크리스트 11~13(사이 핀, 안테나 인덕터 연결 핀, 5 × 5 mm) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-후보-모두-추정-크리스털-주파수로-구별 — 반영: ☑
 - [문서] JUZH_3B4 핀 번호: 1번 핀(왼쪽 위, 흰 점), 크리스털·안테나 핀을 사용자 계수(시계 방향 23·24·25)와 QFN 표준 번호(반시계, 추정 11·10·9)로 함께 적음 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#3-칩-핀맵 — 반영: ☑
 - [문서] JUZH_3B4 관찰 반영: 크리스털 24 MHz, 32핀(QFN32 추정), π 마크, 안테나 25번 핀(22번에서 정정), 공장 펌웨어 USB 안 잡힘. 칩 후보는 Telink TLSR825x 유력, JieLi AC63x는 32핀 칩 RF 핀(8/16/17번)이 25번과 달라 낮음 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
