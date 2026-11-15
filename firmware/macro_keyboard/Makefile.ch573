@@ -1,5 +1,7 @@
-# CH573 build of the macro keyboard (board SAYO_2B3, stage 1: USB cable keyboard
-# + status LEDs + battery reading, no BLE yet): RISC-V GCC (xPack) + WCH CH573 EVT SDK.
+# CH573 build of the macro keyboard (board SAYO_2B3: USB cable keyboard + BLE HID
+# keyboard + status LEDs + battery reading): RISC-V GCC (xPack) + WCH CH573 EVT SDK
+# with its BLE library (EXAM/BLE: LIB, HAL/MCU.c + RTC.c, the HID_Keyboard
+# profile files; src/hal/ch573/ble_ch573.c takes the place of its APP).
 #   mingw32-make -f Makefile.ch573             -> build/ch573/macro_keyboard-SAYO_2B3.bin
 #   mingw32-make -f Makefile.ch573 DEMO=1      -> ...-SAYO_2B3-demo.bin: keys set the LED
 #                                                 states instead of typing (src/core/bt_app.h)
@@ -14,12 +16,19 @@ MK_CH57X_SDK ?= C:/Users/user/tools/sdk_ch573/EVT
 SDK ?= $(MK_CH57X_SDK)
 EXAM := $(SDK)/EXAM
 DRV := $(EXAM)/SRC/StdPeriphDriver
+BLE := $(EXAM)/BLE
+KBD := $(BLE)/HID_Keyboard
 SDK_LD := $(EXAM)/SRC/Ld/Link.ld
 BL_DIR := ../bootloader_ch573
 BOARD := SAYO_2B3
 DEMO ?= 0
-# Config store in Data-Flash (RAM: storage.c keeps 2 copies + the HAL shadow)
+# Config store in Data-Flash (RAM: one copy in storage.c, BOARD_STORE_ONE_BUFFER)
 STORE_SIZE := 2048
+# BLE stack heap (SDK config.h BLE_MEMHEAP_SIZE, 6 KB there; the library wants
+# 4 KB at least). 5 KB: one link only, and the 18 KB of RAM is nearly full
+BLE_HEAP ?= 5120
+# RAM left free between .bss and the stack reserve (512 B), checked after linking
+RAM_MARGIN := 1024
 PYTHON ?= python
 
 layout = $(shell sed -n 's/^\#define $(1) \(0x[0-9A-Fa-f]*\)u.*/\1/p' $(BL_DIR)/boot_layout.h)
@@ -39,27 +48,38 @@ PREFIX ?= $(if $(MK_RISCV_BIN),$(MK_RISCV_BIN)/)riscv-none-elf-
 CC := $(PREFIX)gcc
 OBJCOPY := $(PREFIX)objcopy
 SIZE := $(PREFIX)size
+NM := $(PREFIX)nm
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8 -mno-save-restore
 DEFS := -DMK_CHIP_CH573 -DBOARD_HEADER='"hal/ch573/sayo_2b3.h"' -DBLOB_CAPACITY=$(STORE_SIZE) \
-        -DBTLED_DEMO=$(DEMO) $(EXTRA_DEFS)
+        -DBTLED_DEMO=$(DEMO) -DBLE_MEMHEAP_SIZE=$(BLE_HEAP) $(EXTRA_DEFS)
 CFLAGS := $(ARCH) $(DEFS) -MMD -MP -Os -g -ffunction-sections -fdata-sections -fno-common \
           -Wall -Wextra -Wno-unused-parameter
 ASFLAGS := $(ARCH) -x assembler-with-cpp
 INCS := -Isrc -Isrc/core -Isrc/hal/ch573 -I$(DRV)/inc -I$(EXAM)/SRC/RVMSIS
+# SDK BLE files: their own include path, without src ("CONFIG.h" is the SDK's
+# HAL/include/config.h; Windows does not tell it from src/config.h)
+BLE_INCS := -I$(KBD)/Profile/include -I$(KBD)/APP/include -I$(BLE)/HAL/include -I$(BLE)/LIB -I$(DRV)/inc -I$(EXAM)/SRC/RVMSIS
 LDSCRIPT := $(BUILD)/app.ld
 LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map \
            --specs=nano.specs --specs=nosys.specs
 
 SRCS_ASM := startup_CH573.S
 SRCS_C := app.c input.c led.c lock.c macro.c protocol.c storage.c battery.c bt_led.c bt_app.c \
-          hal_ch573.c led_ch573.c battery_ch573.c main.c \
+          hal_ch573.c led_ch573.c battery_ch573.c main.c ble_ch573.c \
           core_riscv.c CH57x_clk.c CH57x_gpio.c CH57x_sys.c CH57x_timer0.c CH57x_pwr.c CH57x_adc.c
+# SDK BLE sources as they are (--gc-sections drops what is not used)
+SRCS_BLE := MCU.c RTC.c hiddev.c hidkbdservice.c battservice.c devinfoservice.c scanparamservice.c
 
 # vpath per type (src/hal/ch32v203 has a main.c too: not searched)
-vpath %.c src/core src/hal/ch573 $(EXAM)/SRC/RVMSIS $(DRV)
+vpath %.c src/core src/hal/ch573 $(EXAM)/SRC/RVMSIS $(DRV) $(BLE)/HAL $(KBD)/Profile
 vpath %.S $(EXAM)/SRC/Startup
-OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o))
+BLE_OBJS := $(addprefix $(BUILD)/,$(SRCS_BLE:.c=.o))
+OBJS := $(addprefix $(BUILD)/,$(SRCS_C:.c=.o) $(SRCS_ASM:.S=.o)) $(BLE_OBJS)
+# SDK BLE files: SDK include path only, SDK warnings off; ble_ch573.c: SDK path first
+$(BLE_OBJS): INCS := $(BLE_INCS)
+$(BLE_OBJS): CFLAGS += -w
+$(BUILD)/ble_ch573.o: INCS := $(BLE_INCS) -Isrc
 
 all: $(BIN)
 full: $(FULL)
@@ -70,8 +90,13 @@ $(LDSCRIPT): $(SDK_LD) Makefile.ch573 $(BL_DIR)/boot_layout.h | $(BUILD)
 > grep -q 'ORIGIN = $(APP_ADDR)' $@
 
 $(BUILD)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
-> $(CC) $(LDFLAGS) -o $@ $(OBJS) $(DRV)/libISP573.a -lc -lgcc
+> $(CC) $(LDFLAGS) -o $@ $(OBJS) $(BLE)/LIB/libCH57xBLE.a $(DRV)/libISP573.a -lc -lgcc -lm
 > $(SIZE) $@
+> @ebss=$$($(NM) $@ | sed -n 's/^\([0-9a-f]*\) . _ebss$$/\1/p'); \
+  top=$$($(NM) $@ | sed -n 's/^\([0-9a-f]*\) . _eusrstack$$/\1/p'); \
+  size=$$($(NM) $@ | sed -n 's/^\([0-9a-f]*\) . __stack_size$$/\1/p'); \
+  free=$$((0x$$top - 0x$$size - 0x$$ebss)); echo "RAM free above .bss: $$free bytes (+ 512 B stack)"; \
+  if [ $$free -lt $(RAM_MARGIN) ]; then echo "ERROR: less than $(RAM_MARGIN) B of RAM free"; rm -f $@; exit 1; fi
 
 $(BIN): $(BUILD)/$(TARGET).elf
 > $(OBJCOPY) -O binary $< $@

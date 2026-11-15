@@ -153,19 +153,18 @@ def test_flash_dialog_shows_new_name_and_still_warns_for_another_board(tmp_path)
     assert forced and "SAYO_3X3 부트로더는 이 파일을 받지 않습니다" in forced[0]
 
 
-# ---- a board renamed before it is in boards.BOARDS (CH573 bootloader says BT_2X3)
+# ---- SAYO_2B3: the CH573 bootloader on the board still says BT_2X3 (aliases since 2026-11-13)
 
-def test_pending_alias_names_the_same_board():
+def test_bt_2x3_names_sayo_2b3():
     assert boards.current_name("BT_2X3") == "SAYO_2B3"
     assert boards.same("BT_2X3", "SAYO_2B3") and boards.same("SAYO_2B3", "BT_2X3")
     assert not boards.same("BT_2X3", "SAYO_2X3") and not boards.same("BT_2X3", "SAYO_2X4")
     assert boards.display_name("BT_2X3") == "SAYO_2B3 (옛 이름 BT_2X3)"
-    if boards.find("SAYO_2B3") is None:          # not in the board list yet
-        assert boards.find("BT_2X3") is None
+    assert boards.find("BT_2X3") is boards.find("SAYO_2B3") is not None
 
 
 @pytest.mark.parametrize("bootloader, image_board", [("BT_2X3", "SAYO_2B3"), ("SAYO_2B3", "BT_2X3")])
-def test_hidboot_takes_the_pending_alias(bootloader, image_board):
+def test_hidboot_takes_bt_2x3(bootloader, image_board):
     assert hidboot.board_mismatch(app(image_board), bootloader) == ""
     assert "SAYO_3X3" in hidboot.board_mismatch(app("SAYO_3X3"), "BT_2X3")
 

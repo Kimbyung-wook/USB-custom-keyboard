@@ -37,7 +37,8 @@ def build(out_dir: Path, board: str = "MK6K1N", header: Path | None = None) -> P
         ["gcc", "-std=c99", "-Wall", "-DHAL_HOST", pick,
          "-I", str(HERE / "stub"), "-I", str(SRC),
          str(HERE / "host_test.c")] + [str(SRC / "core" / f) for f in
-                                       ("storage.c", "macro.c", "lock.c", "input.c", "led.c", "protocol.c")]
+                                       ("storage.c", "macro.c", "lock.c", "input.c", "led.c", "protocol.c",
+                                        "battery.c")]
         + ["-o", str(exe)],
         check=True)
     return exe
@@ -251,6 +252,13 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
           (board and board.features & layout.features == layout.features,
            hello.supports_autolock, board and board.uid),
           (True, True, bytes([0xA0, 0xA1, 0xA2, 0xA3])))
+    # CMD_BATTERY (0x07): answered on a battery board (HELLO feature 0x04),
+    # ST_BAD_CMD elsewhere, as from firmware older than the command
+    bat = [bytes.fromhex(line.split()[1]) for line in run(exe, out, old, extra=["proto", "0706"])
+           if line.startswith("res ")]
+    has_bat = bool(board and board.features & 0x04)
+    check(f"{name}: BATTERY answered only with the battery feature bit",
+          (bat[0][0], bat[0][1], bat[0][2]), (0x87, 6, 0 if has_bat else 1))
     # 56 bytes: the blob, then erased bytes
     check(f"{name}: READ returns the blob", p.parse_read_result(res[1].result),
           (0, old.ljust(p.MAX_CHUNK, b"\xff")[:p.MAX_CHUNK]))
@@ -386,25 +394,102 @@ BT_APP_WANT = {  # "<LED bits> <sleep>" or a plain value; bits as BT_LED_WANT
         "demo_usb_back_seen": "02", "demo_usb_back": "02 0", "demo_batt1": "1", "demo_batt2": "2",
         "demo_crit_done": "02 0", "demo_batt_after": "0", "demo_combo": "38 0",
         "demo_combo_batt": "0", "demo_combo_slot": "02 0"},
+    # BOARD_BLE (SAYO_2B3 BLE stage 1); hal_ble_* counts, then pair (1 = to
+    # anyone) and state (0 idle, 1 advertising, 2 link, 3 ready)
+    "ble": {"ble_wait_usb": "starts 0 stops 0 forgets 0 pair 9 state 0",
+            "ble_reconnect": "starts 1 stops 0 forgets 0 pair 0 state 1",
+            "ble_reconnect_seen": "08", "ble_connected": "08 0", "ble_connected_end": "00 0",
+            "ble_usb": "starts 1 stops 1 forgets 0 pair 0 state 0", "ble_usb_led": "02 0",
+            "ble_usb_out": "starts 2 stops 1 forgets 0 pair 0 state 1",
+            "ble_adv_59s": "starts 2 stops 1 forgets 0 pair 0 state 1",
+            "ble_adv_timeout": "starts 2 stops 2 forgets 0 pair 0 state 0", "ble_adv_off_led": "00 0",
+            "ble_key_restart": "starts 3 stops 2 forgets 0 pair 0 state 1",
+            "ble_no_timeout_linking": "starts 3 stops 2 forgets 0 pair 0 state 2",
+            "ble_link_lost": "starts 4 stops 2 forgets 0 pair 0 state 1",
+            "ble_pair": "starts 1 stops 0 forgets 1 pair 1 state 1", "ble_pair_seen": "08",
+            "ble_pair_then_lost": "starts 2 stops 0 forgets 1 pair 0 state 1",
+            "ble_unbonded": "starts 1 stops 0 forgets 0 pair 1 state 1",
+            "ble_usb_boot": "starts 0 stops 1 forgets 0 pair 1 state 0"},
 }
 
 
 def check_bt_app(out: Path) -> None:
     """src/core/bt_app.c (SAYO_2B3 stage 1): USB green, key blip, key 1 + 6 battery
     level, low/critical from the smoothed reading, sleep only off the cable; the
-    LED check build (BTLED_DEMO=1) where keys set the BLE/dongle states."""
+    LED check build (BTLED_DEMO=1) where keys set the BLE/dongle states; the BLE
+    link (BOARD_BLE)."""
     header = out / "test_bt_app.h"
     header.write_text('#define BOARD_NAME "TEST_APP"\n#define BOARD_BT_LED 1\n#define BOARD_BATTERY 1\n')
     for demo, want in BT_APP_WANT.items():
         exe = out / f"bt_app_test{demo}.exe"
+        ble = ["-DBOARD_BLE=1"] if demo == "ble" else []
         subprocess.run(["gcc", "-std=c99", "-Wall", "-Werror", f'-DBOARD_HEADER="{header.as_posix()}"',
-                        f"-DBTLED_DEMO={demo}", "-I", str(SRC), str(HERE / "bt_app_test.c"),
+                        f"-DBTLED_DEMO={1 if demo == 1 else 0}", *ble, "-I", str(SRC),
+                        str(HERE / "bt_app_test.c"),
                         *(str(SRC / "core" / f) for f in ("bt_app.c", "bt_led.c", "battery.c")),
                         "-o", str(exe)], check=True)
         got = dict(ln.split(" ", 1) for ln in subprocess.run(
             [str(exe)], capture_output=True, text=True, check=True).stdout.splitlines())
-        check(f"bt_app{' demo' if demo else ''}: LED states", got, want)
+        check(f"bt_app{' ' + str(demo) if demo else ''}: LED states", got, want)
 
+
+
+def check_battery_cmd(out: Path) -> None:
+    """CMD_BATTERY through protocol.c and battery.c (tests/host/boards/test_bat.h):
+    flags, live and rest (before the cable) estimate, seconds on the cable, last VDD."""
+    header = TEST_BOARDS / "test_bat.h"
+    exe = build(out, "TEST_BAT", header)
+    blob = p.encode_blob([""] * 6, board=test_board(header)[1])
+
+    def query(*steps: str) -> list[tuple]:
+        rows = []
+        for line in run(exe, out, blob, extra=["bat", *steps]):
+            if line.startswith("res "):
+                b = bytes.fromhex(line.split()[1])
+                u16 = lambda i: b[i] | b[i + 1] << 8  # noqa: E731
+                rows.append((b[0], b[2], b[3], b[4], u16(5), b[7], u16(8), u16(10), u16(12)))
+        return rows
+
+    def est(readings: list[int]) -> int:   # battery.c smoothing, +650 mV, no charge offset
+        mv = 0
+        for r in readings:
+            v = r + 650
+            mv = v if mv == 0 else mv + int((v - mv) / 4)
+        return mv
+    live = est([3517, 3517, 3600, 3600])
+    check("BATTERY: no reading yet", query("q"), [(0x87, 0, 0, 0, 0, 0, 0, 0, 0)])
+    check("BATTERY: on battery, then cable after 2 readings (rest kept, 20 s), cable out",
+          query("3517", "q", "3517", "u1", "3600", "3600", "q", "u0", "q"),
+          [(0x87, 0, 0x01, bat_percent(4167), 4167, 0, 0, 0, 3517),
+           (0x87, 0, 0x13, bat_percent(live), live, bat_percent(4167), 4167, 20, 3600),
+           (0x87, 0, 0x01, bat_percent(live), live, 0, 0, 0, 3600)])
+    check("BATTERY: power-up on the cable has no rest value",
+          query("3517", "u1", "3600", "q"),
+          [(0x87, 0, 0x03, bat_percent(est([3517, 3600])), est([3517, 3600]), 0, 0, 10, 3600)])
+    check("BATTERY: low and critical flags",
+          [r[2] for r in query("2400", "q")], [0x0D])
+
+
+def check_staging(out: Path) -> None:
+    """WRITE without COMMIT: with one RAM buffer (BOARD_STORE_ONE_BUFFER,
+    SAYO_2B3) the slots type nothing until a COMMIT and a refused COMMIT reads
+    the stored blob back; the lock pattern and auto-lock never change. With two
+    buffers staging leaves the active config alone."""
+    two = TEST_BOARDS / "test_2x3.h"
+    one = out / "test_1buf.h"
+    one.write_text(two.read_text(encoding="utf-8").replace('"TEST_2X3"', '"TEST_1BF"')
+                   + "#define BOARD_STORE_ONE_BUFFER 1\n", encoding="utf-8")
+    check_board(out, "", one)  # the whole config channel, keys and lock
+    _, layout, _ = test_board(two)
+    stored = p.encode_blob(["abc"] + [""] * (layout.slot_count - 1), [5, 0], board=layout, autolock=7)
+    other = p.encode_blob(["x" * 40] + [""] * (layout.slot_count - 1), [1, 2, 3], board=layout, autolock=1)
+    (out / "other.bin").write_bytes(other)
+    for name, header, staged in (("two buffers", two, 3), ("one buffer", one, 0)):
+        exe = build(out, "STAGE1" if header == one else "STAGE2", header)
+        lines = run(exe, out, stored, extra=["stage", str(out / "other.bin")])[3:]
+        check(f"staging, {name}", lines,
+              ["write status 0", f"staged slot0 len {staged} lock 5 0 auto 7",
+               f"commit status {p.Status.BAD_ARG}", "refused slot0 len 3 lock 5 0 auto 7"])
 
 
 def check_bt_boot_key() -> None:
@@ -754,9 +839,11 @@ def main() -> int:
             check_board(out, "", header)
 
         check_battery(out)
+        check_battery_cmd(out)
         check_bt_led(out)
         check_bt_app(out)
         check_bt_boot_key()
+        check_staging(out)
 
     print("all passed" if failures == 0 else f"{failures} failed")
     return 1 if failures else 0

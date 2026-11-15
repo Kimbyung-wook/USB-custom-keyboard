@@ -31,6 +31,15 @@
   protection, which ERASES the whole chip (factory firmware and settings) for good.
   Never on a reference keyboard.
 
+  CH573 (-Board sayo_2b3): our own HID bootloader too (docs/BOOTLOADER_CH573.md).
+  Turn SW1 off, hold key 4 and turn SW1 on (L5 red blinks), or -Enter; then
+  gui\core\hidboot.py writes -Bin (default build\ch573\macro_keyboard-SAYO_2B3.bin).
+  -Full: the full image (bootloader + app info + app, -Bin defaults to
+  ...-SAYO_2B3-full.bin) with wchisp through the ROM bootloader: PB22 to GND
+  while SW1 goes on, USB plugged in. The ROM bootloader leaves after about 6-15 s
+  without traffic, so confirm first, then enter it: wchisp info checks the UID
+  and wchisp flash follows at once. Data-Flash (settings, BLE bonds) stays.
+
 .EXAMPLE
   .\tools\flash.ps1 -Hex tests\hw\mk6k1n\test_pinmap\build\CH55xDuino.mcs51.ch552\test_pinmap.ino.hex
 .EXAMPLE
@@ -43,7 +52,7 @@ param(
     [ValidateSet('P15', 'P36')][string]$BootPin = 'P15',
     [ValidateRange(1, 255)][int]$TimeoutSec = 60,
     # CH32V203 boards
-    [ValidateSet('', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6')][string]$Board = '',
+    [ValidateSet('', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6', 'sayo_2b3')][string]$Board = '',
     [string]$Bin,        # the app (default: tools\build_fw.ps1 result)
     [switch]$Full,       # bootloader with wchisp (BOOT bridge), then the app with hidboot; settings stay
     [string]$Bootloader, # -Full: the bootloader image (default: bootloader-<BOARD>.bin)
@@ -58,16 +67,56 @@ $ErrorActionPreference = 'Stop'
 if ($Board) {
     $root = Split-Path $PSScriptRoot -Parent
     $name = $Board.ToUpper()
+    $ch573 = $Board -eq 'sayo_2b3'
     # The boot key (bottom left) from the board file: BOARD_BOOT_KEY is 0-based
-    $boardFile = Join-Path $root "firmware\macro_keyboard\src\boards\$Board.h"
+    # (a CH573 board file sits beside its HAL)
+    $boardDir = if ($ch573) { 'hal\ch573' } else { 'boards' }
+    $boardFile = Join-Path $root "firmware\macro_keyboard\src\$boardDir\$Board.h"
     $m = Select-String -Path $boardFile -Pattern '^#define\s+BOARD_BOOT_KEY\s+(\d+)'
     if (-not $m) { throw "BOARD_BOOT_KEY not found in $boardFile" }
     $bootKey = [int]$m.Matches[0].Groups[1].Value + 1
     # The keyboards we own (chip UID, as wchisp info and hidboot show it)
-    $knownUid = @{ "sayo_3x3" = "CD-AB-EE-F7-7D-BC-38-60"; "sayo_2x4" = "CD-AB-30-92-4E-BD-4B-FB"; "sayo_2x6" = "CD-AB-6B-22-66-BD-9E-8B" }[$Board]
-    if (-not $Bin) { $Bin = Join-Path $root "firmware\macro_keyboard\build\ch32v203\macro_keyboard-$name.bin" }
+    $knownUid = @{ "sayo_3x3" = "CD-AB-EE-F7-7D-BC-38-60"; "sayo_2x4" = "CD-AB-30-92-4E-BD-4B-FB"; "sayo_2x6" = "CD-AB-6B-22-66-BD-9E-8B"; "sayo_2b3" = "1A-73-38-72-AB-3C-FD-21" }[$Board]
+    $chipDir = if ($ch573) { 'ch573' } else { 'ch32v203' }
+    $fullSuffix = if ($ch573 -and $Full) { '-full' } else { '' }
+    if (-not $Bin) { $Bin = Join-Path $root "firmware\macro_keyboard\build\$chipDir\macro_keyboard-$name$fullSuffix.bin" }
     if (-not (Test-Path $Bin)) { throw "$Bin not found (build it: tools\build_fw.ps1 -Board $Board)" }
     $binPath = (Resolve-Path $Bin).Path
+
+    if ($ch573 -and $Full) {
+        # The full image with wchisp (ROM bootloader): bootloader, app info and app at once
+        if (-not (Test-Path $Wchisp)) { throw "wchisp not found: $Wchisp (-Wchisp)" }
+        Write-Host "full image : $binPath ($((Get-Item $binPath).Length) bytes)"
+        Write-Host "wchisp     : $Wchisp"
+        Write-Host "UID        : $knownUid (our $name keyboard; another UID stops here)"
+        Write-Host "A read-protected chip (factory firmware) is ERASED completely and for good."
+        $answer = Read-Host "1. Type yes to flash"
+        if ($answer -ne 'yes') {
+            Write-Host "Cancelled"
+            exit 1
+        }
+        Write-Host "2. SW1 off. USB plugged in, hold PB22 to GND and turn SW1 on (ROM bootloader 4348:55E0)."
+        Read-Host "   Press Enter right after (about 6-15 s before it leaves)" | Out-Null
+        $info = & $Wchisp info 2>&1 | Out-String
+        $code = $LASTEXITCODE
+        Write-Host $info
+        if ($code -ne 0) {
+            Write-Host "wchisp info failed: ROM bootloader not found (PB22? timed out? WinUSB driver?)"
+            exit $code
+        }
+        if ($info -notmatch [regex]::Escape($knownUid)) {
+            Write-Host "UID $knownUid not in the lines above: not our $name keyboard, nothing written"
+            exit 1
+        }
+        & $Wchisp flash $binPath
+        $code = $LASTEXITCODE
+        Write-Host "wchisp exit code: $code"
+        if ($code -eq 0) {
+            Write-Host "Check: uv run python tools\check_device.py"
+            Write-Host "Later updates: tools\flash.ps1 -Board $Board (key $bootKey held while SW1 goes on)"
+        }
+        exit $code
+    }
 
     if ($Full) {
         # Step 1: the bootloader alone with wchisp (ROM bootloader, BOOT bridge)
@@ -124,6 +173,11 @@ if ($Board) {
     } elseif ($Enter) {
         Write-Host "bin : $binPath ($((Get-Item $binPath).Length) bytes)"
         $extra = @('--enter')
+    } elseif ($ch573) {
+        Write-Host "bin : $binPath ($((Get-Item $binPath).Length) bytes)"
+        $extra = @()
+        Write-Host "1. Turn SW1 off, hold key $bootKey and turn SW1 on (USB plugged in, L5 red blinks)."
+        Read-Host "   Press Enter when L5 blinks" | Out-Null
     } else {
         Write-Host "bin : $binPath ($((Get-Item $binPath).Length) bytes)"
         $extra = @()
@@ -154,7 +208,7 @@ if ($Board) {
     exit $code
 }
 
-if (-not $Hex) { throw "-Hex is required (or -Board for a CH32V203 board)" }
+if (-not $Hex) { throw "-Hex is required (or -Board for a CH32V203 or CH573 board)" }
 $hexPath = (Resolve-Path $Hex).Path
 
 # Use the newest installed MCS51Tools

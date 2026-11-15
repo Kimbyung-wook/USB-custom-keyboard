@@ -9,6 +9,13 @@
 static uint32_t scanAt, sampleAt;
 static uint16_t down;  // debounced keys
 static uint8_t usbWas;
+#if BOARD_BLE && !BTLED_DEMO
+// Link: waiting for USB after power-on, USB cable, advertising, BLE link up,
+// advertising timed out
+enum { LINK_START, LINK_USB, LINK_ADV, LINK_UP, LINK_OFF };
+static uint8_t link, pairMode;
+static uint32_t linkAt;
+#endif
 #if BTLED_DEMO
 static uint16_t pressSet; // keys down since the last time all were up
 static uint8_t demoSlot, demoBatt, demoDongle;
@@ -22,13 +29,23 @@ static void sample(uint32_t now) {
   sampleAt = now;
 }
 
-void bt_setup(uint32_t now) {
+void bt_setup(uint32_t now, uint16_t keys) {
   btled_init();
   hal_btled_init();
   scanAt = now;
   down = 0;
   usbWas = 0xFF;
   sample(now);
+#if BOARD_BLE && !BTLED_DEMO
+  link = LINK_START;
+  linkAt = now;
+  pairMode = (keys >> BT_PAIR_KEY) & 1;
+  if (pairMode) {
+    hal_ble_forget();
+  }
+#else
+  (void)keys;
+#endif
 #if BTLED_DEMO
   pressSet = 0;
   demoSlot = demoBatt = demoDongle = 0;
@@ -73,12 +90,67 @@ static void demoKey(uint8_t key, uint32_t now) {
 }
 #endif
 
+#if BOARD_BLE && !BTLED_DEMO
+static void advertise(uint32_t now) {
+  uint8_t pair = pairMode || !hal_ble_bonded();
+  hal_ble_start(pair);
+  link = LINK_ADV;
+  linkAt = now;
+  btled_link(pair ? BTLINK_PAIRING : BTLINK_RECONNECT, now);
+}
+
+// pressed: keys that went down now (debounced)
+static void linkTask(uint32_t now, uint16_t pressed, uint8_t usb) {
+  uint8_t st = hal_ble_state();
+  if (usb) {
+    if (link != LINK_USB) {
+      hal_ble_stop();
+      link = LINK_USB;
+      btled_link(BTLINK_IDLE, now);
+    }
+    return;
+  }
+  switch (link) {
+  case LINK_START:
+    if (now - linkAt >= BT_USB_WAIT_MS) {
+      advertise(now);
+    }
+    break;
+  case LINK_USB: // cable out (or the host asleep)
+    advertise(now);
+    break;
+  case LINK_ADV:
+    if (st == HAL_BLE_READY) {
+      link = LINK_UP;
+      pairMode = 0; // bonded now: later links reconnect to this host
+      btled_link(BTLINK_CONNECTED, now);
+    } else if (st != HAL_BLE_LINK && now - linkAt >= BT_ADV_TIMEOUT_MS) {
+      // not while a host is pairing or encrypting the link
+      hal_ble_stop();
+      link = LINK_OFF;
+      btled_link(BTLINK_IDLE, now);
+    }
+    break;
+  case LINK_UP:
+    if (st < HAL_BLE_LINK) { // link lost: look for the host again
+      advertise(now);
+    }
+    break;
+  default: // LINK_OFF
+    if (pressed) {
+      advertise(now);
+    }
+    break;
+  }
+}
+#endif
+
 uint8_t bt_task(uint32_t now, uint16_t keys, uint8_t usb) {
   uint8_t low, crit;
+  uint16_t pressed = 0;
 
   // Keys: sampled every BT_KEY_SCAN_MS
   if (now - scanAt >= BT_KEY_SCAN_MS) {
-    uint16_t pressed;
     scanAt = now;
     pressed = (uint16_t)(keys & ~down);
 #if BTLED_DEMO
@@ -113,7 +185,13 @@ uint8_t bt_task(uint32_t now, uint16_t keys, uint8_t usb) {
   if (usb != usbWas) {
     usbWas = usb;
     btled_usb(usb);
+    battery_usb(usb); // readings on the cable run high (charging)
   }
+#if BOARD_BLE && !BTLED_DEMO
+  linkTask(now, pressed, usb);
+#else
+  (void)pressed;
+#endif
 
   // Battery (no radio yet: any time is quiet)
   if (now - sampleAt >= BATTERY_SAMPLE_MS) {

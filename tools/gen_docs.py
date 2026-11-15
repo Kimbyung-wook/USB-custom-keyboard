@@ -51,6 +51,8 @@ def led_text(d: dict[str, str]) -> str:
     count = int(d["BOARD_LED_COUNT"])
     if d.get("BOARD_HAL_CH32V20X") == "1":
         return f"키마다 RGB LED {count}개 (PWM)"
+    if d.get("BOARD_BT_LED") == "1":
+        return "키 LED 없음, 단색 상태 LED 6개"
     if d.get("BOARD_KEY_LEDS") == "1":
         return f"키마다 WS2812 {count}개"
     return f"WS2812 (체인 {count}자리에 같은 색)"
@@ -87,6 +89,33 @@ def gen_chips() -> str:
     return table(["칩 ID", "칩", "펌웨어 영역", "지원", "비고"], rows)
 
 
+# BTLED_* bit (src/core/bt_led.h) -> color, use
+BTLED_USE = {"WHITE": ("흰색", "키 입력"), "GREEN": ("초록", "동글·USB 케이블"), "RED": ("빨강", "배터리"),
+             "BLUE1": ("파랑", "BLE 슬롯 1"), "BLUE2": ("파랑", "BLE 슬롯 2"), "BLUE3": ("파랑", "BLE 슬롯 3")}
+
+
+def ch573_pins(d: dict[str, str]) -> str:
+    """CH573 board (SAYO_2B3): keys, then the status LEDs. LED names come from
+    the BTLED_* comments of src/core/bt_led.h ("// L3 PA4: key press"), whose
+    pin must be the board file's; the color and use from BTLED_USE."""
+    keys = rf.pin_pairs(d["BOARD_KEY_PINS"])
+    boot = int(d["BOARD_BOOT_KEY"])
+    rows = [[f"{i + 1}" + (" (업데이트 진입)" if i == boot else ""), rf.gpio(*k)] for i, k in enumerate(keys)]
+    out = table(["키", "GPIO (누르면 Low, 내부 풀업)"], rows)
+    leds = rf.pin_pairs(d["BOARD_BT_LED_PINS"])
+    notes = re.findall(r"^#define\s+BTLED_(\w+)\s+0x[0-9A-Fa-f]+\s*//\s*(L\d+)\s+(P[A-Z]\d+):",
+                       rf.text(rf.SRC / "core" / "bt_led.h"), re.M)
+    if len(notes) != len(leds):
+        raise KeyError(f"bt_led.h names {len(notes)} LEDs, the board file {len(leds)}")
+    lrows = []
+    for (bit, label, pin), pair in zip(notes, leds):
+        if pin != rf.gpio(*pair):
+            raise KeyError(f"bt_led.h says {label} {pin}, the board file {rf.gpio(*pair)}")
+        color, use = BTLED_USE[bit]
+        lrows.append([label, pin, color, use])
+    return out + "\n\n상태 LED (High = 켜짐)\n\n" + table(["LED", "GPIO", "색", "용도"], lrows)
+
+
 def gen_pins(name: str) -> str:
     spec = boards.find(name)    # an earlier board name (aliases) still works
     files = rf.board_files()
@@ -94,6 +123,8 @@ def gen_pins(name: str) -> str:
         raise KeyError(f"pins-{name}: no such board")
     name = spec.name
     d = rf.defines(files[name])
+    if d.get("BOARD_HAL_CH573") == "1":
+        return ch573_pins(d)
     if d.get("BOARD_HAL_CH32V20X") == "1":
         keys = rf.pin_pairs(d["BOARD_KEY_PINS"])
         anodes = rf.pin_pairs(d["BOARD_KEY_LED_PINS"])

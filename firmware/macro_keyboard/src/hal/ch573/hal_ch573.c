@@ -44,7 +44,11 @@ hal_sw_t hal_switches(void) {
   return sw;
 }
 
-// ---- config storage: Data-Flash 0 .. BLOB_CAPACITY, RAM shadow ----
+// ---- config storage: Data-Flash 0 .. BLOB_CAPACITY, one 256-byte page in RAM ----
+// RAM is short with the BLE stack, so there is no copy of the whole blob:
+// reads and writes go through one cached page, written back (erase + write +
+// check) when another page is needed or at hal_store_flush(). storage.c
+// reads and writes the blob in order, so each page is written at most once.
 // The BLE bonding area (BLE_SNV_ADDR, Data-Flash 0x7E00) stays clear of it.
 // Erased Data-Flash reads 0xFF: storage.c sees an invalid blob, uses defaults.
 #define STORE_ADDR 0
@@ -52,32 +56,57 @@ hal_sw_t hal_switches(void) {
 #if BLOB_CAPACITY % 256 || STORE_ADDR + BLOB_CAPACITY > 0x7000
 #error BLOB_CAPACITY: whole 256-byte pages below the BLE area
 #endif
-static __attribute__((aligned(4))) uint8_t shadow[BLOB_CAPACITY];
 static __attribute__((aligned(4))) uint8_t pageBuf[STORE_PAGE];
+static __attribute__((aligned(4))) uint8_t checkBuf[16];
+static uint32_t pageAt = 0xFFFFFFFFu; // offset of the page in pageBuf
+static uint8_t pageDirty, storeFailed;
 
-uint8_t hal_store_read(blob_pos_t addr) { return shadow[addr]; }
-void hal_store_write(blob_pos_t addr, uint8_t value) { shadow[addr] = value; }
-
-uint8_t hal_store_flush(void) {
-  uint8_t ok = 1;
-  for (uint32_t off = 0; off < BLOB_CAPACITY; off += STORE_PAGE) {
-    uint32_t irq;
-    EEPROM_READ(STORE_ADDR + off, pageBuf, STORE_PAGE);
-    if (memcmp(pageBuf, shadow + off, STORE_PAGE) == 0) {
-      continue;
-    }
-    // A few ms per page with interrupts off (as on the CH32V203): the ms
-    // clock falls behind a little, USB NAKs meanwhile
-    SYS_DisableAllIrq(&irq);
-    EEPROM_ERASE(STORE_ADDR + off, STORE_PAGE);
-    EEPROM_WRITE(STORE_ADDR + off, shadow + off, STORE_PAGE);
-    SYS_RecoverIrq(irq);
-    EEPROM_READ(STORE_ADDR + off, pageBuf, STORE_PAGE);
-    if (memcmp(pageBuf, shadow + off, STORE_PAGE) != 0) {
-      memcpy(shadow + off, pageBuf, STORE_PAGE); // what the next boot reads
-      ok = 0;
+static void pageWriteBack(void) {
+  uint32_t irq;
+  if (!pageDirty) {
+    return;
+  }
+  pageDirty = 0;
+  // A few ms with interrupts off (as on the CH32V203): the ms clock falls
+  // behind a little, USB NAKs meanwhile
+  SYS_DisableAllIrq(&irq);
+  EEPROM_ERASE(STORE_ADDR + pageAt, STORE_PAGE);
+  EEPROM_WRITE(STORE_ADDR + pageAt, pageBuf, STORE_PAGE);
+  SYS_RecoverIrq(irq);
+  for (uint32_t i = 0; i < STORE_PAGE; i += sizeof checkBuf) {
+    EEPROM_READ(STORE_ADDR + pageAt + i, checkBuf, sizeof checkBuf);
+    if (memcmp(checkBuf, pageBuf + i, sizeof checkBuf) != 0) {
+      storeFailed = 1;
+      pageAt = 0xFFFFFFFFu; // read back what is really there next time
+      return;
     }
   }
+}
+
+static uint8_t *pageFor(blob_pos_t addr) {
+  uint32_t at = addr & ~(uint32_t)(STORE_PAGE - 1);
+  if (at != pageAt) {
+    pageWriteBack();
+    EEPROM_READ(STORE_ADDR + at, pageBuf, STORE_PAGE);
+    pageAt = at;
+  }
+  return pageBuf + (addr & (STORE_PAGE - 1));
+}
+
+uint8_t hal_store_read(blob_pos_t addr) { return *pageFor(addr); }
+
+void hal_store_write(blob_pos_t addr, uint8_t value) {
+  uint8_t *p = pageFor(addr);
+  if (*p != value) {
+    *p = value;
+    pageDirty = 1;
+  }
+}
+
+uint8_t hal_store_flush(void) {
+  pageWriteBack();
+  uint8_t ok = !storeFailed;
+  storeFailed = 0;
   return ok;
 }
 
@@ -248,7 +277,7 @@ static void setup(void) {
   R8_UEP0_CTRL = RB_UEP_R_TOG | RB_UEP_T_TOG | UEP_R_RES_ACK | UEP_T_RES_ACK;
 }
 
-static void usbIsr(void) {
+__attribute__((noinline)) static void usbIsr(void) {
   uint8_t fg = R8_USB_INT_FG;
   if (fg & RB_UIF_TRANSFER) {
     uint8_t st = R8_USB_INT_ST;
@@ -315,16 +344,16 @@ static void usbIsr(void) {
   }
 }
 
+// The vector table (in RAM) reaches only .highcode, so the handler stays
+// there but the work (usbIsr) is in flash: RAM goes to the BLE stack
 __attribute__((interrupt("WCH-Interrupt-fast"))) __attribute__((section(".highcode")))
 void USB_IRQHandler(void) {
   usbIsr();
 }
 
-uint8_t kb_ready(void) { return devConfig && !suspended; }
-uint8_t kb_busy(void) { return kbBusy; }
-uint8_t kb_caps_lock(void) { return capsLock & 0x02; }
+uint8_t hal_usb_ready(void) { return devConfig && !suspended; }
 
-uint8_t kb_send(uint8_t modifiers, uint8_t keycode) {
+static uint8_t usbSend(uint8_t modifiers, uint8_t keycode) {
   if (kbBusy) {
     return 0;
   }
@@ -338,10 +367,31 @@ uint8_t kb_send(uint8_t modifiers, uint8_t keycode) {
   return 1;
 }
 
-void kb_cancel(void) {
+static void usbCancel(void) {
   R8_UEP1_CTRL = (R8_UEP1_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_NAK;
   kbBusy = 0;
 }
+
+// Keyboard reports: over USB while it is configured, else over BLE
+// (src/core/bt_app.c drops the BLE link while USB is up)
+#if BOARD_BLE
+uint8_t kb_ready(void) { return hal_usb_ready() || hal_ble_ready(); }
+uint8_t kb_busy(void) { return hal_usb_ready() ? kbBusy : hal_ble_busy(); }
+uint8_t kb_caps_lock(void) { return hal_usb_ready() ? capsLock & 0x02 : hal_ble_caps_lock(); }
+uint8_t kb_send(uint8_t modifiers, uint8_t keycode) {
+  return hal_usb_ready() ? usbSend(modifiers, keycode) : hal_ble_send(modifiers, keycode);
+}
+void kb_cancel(void) {
+  usbCancel();
+  hal_ble_cancel();
+}
+#else
+uint8_t kb_ready(void) { return hal_usb_ready(); }
+uint8_t kb_busy(void) { return kbBusy; }
+uint8_t kb_caps_lock(void) { return capsLock & 0x02; }
+uint8_t kb_send(uint8_t modifiers, uint8_t keycode) { return usbSend(modifiers, keycode); }
+void kb_cancel(void) { usbCancel(); }
+#endif
 
 uint8_t vendor_has_request(void) { return venReq; }
 uint8_t vendor_in_busy(void) { return venBusy; }
@@ -399,7 +449,6 @@ void hal_init(void) {
   GPIOB_ModeCfg(GPIO_Pin_7 | GPIO_Pin_12 | GPIO_Pin_15 | GPIO_Pin_22 | GPIO_Pin_23, GPIO_ModeIN_PU);
 
   FLASH_EEPROM_CMD(CMD_GET_UNIQUE_ID, 0, uid, 0);
-  EEPROM_READ(STORE_ADDR, shadow, BLOB_CAPACITY);
 }
 
 uint8_t hal_chip_uid(uint8_t i) { return uid[i & 7]; }

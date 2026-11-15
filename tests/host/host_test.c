@@ -7,6 +7,7 @@
 //        host_test <blob.bin> input <steps>...
 //        host_test <blob.bin> proto <request hex>...
 //        host_test <blob.bin> torn <blob2.bin> <page> <erased>
+//        host_test <blob.bin> bat <steps>...   (BOARD_BATTERY boards)
 // Stages and commits the blob in 56-byte chunks, then types every slot and
 // prints the key reports, e.g. "slot 0: 02:0b 00:08 D50 ...".
 // "lock": each argument is a sequence of input numbers (0-8) entered on the
@@ -27,6 +28,9 @@
 // the LED frames sent, "L<color>.<mask>.<maskColor>" (only changes).
 // "proto": runs each request (hex) through src/core/protocol.c and prints
 // the response, "res <hex> evt <n>".
+// "bat": src/core/battery.c through CMD_BATTERY. Steps: "u0"/"u1" cable out/in
+// (battery_usb), a number = one VDD reading in mV (battery_sample), "q" = a
+// BATTERY request, printed as "proto" does.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +42,7 @@
 #include "../../firmware/macro_keyboard/src/core/macro.h"
 #include "../../firmware/macro_keyboard/src/core/protocol.h"
 #include "../../firmware/macro_keyboard/src/core/storage.h"
+#include "../../firmware/macro_keyboard/src/core/battery.h"
 
 static uint8_t eeprom[BLOB_CAPACITY];
 static uint32_t now = 0;
@@ -150,6 +155,19 @@ static void runProto(int count, char **reqs) {
     printf(" evt %u\n", evt);
   }
 }
+
+#ifdef BOARD_BATTERY
+static void runBattery(int count, char **steps) {
+  static char query[] = "0709"; // CMD_BATTERY, seq 9
+  char *q[] = {query};
+  for (int i = 0; i < count; i++) {
+    const char *s = steps[i];
+    if (s[0] == 'u') battery_usb((uint8_t)atoi(s + 1));
+    else if (s[0] == 'q') runProto(1, q);
+    else battery_sample((int16_t)atoi(s));
+  }
+}
+#endif
 
 static size_t readFile(const char *path, uint8_t *buf, size_t size) {
   FILE *f = fopen(path, "rb");
@@ -276,6 +294,13 @@ static void runInput(int count, char **steps) {
   }
 }
 
+// What the keyboard uses now: slot 0's length, the lock steps, auto-lock minutes
+static void printStorage(const char *tag) {
+  printf("%s slot0 len %u lock", tag, (unsigned)storage_slot_len(0));
+  for (uint8_t i = 0; i < storage_lock_len(); i++) printf(" %u", storage_lock_steps()[i]);
+  printf(" auto %u\n", storage_autolock_minutes());
+}
+
 int main(int argc, char **argv) {
   static uint8_t blob[8192]; // larger than any capacity (TOO_BIG tests)
   size_t n;
@@ -296,6 +321,18 @@ int main(int argc, char **argv) {
   // Reload from "DataFlash" as after a power cycle
   storage_init();
 
+  if (argc > 3 && !strcmp(argv[2], "stage")) {
+    // WRITE the first chunk of blob2 without a COMMIT, then a refused COMMIT
+    static uint8_t blob2[8192];
+    size_t n2 = readFile(argv[3], blob2, sizeof(blob2));
+    uint8_t len = (uint8_t)(n2 > PROTO_MAX_CHUNK ? PROTO_MAX_CHUNK : n2);
+    printf("write status %u\n", storage_stage_write(0, len, blob2));
+    printStorage("staged");
+    printf("commit status %u\n", storage_commit(len, 0));
+    printStorage("refused");
+    return 0;
+  }
+
   if (argc > 2 && !strcmp(argv[2], "lock")) {
     runLock(argc - 3, argv + 3);
     return 0;
@@ -304,6 +341,12 @@ int main(int argc, char **argv) {
     runProto(argc - 3, argv + 3);
     return 0;
   }
+#ifdef BOARD_BATTERY
+  if (argc > 2 && !strcmp(argv[2], "bat")) {
+    runBattery(argc - 3, argv + 3);
+    return 0;
+  }
+#endif
   if (argc > 2 && !strcmp(argv[2], "input")) {
     runInput(argc - 3, argv + 3);
     return 0;

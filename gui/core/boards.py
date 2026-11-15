@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import chips
-from .protocol import BOARD_FEATURE_AUTO_LOCK, BOARD_FEATURE_LOCK, BOARD_FEATURE_RGB_LED, Board
+from .protocol import (BOARD_FEATURE_AUTO_LOCK, BOARD_FEATURE_BATTERY, BOARD_FEATURE_LOCK,
+                       BOARD_FEATURE_RGB_LED, Board)
 
 # vnproch55x -c: the bootloader entry pin written with the firmware
 BOOT_P15 = 1        # P1.5 pull-down: hold the key on P1.5 while plugging in
@@ -32,6 +33,11 @@ class BoardSpec:
     # report them (HELLO, bootloader HELLO, firmware ID). Only here: find() and
     # same() take them, nothing else in the code knows them
     aliases: tuple[str, ...] = ()
+    # Power switch to turn off and on instead of unplugging (a battery keeps the
+    # board running when the cable is pulled), e.g. "SW1"
+    power_switch: str = ""
+    # What the board shows while our bootloader waits (hidboot boards)
+    boot_led: str = "LED가 보라색입니다"
 
     @property
     def chip(self) -> chips.Chip | None:
@@ -43,9 +49,9 @@ class BoardSpec:
 
     @property
     def firmware_file(self) -> str:
-        """What tools/build_fw.ps1 writes for this board."""
-        if self.hidboot:
-            return f"ch32v203/macro_keyboard-{self.name}.bin"
+        """What tools/build_fw.ps1 (or the chip's Makefile) writes for this board."""
+        if self.hidboot:    # build/<chip>/, e.g. build/ch32v203/, build/ch573/
+            return f"{self.chip_name.lower()}/macro_keyboard-{self.name}.bin"
         return f"macro_keyboard-{self.name}.hex"
 
     @property
@@ -55,8 +61,35 @@ class BoardSpec:
             return self.boot_text
         if not self.boot_key:
             return "업데이트 모드 단추를 누른 채"
-        # L, M, N, R, 1, 3, 6, 7, 8, 0 end in a consonant when read aloud (엘, 엠, 일, 칠, ...)
-        return f"키 {self.boot_key}{'을' if self.boot_key[-1] in 'LMNR136780' else '를'} 누른 채"
+        return f"키 {self.boot_key}{_object(self.boot_key)} 누른 채"
+
+    def power_on(self, ending: str) -> str:
+        """The plug-in (or switch-on) verb with ending "기", "고", "면" or
+        "세요", e.g. "꽂으면", "SW1을 켜면"."""
+        if self.power_switch:
+            verb = {"기": "켜기", "고": "켜고", "면": "켜면", "세요": "켜세요"}[ending]
+            return f"{self.power_switch}{_object(self.power_switch)} {verb}"
+        return {"기": "꽂기", "고": "꽂고", "면": "꽂으면", "세요": "꽂으세요"}[ending]
+
+    @property
+    def power_off(self) -> str:
+        if self.power_switch:
+            return f"{self.power_switch}{_object(self.power_switch)} 껐다가"
+        return "키보드를 뽑았다가"
+
+    def enter_boot(self, ending: str) -> str:
+        """How to reach the bootloader, e.g. "키 4를 누른 채 SW1을 켜기"."""
+        return f"{self.boot_hint} {self.power_on(ending)}"
+
+    def reenter_boot(self, ending: str) -> str:
+        """e.g. "키보드를 뽑았다가 키 7을 누른 채 다시 꽂으세요"."""
+        return f"{self.power_off} {self.boot_hint} 다시 {self.power_on(ending)}"
+
+
+def _object(word: str) -> str:
+    """을/를 after a key or switch name read aloud: L, M, N, R, 1, 3, 6, 7, 8, 0
+    end in a consonant (엘, 엠, 일, 칠, ...)."""
+    return "을" if word[-1] in "LMNR136780" else "를"
 
 
 BOARDS = (
@@ -102,14 +135,32 @@ BOARDS = (
               factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) BOOT 브리지를 "
                            r"이은 채 꽂고 PC에서 tools\flash.ps1 -Board sayo_2x6 -Full을 실행하세요 (wchisp)",
               flash_text=r"tools\flash.ps1 -Board sayo_2x6 -Full"),
+    # CH573F, 6 keys (2 x 3), no knob, Bluetooth with a battery and power switch
+    # SW1 (docs/board/BOARD_SAYO_2X3B_RGB.md). Our HID bootloader for CH573
+    # (docs/BOOTLOADER_CH573.md, same commands as CH32V203): key 4 (bottom left,
+    # PA9) while switching SW1 on, or BOOT from the app; L5 red blinks there.
+    # First install through the ROM bootloader (PB22 to GND, wchisp, -full.bin).
+    # Pins: firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h. Settings over USB only
+    BoardSpec("SAYO_2B3", "6키 (2x3), 노브 없음, 블루투스 (CH573)",
+              Board(keys=6, knobs=0, rows=2, name="SAYO_2B3", chip_id=0x73,
+                    # HELLO 0x0E: the firmware adds AUTO_LOCK to lock boards, BATTERY from BOARD_BATTERY
+                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_BATTERY | BOARD_FEATURE_AUTO_LOCK),
+              boot_config=0, boot_key="4", hidboot=True, power_switch="SW1",
+              boot_led="L5 빨강 LED가 깜빡입니다",
+              # The ROM bootloader leaves after about 6-15 s without traffic: start
+              # flash.ps1 first (it waits for the chip), then enter
+              factory_boot="부트로더가 아직 없으면(공장 펌웨어 또는 처음) PC에서 먼저 "
+                           r"tools\flash.ps1 -Board sayo_2b3 -Full을 실행하고, 안내가 나오면 SW1을 끄고 "
+                           "USB를 꽂은 채 PB22를 GND에 대고 SW1을 켠 뒤 바로 Enter를 누르세요. "
+                           "ROM 부트로더는 통신이 없으면 6~15초 뒤 빠져나갑니다 (wchisp, docs/BOOTLOADER_CH573.md)",
+              flash_text=r"tools\flash.ps1 -Board sayo_2b3 -Full",
+              aliases=("BT_2X3",)),   # CH573 bootloader before the rename (2026-11-13)
 )
 
 
 # Earlier names of boards not in BOARDS yet: earlier name -> current name.
 # A board's aliases move into its BoardSpec when it is added to BOARDS.
-PENDING_ALIASES = {
-    "BT_2X3": "SAYO_2B3",   # CH573 bootloader before the rename (2026-11-13)
-}
+PENDING_ALIASES: dict[str, str] = {}
 
 
 def find(name: str) -> BoardSpec | None:

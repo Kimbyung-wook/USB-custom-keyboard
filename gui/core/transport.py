@@ -107,7 +107,9 @@ class MockDevice(Transport):
     ``protocol`` (1 = firmware 1.0 without the lock), ``fw`` (major, minor[, patch]),
     ``build`` (year, month, day, hour, minute; zeros = no build date) and
     ``board`` (a Board sent as HELLO board info; None = firmware without it,
-    which the GUI takes for the default 6-key board).
+    which the GUI takes for the default 6-key board) and ``battery`` (the
+    BATTERY answer, a p.Battery; given only when the board has the battery
+    bit, otherwise BAD_CMD like firmware without the command).
 
     Like the firmware it starts locked when the stored config has a lock
     pattern; ``enter_pattern`` plays the keyboard inputs and ``power_cycle``
@@ -118,8 +120,9 @@ class MockDevice(Transport):
                  storage: bytes | None = None, storage_capacity: int | None = None,
                  protocol: int = p.PROTOCOL_VERSION,
                  build: tuple[int, int, int, int, int] = (0, 0, 0, 0, 0),
-                 board: p.Board | None = None):
+                 board: p.Board | None = None, battery: p.Battery | None = None):
         self.capacity = capacity
+        self.battery = battery or p.Battery()
         self.board_info = board
         self.board = board or p.DEFAULT_BOARD
         self.protocol = protocol
@@ -317,6 +320,11 @@ class MockDevice(Transport):
             self.typed.append(slot)
             self.busy_count = self.busy_after_test
             return reply(p.Status.OK)
+
+        if cmd == p.Cmd.BATTERY:   # answers while locked too
+            if self.board_info is None or not self.board_info.features & p.BOARD_FEATURE_BATTERY:
+                return reply(p.Status.BAD_CMD)
+            return reply(p.Status.OK, p.encode_battery_result(self.battery))
 
         if cmd == p.Cmd.BOOT:
             # Reply first, then "drop off the bus".

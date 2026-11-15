@@ -6,6 +6,9 @@
 
 static uint16_t mv;       // smoothed estimate, 0 = no reading yet
 static uint8_t low, critical;
+static uint8_t onUsb, offSamples;   // readings off the cable since the last time on it
+static uint16_t usbSamples;         // readings on the cable since it came
+static uint16_t restMv, lastVdd;    // estimate before the cable (0 = none), last reading
 
 // Li-Po 1S rest voltage -> charge, rough curve; linear between points
 static const uint16_t curveMv[] = {3000, 3450, 3600, 3670, 3710, 3750, 3800, 3860, 3920, 4000, 4100, 4200};
@@ -34,8 +37,29 @@ static uint8_t below(uint8_t flag, uint16_t limit) {
   return mv < limit;
 }
 
+void battery_usb(uint8_t on) {
+  if (on && !onUsb) {
+    restMv = offSamples >= BATTERY_REST_SAMPLES ? mv : 0;
+    usbSamples = 0;
+  }
+  if (!on) {
+    usbSamples = 0;
+  } else {
+    offSamples = 0;
+  }
+  onUsb = on ? 1 : 0;
+}
+
 void battery_sample(int16_t vddMv) {
-  int32_t v = (int32_t)vddMv + BATTERY_OFFSET_MV;
+  int32_t v = (int32_t)vddMv + BATTERY_OFFSET_MV - (onUsb ? BATTERY_CHARGE_MV : 0);
+  lastVdd = vddMv > 0 ? (uint16_t)vddMv : 0;
+  if (onUsb) {
+    if (usbSamples < 0xFFFF) {
+      usbSamples++;
+    }
+  } else if (offSamples < 0xFF) {
+    offSamples++;
+  }
   if (v < 0) {
     v = 0;
   } else if (v > 6000) {
@@ -54,5 +78,35 @@ uint16_t battery_mv(void) { return mv; }
 uint8_t battery_percent(void) { return battery_percent_of(mv); }
 uint8_t battery_low(void) { return mv && low; }
 uint8_t battery_critical(void) { return mv && critical; }
+
+void battery_report(uint8_t *out) {
+  uint32_t secs = (uint32_t)usbSamples * (BATTERY_SAMPLE_MS / 1000);
+  uint8_t i;
+  for (i = 0; i < BATTERY_REPORT_SIZE; i++) {
+    out[i] = 0;
+  }
+  if (secs > 0xFFFF) {
+    secs = 0xFFFF;
+  }
+  out[0] = (mv ? BATTERY_HAS_READING : 0) | (onUsb ? BATTERY_ON_USB : 0) |
+           (battery_low() ? BATTERY_IS_LOW : 0) | (battery_critical() ? BATTERY_IS_CRITICAL : 0) |
+           (onUsb && restMv ? BATTERY_HAS_REST : 0);
+  if (mv) {
+    out[1] = battery_percent_of(mv);
+    out[2] = mv & 0xFF;
+    out[3] = mv >> 8;
+  }
+  if (out[0] & BATTERY_HAS_REST) {
+    out[4] = battery_percent_of(restMv);
+    out[5] = restMv & 0xFF;
+    out[6] = restMv >> 8;
+  }
+  if (onUsb) {
+    out[7] = secs & 0xFF;
+    out[8] = secs >> 8;
+  }
+  out[9] = lastVdd & 0xFF;
+  out[10] = lastVdd >> 8;
+}
 
 #endif

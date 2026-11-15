@@ -109,7 +109,7 @@ def test_board_file_matches_gui(name):
            number(d["BOARD_CHIP_ID"]))
     assert got == (spec.layout.keys, spec.layout.knobs, spec.layout.rows, spec.layout.chip_id)
     assert len(name) <= 8
-    hid = d.get("BOARD_HAL_CH32V20X") == "1"
+    hid = d.get("BOARD_HAL_CH32V20X") == "1" or d.get("BOARD_HAL_CH573") == "1"
     assert spec.hidboot == hid
     if "BOARD_BOOT_KEY" in d:
         assert spec.boot_key == str(int(d["BOARD_BOOT_KEY"]) + 1)
@@ -120,7 +120,8 @@ def test_board_file_matches_gui(name):
 def test_config_h_selects_every_board():
     cfg = text(SRC / "config.h")
     picked = dict(re.findall(r'defined\(BOARD_(\w+)\)\s*#include "boards/(\w+)\.h"', cfg))
-    assert picked == {name: name.lower() for name in BOARD_FILES}
+    assert picked == {name: name.lower() for name, path in BOARD_FILES.items()
+                      if path.parent.name == "boards"}
 
 
 # ---- (c) the tools' board lists -------------------------------------------
@@ -134,10 +135,12 @@ def validate_set(src: str, param: str) -> list[str]:
 def test_build_fw_boards():
     src = text(ROOT / "tools" / "build_fw.ps1")
     assert sorted(validate_set(src, "Board")) == sorted(n.lower() for n in BOARD_FILES)
-    chips_of = dict(re.findall(r"^\s*'?(\w+)'?\s*=\s*'(ch552|ch32v203)'", src, re.M))
+    chips_of = dict(re.findall(r"^\s*'?(\w+)'?\s*=\s*'(ch552|ch32v203|ch573)'", src, re.M))
     for name, path in BOARD_FILES.items():
         d = defines(path)
-        assert chips_of[name.lower()] == ("ch32v203" if d.get("BOARD_HAL_CH32V20X") == "1" else "ch552")
+        chip = ("ch32v203" if d.get("BOARD_HAL_CH32V20X") == "1"
+                else "ch573" if d.get("BOARD_HAL_CH573") == "1" else "ch552")
+        assert chips_of[name.lower()] == chip
 
 
 def test_flash_ps1_boards():

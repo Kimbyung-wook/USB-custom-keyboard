@@ -46,6 +46,7 @@ LOCK_FLAG_BLOCKED = 0x04
 BOARD_INFO_VERSION = 1      # HELLO byte 17 (docs/BOARD_INFO.md)
 BOARD_FEATURE_RGB_LED = 0x01
 BOARD_FEATURE_LOCK = 0x02
+BOARD_FEATURE_BATTERY = 0x04     # answers BATTERY (battery boards, firmware 1.7)
 BOARD_FEATURE_AUTO_LOCK = 0x08   # settings slot with auto-lock minutes (firmware 1.4.0)
 AUTOLOCK_MAX_MINUTES = 255
 MAX_SLOTS = 63
@@ -183,6 +184,7 @@ class Cmd(IntEnum):
     COMMIT = 0x04
     TEST = 0x05
     BOOT = 0x06
+    BATTERY = 0x07   # boards with BOARD_FEATURE_BATTERY only (others: BAD_CMD)
 
 
 class Status(IntEnum):
@@ -359,6 +361,112 @@ class HelloInfo:
     def supports_autolock(self) -> bool:
         """Firmware 1.4.0+: the settings slot with auto-lock minutes is used."""
         return self.board_info is not None and bool(self.board_info.features & BOARD_FEATURE_AUTO_LOCK)
+
+    @property
+    def supports_battery(self) -> bool:
+        return self.board_info is not None and bool(self.board_info.features & BOARD_FEATURE_BATTERY)
+
+    @property
+    def autolock_problem(self) -> str:
+        """Why auto-lock cannot be used ("" if it can): old firmware, or a
+        board built without it (e.g. SAYO_2B3)."""
+        if self.supports_autolock:
+            return ""
+        if (self.fw_major, self.fw_minor, self.fw_patch) >= (1, 4, 0):
+            return "이 보드는 자동 잠금을 지원하지 않습니다"
+        return "이 펌웨어는 자동 잠금을 지원하지 않습니다 (펌웨어 1.4.0 이상 필요)"
+
+
+# BATTERY result (bytes 3..13, firmware src/core/battery.h) -------------------
+
+BATTERY_HAS_READING = 0x01   # percent / mV valid
+BATTERY_ON_USB = 0x02        # on the cable: charging or full, the live value runs high
+BATTERY_IS_LOW = 0x04
+BATTERY_IS_CRITICAL = 0x08
+BATTERY_HAS_REST = 0x10      # rest percent / mV (last estimate before the cable) valid
+BATTERY_FORMAT = "<BBHBHHH"  # flags, %, mV, rest %, rest mV, seconds on the cable, VDD mV
+BATTERY_SECONDS_MAX = 0xFFFF  # the cable time stops here
+
+
+@dataclass
+class Battery:
+    flags: int = 0
+    percent: int = 0
+    mv: int = 0
+    rest_percent: int = 0
+    rest_mv: int = 0
+    usb_seconds: int = 0     # 10 s steps
+    vdd_mv: int = 0          # last raw chip VDD reading
+
+    @property
+    def has_reading(self) -> bool:
+        return bool(self.flags & BATTERY_HAS_READING)
+
+    @property
+    def on_usb(self) -> bool:
+        return bool(self.flags & BATTERY_ON_USB)
+
+    @property
+    def has_rest(self) -> bool:
+        return bool(self.flags & BATTERY_HAS_REST)
+
+    @property
+    def level(self) -> str:
+        """"critical", "low" or "" (on the cable: "", it is charging)."""
+        if self.on_usb:
+            return ""
+        if self.flags & BATTERY_IS_CRITICAL:
+            return "critical"
+        return "low" if self.flags & BATTERY_IS_LOW else ""
+
+    @property
+    def text(self) -> str:
+        """One line for the window, e.g. "배터리 80%", "충전 중 · 연결 전 62% (5분 전)"."""
+        if self.on_usb:
+            if self.has_rest:
+                return f"🔌 충전 중 · 연결 전 {self.rest_percent}% ({usb_time_text(self.usb_seconds)})"
+            if self.has_reading:
+                return f"🔌 충전 중 (약 {self.percent}%, 참고값)"
+            return "🔌 충전 중"
+        if not self.has_reading:
+            return "🔋 배터리 측정 중"
+        if self.level == "critical":
+            return f"🪫 배터리 {self.percent}% - 매우 낮음, 충전하세요"
+        if self.level == "low":
+            return f"🪫 배터리 {self.percent}% - 낮음"
+        return f"🔋 배터리 {self.percent}%"
+
+    @property
+    def detail(self) -> str:
+        """Tooltip: the voltages behind the percent."""
+        parts = []
+        if self.has_reading:
+            parts.append(f"추정 {self.mv} mV" + (" (케이블 연결 중이라 높게 나옴)" if self.on_usb else ""))
+        if self.has_rest:
+            parts.append(f"케이블 꽂기 전 {self.rest_mv} mV")
+        if self.vdd_mv:
+            parts.append(f"칩 VDD {self.vdd_mv} mV")
+        return ", ".join(parts)
+
+
+def usb_time_text(seconds: int) -> str:
+    """How long ago the cable went in: "방금", "5분 전", "1시간 5분 전"."""
+    if seconds < 60:
+        return "방금"
+    minutes = seconds // 60
+    text = f"{minutes // 60}시간 {minutes % 60}분" if minutes >= 60 else f"{minutes}분"
+    return text.replace(" 0분", "") + (" 넘게 전" if seconds >= BATTERY_SECONDS_MAX else " 전")
+
+
+def encode_battery_result(b: Battery) -> bytes:
+    return struct.pack(BATTERY_FORMAT, b.flags, b.percent, b.mv, b.rest_percent, b.rest_mv,
+                       min(b.usb_seconds, BATTERY_SECONDS_MAX), b.vdd_mv)
+
+
+def parse_battery_result(result: bytes) -> Battery:
+    if len(result) < struct.calcsize(BATTERY_FORMAT):
+        raise ValueError(f"BATTERY result too short: {len(result)} B")
+    return Battery(*struct.unpack_from(BATTERY_FORMAT, result))
 
 
 # Board info inside the HELLO result (bytes 3..63): packet byte 17 = result[14]

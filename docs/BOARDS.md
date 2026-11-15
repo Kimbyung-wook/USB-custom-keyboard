@@ -14,6 +14,7 @@
 | SAYO_3X3 | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_3x3 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin` |
 | SAYO_2X4 | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board sayo_2x4 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X4.bin` |
 | SAYO_2X6 | CH32V203 | 12 / 0 / 2 | 키마다 RGB LED 12개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_2x6 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X6.bin` |
+| SAYO_2B3 | CH573 | 6 / 0 / 2 | 키 LED 없음, 단색 상태 LED 6개 | 키 4 | `tools\flash.ps1 -Board sayo_2b3 -Full` | `firmware/macro_keyboard/build/ch573/macro_keyboard-SAYO_2B3.bin` |
 <!-- /gen:boards -->
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
@@ -40,7 +41,7 @@
 ## 준비 중 보드
 
 - SAYO_2X6: 칩·키·LED 핀 확인 끝, 보드 파일 있음 → 위 생성 표와 아래 업데이트 표에 들어감. 본 펌웨어 키 입력·GUI 설정은 확인 전
-- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 1단계(USB 유선, BLE 없음, `Makefile.ch573`) 데모판 확인. 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록 등록 전 → 위 생성 표와 아래 업데이트 표에는 아직 없음
+- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 BLE 1단계(USB 유선 + 블루투스 HID 기기 1대, 배터리 %) 기판 확인(2026-11-14). 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록에 등록함 → 위 생성 표와 아래 업데이트 표에 들어감. 슬롯 3개·동글 연결은 2단계
 - SAYO_2X6 이름은 확정(기판 `2x6_RGB`). SAYO_2B3 이름도 확정(옛 이름 BT_2X3, 2026-11-13). 파일 위치와 할 일: [NEW_BOARD.md 9절](NEW_BOARD.md#9-식별-전-보드)
 
 | 이름 | 제품 | 배치 | 칩 | 문서 |
@@ -57,11 +58,12 @@
 | **SAYO_3X3** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PB2) | BOOT 브리지 + `flash.ps1 -Board sayo_3x3 -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_3x3` | `ch32v203/macro_keyboard-SAYO_3X3.bin` |
 | **SAYO_2X4** | 자체 HID (USB `1209:C55E`) | **키 5**(왼쪽 아래, PA5) | BOOT 브리지 + `flash.ps1 -Board sayo_2x4 -Full` → 키 5 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_2x4` | `ch32v203/macro_keyboard-SAYO_2X4.bin` |
 | **SAYO_2X6** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PA7) | BOOT 브리지 + `flash.ps1 -Board sayo_2x6 -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_2x6` | `ch32v203/macro_keyboard-SAYO_2X6.bin` |
+| **SAYO_2B3** | 자체 HID (USB `1209:C55E`) | **키 4**(왼쪽 아래, PA9) **누른 채 SW1 켜기** | `flash.ps1 -Board sayo_2b3 -Full` 먼저 실행 → PB22-GND + SW1 켜기(ROM 6~15초) | GUI(hidboot), `flash.ps1 -Board sayo_2b3` | `ch573/macro_keyboard-SAYO_2B3.bin` |
 
-- 모든 보드: 잠금 풀린 키보드는 GUI [업데이트 모드로 전환] 단추(BOOT 명령)으로 키 없이 진입. 업데이트 모드 LED는 **보라**
+- 모든 보드: 잠금 풀린 키보드는 GUI [업데이트 모드로 전환] 단추(BOOT 명령)으로 키 없이 진입. 업데이트 모드 LED는 **보라**(SAYO_2B3는 빨강 L5 깜빡임)
 - 펌웨어 파일 위치: `firmware/macro_keyboard/build/` (`tools\build_fw.ps1 -Board <보드>`)
 - 앱 USB: 모든 보드 `1209:C55D`
-- 펌웨어 최대 크기: CH552 14,336바이트, CH32V203 52,992바이트(앱 영역, [플래시 배치](BOOTLOADER_CH32V203.md))
+- 펌웨어 최대 크기: CH552 14,336바이트, CH32V203 52,992바이트(앱 영역, [플래시 배치](BOOTLOADER_CH32V203.md)), CH573 446,464바이트([플래시 배치](BOOTLOADER_CH573.md#플래시-배치-448-kb-boot_layouth))
 - 설정 유지: CH552는 DataFlash라 항상 유지. CH32V203은 자체 부트로더 업데이트와 `-Full`(부트로더만 wchisp, 앱은 HID) 모두 유지. 공장 펌웨어(읽기 보호)는 처음 설치 때 전부 지워짐
 - ⚠️ CH32V203 보드의 제조사 펌웨어는 읽기 보호 → 처음 설치 때 지워짐(되돌릴 수 없음)
 

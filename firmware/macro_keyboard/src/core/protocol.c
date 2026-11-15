@@ -4,6 +4,7 @@
 #include "storage.h"
 #include "lock.h"
 #include "macro.h"
+#include "battery.h"
 // clang-format on
 
 #define U16(lo, hi) ((uint16_t)(lo) | ((uint16_t)(hi) << 8))
@@ -13,12 +14,18 @@
 
 // HELLO bytes 17-31 (docs/BOARD_INFO.md 2); the chip's unique ID follows
 #define BOARD_INFO_SIZE 15
+#ifdef BOARD_BATTERY
+#define FEATURE_BATTERY BOARD_FEATURE_BATTERY
+#else
+#define FEATURE_BATTERY 0
+#endif
 __code struct {
   uint8_t head[7];
   char name[8];
 } boardInfo = {{BOARD_INFO_VERSION, BOARD_CHIP_ID, BOARD_KEYS, BOARD_KNOBS,
                 BOARD_ROWS,
-                BOARD_FEATURES | ((BOARD_FEATURES & BOARD_FEATURE_LOCK) ? BOARD_FEATURE_AUTO_LOCK : 0),
+                BOARD_FEATURES | FEATURE_BATTERY |
+                    ((BOARD_FEATURES & BOARD_FEATURE_LOCK) ? BOARD_FEATURE_AUTO_LOCK : 0),
                 0},
                BOARD_NAME};
 
@@ -46,8 +53,12 @@ uint8_t protocol_poll(void) {
   res[0] = cmd | 0x80;
   res[1] = req[1]; // seq
   // GUI work keeps an open keyboard from auto-locking; the GUI's HELLO
-  // polling does not, or a running GUI would keep it open forever
+  // (and BATTERY) polling does not, or a running GUI would keep it open forever
+#ifdef BOARD_BATTERY
+  if (cmd != CMD_HELLO && cmd != CMD_BATTERY) {
+#else
   if (cmd != CMD_HELLO) {
+#endif
     lock_activity();
   }
 
@@ -137,6 +148,13 @@ uint8_t protocol_poll(void) {
       event = PROTO_EVT_BOOT;
     }
     break;
+
+#ifdef BOARD_BATTERY
+  // Works while locked: the charge gives nothing away
+  case CMD_BATTERY:
+    battery_report(res + 3);
+    break;
+#endif
 
   default:
     status = ST_BAD_CMD;

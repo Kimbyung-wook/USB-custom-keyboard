@@ -12,6 +12,7 @@
 #define CMD_COMMIT 0x04
 #define CMD_TEST 0x05
 #define CMD_BOOT 0x06
+#define CMD_BATTERY 0x07 // boards with BOARD_BATTERY only (others: ST_BAD_CMD)
 
 #define ST_OK 0
 #define ST_BAD_CMD 1

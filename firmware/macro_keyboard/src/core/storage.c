@@ -7,9 +7,20 @@
 // RAM copy of the stored blob, and the staging area filled by WRITE. Every
 // blob is checked in stage[] (also the one read from DataFlash at start-up)
 // and copied to blob[] only when it is taken into use.
-static __xdata uint8_t blob[BLOB_CAPACITY];
 static __xdata uint8_t stage[BLOB_CAPACITY];
 static __xdata blob_pos_t stageLen;
+#if BOARD_STORE_ONE_BUFFER
+// One buffer (CH573: the BLE stack needs the RAM): WRITE stages over the
+// active copy. From the first chunk until a COMMIT the slots type nothing; a
+// failed COMMIT reads the stored blob back. The lock pattern and auto-lock
+// minutes are kept apart, so staging can never change them.
+#define blob stage
+static __xdata uint8_t staging;
+static __xdata uint8_t lockSteps[LOCK_MAX_STEPS];
+static __xdata uint8_t autolockMinutes;
+#else
+static __xdata uint8_t blob[BLOB_CAPACITY];
+#endif
 
 // Macro slots plus the lock pattern (SLOT_LOCK) and settings (SLOT_SETTINGS).
 // Slots after these are accepted and ignored (newer GUIs).
@@ -126,9 +137,17 @@ static void loadStage(__data blob_pos_t totalLen) {
       slotLength[i] = 0;
     }
   }
+#if BOARD_STORE_ONE_BUFFER
+  for (__data uint8_t i = 0; i < slotLength[SLOT_LOCK]; i++) {
+    lockSteps[i] = stage[slotOffset[SLOT_LOCK] + i];
+  }
+  autolockMinutes = slotLength[SLOT_SETTINGS] ? stage[slotOffset[SLOT_SETTINGS]] : 0;
+  staging = 0;
+#else
   for (__data blob_pos_t i = 0; i < BLOB_CAPACITY; i++) {
     blob[i] = stage[i];
   }
+#endif
   stageLen = 0;
 }
 
@@ -149,16 +168,27 @@ blob_pos_t storage_slot_len(__data uint8_t slot) {
   if (slot >= SLOT_COUNT) {
     return 0;
   }
+#if BOARD_STORE_ONE_BUFFER
+  if (staging) {
+    return 0;
+  }
+#endif
   return slotLength[slot];
 }
 
 uint8_t storage_lock_len(void) { return (uint8_t)slotLength[SLOT_LOCK]; } // at most LOCK_MAX_STEPS
 
+#if BOARD_STORE_ONE_BUFFER
+__xdata uint8_t *storage_lock_steps(void) { return lockSteps; }
+
+uint8_t storage_autolock_minutes(void) { return autolockMinutes; }
+#else
 __xdata uint8_t *storage_lock_steps(void) { return blob + slotOffset[SLOT_LOCK]; }
 
 uint8_t storage_autolock_minutes(void) {
   return slotLength[SLOT_SETTINGS] ? blob[slotOffset[SLOT_SETTINGS]] : 0;
 }
+#endif
 
 uint8_t storage_stage_write(__data uint16_t offset, __data uint8_t len,
                             __xdata uint8_t *data) {
@@ -174,6 +204,9 @@ uint8_t storage_stage_write(__data uint16_t offset, __data uint8_t len,
   } else if (offset != stageLen) {
     return ST_BAD_ARG;
   }
+#if BOARD_STORE_ONE_BUFFER
+  staging = 1;
+#endif
   for (__data uint8_t i = 0; i < len; i++) {
     stage[offset + i] = data[i];
   }
@@ -181,7 +214,7 @@ uint8_t storage_stage_write(__data uint16_t offset, __data uint8_t len,
   return ST_OK;
 }
 
-uint8_t storage_commit(__data uint16_t totalLen, __data uint16_t crc) {
+static uint8_t commitStage(__data uint16_t totalLen, __data uint16_t crc) {
   if (totalLen > BLOB_CAPACITY) {
     return ST_TOO_BIG;
   }
@@ -221,4 +254,14 @@ uint8_t storage_commit(__data uint16_t totalLen, __data uint16_t crc) {
   }
   loadStage((blob_pos_t)totalLen);
   return ST_OK;
+}
+
+uint8_t storage_commit(__data uint16_t totalLen, __data uint16_t crc) {
+  __data uint8_t st = commitStage(totalLen, crc);
+#if BOARD_STORE_ONE_BUFFER
+  if (staging) {
+    storage_init(); // refused: back to the stored blob
+  }
+#endif
+  return st;
 }

@@ -24,6 +24,8 @@ from .widgets import DeviceView, LockPatternEditor, MacroEditor, WrapLabel
 APP_TITLE = "매크로 키보드 설정"
 DEFAULT_CAPACITY = 128  # firmware v1.0 stores the blob in the 128-byte DataFlash
 POLL_INTERVAL_MS = 2000
+BATTERY_INTERVAL_MS = 10000   # the firmware measures every 10 s
+BATTERY_COLORS = {"critical": "#c62828", "low": "#e65100"}
 TEST_COUNTDOWN_S = 3
 
 # Fits in 128 bytes (125 with header and slot lengths)
@@ -66,6 +68,12 @@ class MainWindow(QMainWindow):
         self._poll.timeout.connect(self._poll_device)
         if auto_reconnect:
             self._poll.start()
+
+        # Battery boards (HELLO battery bit): BATTERY every 10 s, also while locked
+        self.battery: p.Battery | None = None
+        self._battery_timer = QTimer(self)
+        self._battery_timer.setInterval(BATTERY_INTERVAL_MS)
+        self._battery_timer.timeout.connect(self._battery_tick)
 
         self._test_timer = QTimer(self)
         self._test_timer.setInterval(1000)
@@ -260,13 +268,20 @@ class MainWindow(QMainWindow):
             if info.board_info is None:
                 board += " · 보드 정보 없음"
             lines = [state, f"{board} / 용량 {info.capacity}바이트", info.fw_text]
-            self.conn_label.setToolTip(self.client.transport.description if self.client.transport else "")
+            tip = self.client.transport.description if self.client.transport else ""
+            if self.battery:
+                tip = "\n".join(t for t in (self.battery.detail, tip) if t)
+            self.conn_label.setToolTip(tip)
             self.connect_btn.setText("연결 끊기")
         else:
             lines, color = ["○ 연결 안 됨"], "#757575"
             self.conn_label.setToolTip("")
             self.connect_btn.setText("연결")
         head, *rest = (html.escape(line) for line in lines)
+        if self.connected and self.battery:
+            text = html.escape(self.battery.text)
+            level = BATTERY_COLORS.get(self.battery.level)
+            rest.append(f'<b style="color: {level};">{text}</b>' if level else text)
         self.conn_label.setText("<br>".join([f'<b style="color: {color};">{head}</b>'] + rest))
         self._refresh_buttons()
 
@@ -314,7 +329,8 @@ class MainWindow(QMainWindow):
             "" if supported and board_lock else
             "이 보드(펌웨어)는 잠금을 쓸 수 없습니다" if supported else
             "이 펌웨어는 잠금을 지원하지 않습니다 (펌웨어 v1.1 이상 필요)")
-        self.lock_editor.set_autolock_supported(not on or self.client.info.supports_autolock)
+        self.lock_editor.set_autolock_supported(not on or self.client.info.supports_autolock,
+                                                self.client.info.autolock_problem if on else "")
 
     def _update_title(self) -> None:
         # The keyboard being edited (connected, or picked in the board list)
@@ -420,6 +436,9 @@ class MainWindow(QMainWindow):
             client.close()
             return False
         self.client = client
+        self.read_battery(refresh=False)
+        if client.info.supports_battery:
+            self._battery_timer.start()
         self.board_identified = client.info.board_info is not None
         self.set_board(client.info.board)
         self._refresh_all()
@@ -438,6 +457,8 @@ class MainWindow(QMainWindow):
         if self.client:
             self.client.close()
         self.client = None
+        self.battery = None
+        self._battery_timer.stop()
         self.clear_config()
 
     def clear_config(self) -> None:
@@ -462,6 +483,7 @@ class MainWindow(QMainWindow):
             return
         try:
             self.check_lock()
+            self.read_battery()
             self.statusBar().showMessage("장치 상태를 확인했습니다", 3000)
         except DeviceError as e:
             self._handle_device_error("새로고침 실패", e)
@@ -479,6 +501,26 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("잠금이 풀렸습니다", 3000)
             if not self.has_unsaved():
                 self.read_from_device(confirm=False)
+
+    def read_battery(self, refresh: bool = True) -> None:
+        """BATTERY into self.battery (None: no battery or no answer)."""
+        try:
+            self.battery = self.client.battery() if self.connected else None
+        except NotConnectedError:
+            self.battery = None
+            self.disconnect_device()
+        except DeviceError:
+            self.battery = None   # shown again on the next tick
+        if refresh:
+            self._refresh_connection()
+
+    def _battery_tick(self) -> None:
+        if self._countdown or self._flashing:
+            return
+        if not self.connected:
+            self._battery_timer.stop()
+            return
+        self.read_battery()
 
     def _poll_device(self) -> None:
         """Auto-reconnect when a keyboard appears; notice when it is unplugged,
@@ -677,21 +719,32 @@ class MainWindow(QMainWindow):
             except DeviceError as e:
                 self.disconnect_device()
                 return (f"업데이트 모드로 바꾸지 못했습니다 ({e}). "
-                        f"키보드를 뽑았다가 {self.boot_hint} 다시 꽂으세요")
+                        f"{self.reenter_boot}")
             self.client = None
+            self.battery = None
+            self._battery_timer.stop()
             self.clear_config()
-            return "키보드를 업데이트 모드로 바꿨습니다. 잠시 기다리세요 (보라색 LED)"
+            spec = boards.find(self.board.name)
+            led = spec.boot_led if spec and spec.hidboot else "LED가 보라색입니다"
+            return f"키보드를 업데이트 모드로 바꿨습니다. 잠시 기다리세요 ({led})"
         reason = "잠겨 있어서" if self.connected else "연결되어 있지 않아서"
         if self.connected:
             self.disconnect_device()
         return (f"키보드가 {reason} 자동으로 업데이트 모드로 바꿀 수 없습니다. "
-                f"키보드를 뽑았다가 {self.boot_hint} 다시 꽂으세요")
+                f"{self.reenter_boot}")
 
     @property
     def boot_hint(self) -> str:
         """How to plug this keyboard in to reach the bootloader (board list)."""
         spec = boards.find(self.board.name)
         return spec.boot_hint if spec else "업데이트 모드 진입 방법대로"
+
+    @property
+    def reenter_boot(self) -> str:
+        """e.g. "키보드를 뽑았다가 키 7을 누른 채 다시 꽂으세요" (SW1 boards: switch off and on)."""
+        spec = boards.find(self.board.name)
+        return (spec.reenter_boot("세요") if spec
+                else f"키보드를 뽑았다가 {self.boot_hint} 다시 꽂으세요")
 
     def make_firmware_dialog(self) -> FirmwareDialog:
         return FirmwareDialog(self.prepare_bootloader, self.flash_command_fn, self,

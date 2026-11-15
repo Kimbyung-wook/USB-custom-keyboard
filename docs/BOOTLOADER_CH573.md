@@ -59,11 +59,12 @@
 | `mingw32-make full APP=test` 또는 `APP=ble` | `build/full-SAYO_2B3-<APP>.bin`: 부트로더 + 앱 정보 + 앱(`mkfull.py`) |
 | `mingw32-make flash APP=…` | 위 이미지를 wchisp로 씀(ROM 부트로더 상태여야 함) |
 
-- 본 펌웨어 첫 설치 이미지: `firmware/macro_keyboard`에서 `mingw32-make -f Makefile.ch573 full` → `build/ch573/macro_keyboard-SAYO_2B3-full.bin`(이 부트로더 포함)
+- 본 펌웨어: `tools\build_fw.ps1 -Board sayo_2b3` → 앱 `build/ch573/macro_keyboard-SAYO_2B3.bin`, 이 부트로더, 첫 설치 이미지 `…-SAYO_2B3-full.bin`을 한 번에(`Makefile.ch573 full`)
 - Makefile을 고친 뒤에는 `rm -rf build`
-- `tools/build_fw.ps1`·`flash.ps1`에는 아직 SAYO_2B3 없음
 
 ## 설치·업데이트
+
+- 보통은 `tools\flash.ps1 -Board sayo_2b3`(업데이트) / `-Full`(처음 설치·복구). 아래는 그 스크립트가 하는 일과 직접 하는 방법
 
 ### 처음 설치·복구 (ROM 부트로더, wchisp)
 
@@ -72,9 +73,12 @@
    - 시간 제한: 통신이 없으면 약 6~15초 뒤 앱으로 돌아감(2026-11-13 관찰). 그 안에 다음 단계. 정확한 시간은 확인 필요
 2. `wchisp info`로 칩 CH573 확인(읽기만)
 3. `wchisp flash <full 이미지>`(`mingw32-make flash APP=…` 또는 본 펌웨어 `…-full.bin`)
+- `flash.ps1 -Board sayo_2b3 -Full`: 먼저 실행해 두고 안내가 나오면 진입 → Enter. `wchisp info`의 UID가 개발 보드 `1A-73-38-72-AB-3C-FD-21`이 아니면 쓰지 않고 멈춤
 - 이 기판은 읽기 보호가 켜져 있었음 → 처음 장입이 공장 펌웨어를 지움(되돌릴 수 없음). 장입은 사용자 승인 뒤
 
 ### 업데이트 (자체 부트로더, hidboot)
+
+- `flash.ps1 -Board sayo_2b3`: SW1을 끄고 키 4를 누른 채 켜기(또는 `-Enter`) → L5 깜빡이면 Enter → `hidboot`로 앱 `.bin` 씀. GUI 업데이트 창도 같은 안내
 
 1. 부트로더로 들어감: **키 4를 누른 채 SW1 켜기**(L5 빨강 깜빡임), 또는 앱이 돌고 있으면 `--enter`(BOOT 명령)
 2. 저장소 폴더에서
@@ -92,7 +96,7 @@ uv run python -m gui.core.hidboot run
 ### 보드 이름 확인과 별칭
 
 - `flash`는 이미지의 식별 문자열(`MKFW1:<보드>:…`) 보드가 HELLO 보드와 같아야 씀(다르면 지우기 전에 거부)
-- 옛 이름 `BT_2X3`: 이름을 바꾸기 전에 설치한 부트로더가 보고함. `gui/core/boards.py`의 `PENDING_ALIASES`(`BT_2X3` → `SAYO_2B3`)로 같은 보드로 봄 → 새 이름 앱도 `--force` 없이 통과(코드 기준, 기판 확인 필요)
+- 옛 이름 `BT_2X3`: 이름을 바꾸기 전에 설치한 부트로더가 보고함. `gui/core/boards.py` SAYO_2B3의 `aliases`로 같은 보드로 봄 → 새 이름 앱도 `--force` 없이 통과(기판 확인: 부트로더가 `BT_2X3`을 보고하는 상태에서 `hidboot`로 SAYO_2B3 앱 129,464 B·129,792 B 장입 성공, 2026-11-13~14)
 - 별칭 없이 막히면 `--force`, 또는 새 부트로더가 든 full 이미지를 wchisp로 다시 씀
 
 ## Windows 코드 10 (고친 문제, 2026-11-13)
@@ -113,4 +117,5 @@ uv run python -m gui.core.hidboot run
 
 ## 이력
 
+- 2026-11-14: `build_fw.ps1`·`flash.ps1 -Board sayo_2b3`(-Full은 UID 확인) 반영, 별칭은 보드 목록 `aliases`로
 - 2026-11-13: 문서 만듦(BOOTLOADER_CH32V203.md의 CH573 절을 옮겨 늘림). 보드 이름 SAYO_2B3(옛 이름 BT_2X3)

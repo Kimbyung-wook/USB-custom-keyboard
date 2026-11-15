@@ -25,6 +25,13 @@
   plus firmware\bootloader_ch32v203\build\full-<BOARD>.bin (bootloader + app,
   first install: tools\flash.ps1 -Board sayo_3x3 -Full, BOOT bridge).
 
+  CH573 board (sayo_2b3) builds with Makefile.ch573 (same gcc; the CH573 EVT SDK
+  with its BLE library: the Makefile's MK_CH57X_SDK default or environment).
+  Result: firmware\macro_keyboard\build\ch573\macro_keyboard-SAYO_2B3.bin (app
+  at 0x3000, tools\flash.ps1 -Board sayo_2b3: key 4 held while SW1 goes on),
+  plus ...-SAYO_2B3-full.bin (bootloader + app info + app, first install:
+  tools\flash.ps1 -Board sayo_2b3 -Full, PB22 to GND, wchisp).
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 .EXAMPLE
@@ -33,9 +40,9 @@
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board sayo_3x3
 #>
 param(
-    [ValidateSet('mk6k1n', 'mk6k1nl', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6')]
+    [ValidateSet('mk6k1n', 'mk6k1nl', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6', 'sayo_2b3')]
     [string]$Board = 'mk6k1n',
-    # CH32V203 only
+    # CH32V203 and CH573 (gcc); -Sdk is the CH32V203 EVT SDK only
     # environment MK_RISCV_BIN / MK_EVT_SDK first (as the Makefiles), else these defaults
     [string]$GccBin = $(if ($env:MK_RISCV_BIN) { $env:MK_RISCV_BIN } else { 'C:\Users\user\tools\gcc\xpack-riscv-none-elf-gcc-15.2.0-1\bin' }),
     [string]$Sdk = $(if ($env:MK_EVT_SDK) { $env:MK_EVT_SDK } else { 'C:/Users/user/tools/sdk/EVT' })
@@ -49,6 +56,7 @@ $boardChips = @{
     'sayo_3x3' = 'ch32v203'
     'sayo_2x4' = 'ch32v203'
     'sayo_2x6' = 'ch32v203'
+    'sayo_2b3' = 'ch573'
 }
 $chipFqbns = @{
     ch552 = 'CH55xDuino:mcs51:ch552:usb_settings=user266,bootloader_pin=p15'
@@ -65,6 +73,40 @@ $outDir = Join-Path $sketch 'build'
 $now = Get-Date
 $dateFlags = "-DFW_BUILD_YEAR=$($now.Year) -DFW_BUILD_MONTH=$($now.Month) -DFW_BUILD_DAY=$($now.Day)" +
              " -DFW_BUILD_HOUR=$($now.Hour) -DFW_BUILD_MINUTE=$($now.Minute)"
+
+if ($boardChips[$Board] -eq 'ch573') {
+    if (-not (Test-Path (Join-Path $GccBin 'riscv-none-elf-gcc.exe'))) {
+        throw "riscv-none-elf-gcc not found in $GccBin (-GccBin)"
+    }
+    if (-not (Get-Command mingw32-make -ErrorAction SilentlyContinue)) {
+        throw "mingw32-make not found on PATH"
+    }
+    $env:PATH = "$GccBin;C:\Program Files\Git\usr\bin;$env:PATH"
+    # Fresh build of this board (new date); the bootloader keeps its own build
+    $chOut = Join-Path $outDir 'ch573'
+    foreach ($old in @((Join-Path $chOut "obj-$boardName"), (Join-Path $chOut "macro_keyboard-$boardName.bin"),
+                       (Join-Path $chOut "macro_keyboard-$boardName-full.bin"))) {
+        if (Test-Path $old) { Remove-Item -Recurse -Force $old }
+    }
+    Push-Location $sketch
+    try {
+        # full: the app, the bootloader (firmware\bootloader_ch573) and the full image
+        & mingw32-make -f Makefile.ch573 full "EXTRA_DEFS=$dateFlags"
+        $code = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($code -ne 0) {
+        Write-Host "Build failed (exit code $code)"
+        exit $code
+    }
+    $bin = Join-Path $chOut "macro_keyboard-$boardName.bin"
+    $full = Join-Path $chOut "macro_keyboard-$boardName-full.bin"
+    Write-Host ""
+    Write-Host "Built $boardName with build date $($now.ToString('yyyy-MM-dd HH:mm')) -> $bin ($((Get-Item $bin).Length) bytes)"
+    Write-Host "Full image (bootloader + app): $full ($((Get-Item $full).Length) bytes)"
+    exit 0
+}
 
 if ($boardChips[$Board] -eq 'ch32v203') {
     if (-not (Test-Path (Join-Path $GccBin 'riscv-none-elf-gcc.exe'))) {

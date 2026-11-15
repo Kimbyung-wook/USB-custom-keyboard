@@ -117,13 +117,17 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 
 ### 연결 막대
 
-- 세 줄 구성
+- 세 줄 구성(배터리 보드는 네 줄)
   1. 상태와 할 일 (`🔒 잠김 - …`, `● 연결됨 - 잠금 풀림`, 연결 안 됨)
   2. 보드와 용량 (`MK6K1N (키 6 + 노브 1) / 용량 128바이트`)
   3. 펌웨어 버전과 빌드 날짜
+  4. 배터리(HELLO 기능 비트 `0x04`가 있는 보드만, 지금 SAYO_2B3): `🔋 배터리 80%`. 케이블 연결 중은 `🔌 충전 중 · 연결 전 62% (5분 전)` 또는 `🔌 충전 중 (약 96%, 참고값)`
+     - 연결할 때·[새로고침]·10초마다 BATTERY(`0x07`, [PROTOCOL](../docs/PROTOCOL.md#0x07-battery))를 보냄. 잠겨 있어도 표시, `BAD_CMD`면 표시 안 함
+     - 낮음 주황, 위험 빨강. 마우스를 올리면 mV와 칩 VDD
 - 연결 방식(HID 경로 등)은 마우스를 올리면 보임
 - 보드 목록: 연결 안 됨이면 목록에서 보드를 골라 해당 배치로 화면을 바꿈. 장치를 인식하면 그 보드에 맞게 자동 전환하고 목록은 잠김
 - 잠금 기능이 없는 보드(HELLO 보드 기능에 잠금 비트 없음)는 잠금 편집기가 꺼짐. 지금 목록의 보드는 모두 잠금 있음
+- 자동 잠금 비트(HELLO 22 bit3)가 없는 1.4.0 이상 보드: 자동 잠금 칸에 "이 보드는 자동 잠금을 지원하지 않습니다" 안내
 - 버튼: [연결]/[연결 끊기], [새로고침]
 - 실제 장치 모드: 2초마다 장치 확인. 꽂으면 자동 연결, 뽑으면 연결 끊김 표시
 
@@ -196,7 +200,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   - 해당 경우: 공장 펌웨어, 보드 정보가 없는 1.2.x 이하, 연결 안 됨, 목록에 없는 보드
   - 창에 `⚠ 연결된 키보드를 식별할 수 없습니다`와 그 보드의 처음 설치 방법(`factory_boot`, [BOARDS.md](../docs/BOARDS.md)) 표시
   - [장입] 시 고른 보드가 맞는지 한 번 물음. 식별된 키보드와 다른 보드를 골랐을 때도 물음
-- 파일 크기 검사: 칩 용량(CH552 14,336바이트, CH32V203 앱 영역 52,992바이트)을 넘으면 올리지 않음
+- 파일 크기 검사: 칩 용량(CH552 14,336바이트, CH32V203 앱 영역 52,992바이트, CH573 앱 영역 446,464바이트)을 넘으면 올리지 않음
 - **식별 문자열** (예: `MKFW1:MK6K1N:CH552:1.7.0`)
   - hex 안에서 읽어 어느 보드·칩·버전용인지 표시
   - 칩이 다르면 올리지 않음
@@ -204,18 +208,20 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
     - CH552 보드: 주황 경고, [장입] 때 한 번 더 물음
     - CH32V203 보드: 빨간 경고. [장입] 때 "강제 장입" 확인 상자(기본 단추 취소, `confirm_force`). 동의하면 `hidboot` `force=True`. `hidboot`은 동의 없이는 지우기 전에 거부(`board_mismatch`)
 - 처음 고르는 파일: `firmware/macro_keyboard/build/macro_keyboard-<보드>.hex`(`tools/build_fw.ps1`이 만듦), 없으면 `macro_keyboard.ino.hex`
-  - CH32V203 보드: `build/ch32v203/macro_keyboard-<보드>.bin` (`.bin`만, 식별 문자열 확인은 같음)
+  - CH32V203 보드: `build/ch32v203/macro_keyboard-<보드>.bin`, CH573 보드: `build/ch573/macro_keyboard-<보드>.bin` (`<칩>` 폴더, `.bin`만, 식별 문자열 확인은 같음)
 - 업데이트 모드 칩의 고유 ID가 연결되어 있던 키보드의 것(HELLO 32~35)과 같으면 "방금 연결된 키보드"로 표시
 - 업데이트 모드 진입
   - 연결됨 + 잠금 풀림: BOOT 명령으로 진입 (키 필요 없음)
   - 잠김 또는 미연결: 보드 목록의 진입 키(`boot_key`)로 "키 D를 누른 채 다시 꽂으세요" 같은 안내 표시, 60초 대기
+  - 전원 스위치가 있는 보드(`power_switch`, SAYO_2B3의 SW1): "SW1을 껐다가 키 4를 누른 채 켜세요"처럼 꽂기 대신 스위치로 안내. 부트로더 표시는 `boot_led`(SAYO_2B3: "L5 빨강 LED가 깜빡입니다", 기본: 보라)
 - 업로더 실행
   - CH55xDuino의 `vnproch55x.exe`를 보드 목록의 옵션으로 실행 (MK6K1N: `-t CH552 -c 1`, 부트로더 진입 핀 P1.5, `tools/flash.ps1`과 같음)
   - 출력에서 칩 종류, 부트로더 버전, 쓰기/검증 진행률을 읽어 표시
-- CH32V203 보드(SAYO_3X3, SAYO_2X4): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
+- CH32V203 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)·CH573 보드(SAYO_2B3): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
   - 앱 영역만 지움 → 설정 유지. 끊기면 다음에 꽂을 때 부트로더에 머묾
-  - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내
+  - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내. SAYO_2B3는 `flash.ps1 -Board sayo_2b3 -Full`을 먼저 실행한 뒤 PB22-GND + SW1 켜기(ROM 부트로더 6~15초 제한)
+  - 부트로더가 옛 보드 이름을 알려도 보드 목록의 `aliases`(예: `BT_2X3` → SAYO_2B3)로 같은 보드로 봄
   - 자세히: [docs/BOOTLOADER_CH32V203.md](../docs/BOOTLOADER_CH32V203.md)
 - 업로더 위치: exe 빌드에 포함(`uploader\`). 소스 실행 시 `MACROKB_UPLOADER` 환경 변수나 설치된 CH55xDuino에서 찾음
 - 끝나면 키보드에 다시 연결. 키별 문자열과 패턴 암호는 그대로 남음

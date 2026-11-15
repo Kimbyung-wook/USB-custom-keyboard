@@ -2,11 +2,10 @@
 #define __MK_BOARD_SAYO_2B3_H__
 
 // SAYO_2B3: 6-key (2 x 3) wireless keyboard on a CH573F, no knob
-// (docs/board/BOARD_SAYO_2X3B_RGB.md). Stage 1: USB cable keyboard + status LEDs +
-// battery reading; BLE comes in stage 2.
-// Kept here, not in src/boards, until gui/core/boards.py knows the board
-// (tests/gui/test_consistency.py compares the two): Makefile.ch573 passes
-// -DBOARD_HEADER. HAL: src/hal/ch573.
+// (docs/board/BOARD_SAYO_2X3B_RGB.md). USB cable keyboard + BLE HID keyboard
+// (one bonded host, src/core/bt_app.h) + status LEDs + battery reading.
+// Kept beside its HAL, not in src/boards (config.h picks only those):
+// Makefile.ch573 passes -DBOARD_HEADER; tools/repo_facts.py reads it here too.
 
 #define BOARD_NAME "SAYO_2B3"
 #define BOARD_HAL_CH573 1
@@ -30,7 +29,17 @@
 #define BOARD_LED_COUNT 0
 #define BOARD_KEY_LEDS 0
 #define BOARD_BT_LED 1
+// {port, bit} in BTLED_* bit order (src/core/bt_led.h): L3 L4 L5 L6 L7 L8,
+// all on port A (led_ch573.c)
+#define BOARD_BT_LED_PINS {0, 4}, {0, 5}, {0, 15}, {0, 14}, {0, 13}, {0, 12}
 // Li-Po cell -> diode -> VDD, read on the internal VBAT channel (src/core/battery.c)
 #define BOARD_BATTERY 1
+// One RAM copy of the config (src/core/storage.c): the BLE stack needs the RAM
+#define BOARD_STORE_ONE_BUFFER 1
+// BLE HID keyboard (src/hal/ch573/ble_ch573.c); not in the LED check build
+// (BTLED_DEMO=1), where the keys set the link states by hand
+#if !BTLED_DEMO
+#define BOARD_BLE 1
+#endif
 
 #endif

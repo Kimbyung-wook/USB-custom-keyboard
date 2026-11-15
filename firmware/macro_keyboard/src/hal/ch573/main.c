@@ -1,5 +1,6 @@
 // CH573 entry point (SAYO_2B3): the sequence in core/app.c plus the wireless
-// extras in core/bt_app.c. Built only by Makefile.ch573 (MK_CHIP_CH573).
+// extras in core/bt_app.c and the BLE stack (hal/ch573/ble_ch573.c, BOARD_BLE).
+// Built only by Makefile.ch573 (MK_CHIP_CH573).
 #if defined(__riscv) && defined(MK_CHIP_CH573)
 #include "hal/hal.h"
 #include "core/app.h"
@@ -12,8 +13,14 @@ extern const char firmwareId[];
 int main(void) {
   app_setup();
   (void)*(volatile const char *)firmwareId; // keeps the ID string in the image
-  bt_setup(hal_ms32());
+#if BOARD_BLE
+  hal_ble_init();
+#endif
+  bt_setup(hal_ms32(), hal_switches());
   while (1) {
+#if BOARD_BLE
+    hal_ble_poll();
+#endif
 #if BTLED_DEMO
     // LED check: the keys set LED states (bt_app.h), only BOOT and the other
     // config commands run; nothing is typed
@@ -24,7 +31,7 @@ int main(void) {
 #else
     app_loop();
 #endif
-    if (bt_task(hal_ms32(), hal_switches(), kb_ready())) {
+    if (bt_task(hal_ms32(), hal_switches(), hal_usb_ready())) {
       hal_deep_sleep();
     }
   }

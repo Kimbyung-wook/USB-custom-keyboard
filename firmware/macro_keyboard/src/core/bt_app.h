@@ -8,9 +8,17 @@
 // the chip's main loop calls bt_task() after app_loop(); it reads the supply
 // through hal_battery_vdd_mv() and drives the LEDs through hal_btled_write().
 //
-// Stage 1 (SAYO_2B3, no radio yet): USB cable only. Key press = white blip, USB
-// configured = green, battery low/critical = red, key 1 + 6 held 1 s =
-// battery level in blue.
+// Key press = white blip, USB configured = green, battery low/critical = red,
+// key 1 + 6 held 1 s = battery level in blue.
+// BLE (BOARD_BLE, SAYO_2B3 stage 1: one bonded host, HID over GATT):
+//   - key 5 held at power-on: forget the bond, advertise to anyone (pairing,
+//     blue L6 blinks 0.2 s); also when nothing is bonded yet
+//   - else advertise to the bonded host only (reconnecting, L6 blinks 1 s)
+//   - connected: L6 on for 3 s; keys type over BLE
+//   - USB configured: BLE link dropped, no advertising; cable out: advertise
+//   - advertising stops after BT_ADV_TIMEOUT_MS (pairing too); then any key
+//     starts it again (that key is not typed: no host is ready)
+//   - key 6 at power-on: kept for stage 2 (3 slots); key 4 = bootloader
 // BTLED_DEMO=1 (build option, LED check on the board): keys do not type,
 // they set the BLE/dongle states that have no radio behind them yet:
 //   key 1 next BLE slot (1 -> 2 -> 3 -> 1)   key 2 pairing   key 3 reconnecting
@@ -26,7 +34,27 @@
 #endif
 #define BT_KEY_SCAN_MS 10 // key sampling (also the debounce)
 
-void bt_setup(uint32_t now);
+#if BOARD_BLE
+#define BT_ADV_TIMEOUT_MS 60000UL // advertising stops (any key restarts it)
+#define BT_USB_WAIT_MS 1500       // after power-on: time for USB to come up first
+#define BT_PAIR_KEY 4             // key 5 held at power-on: pairing
+
+// BLE link states (hal_ble_state)
+#define HAL_BLE_IDLE 0      // not advertising, no link
+#define HAL_BLE_ADV 1       // advertising
+#define HAL_BLE_LINK 2      // link up, not ready yet (pairing, encryption)
+#define HAL_BLE_READY 3     // encrypted, reports enabled: kb_ready() over BLE
+
+// From the chip HAL (CH573: src/hal/ch573/ble_ch573.c)
+void hal_ble_start(uint8_t pair); // advertise: 1 = to anyone, 0 = bonded host only
+void hal_ble_stop(void);          // drop the link, stop advertising
+uint8_t hal_ble_state(void);
+uint8_t hal_ble_bonded(void);     // a host is bonded
+void hal_ble_forget(void);        // erase the bond
+#endif
+
+// keys: held at power-on (BLE: key 5 = pairing)
+void bt_setup(uint32_t now, uint16_t keys);
 // keys: bit n = key n+1 pressed (raw); usb: 1 = configured by a host.
 // Returns 1 when the battery is critical and the LEDs are done: deep sleep.
 uint8_t bt_task(uint32_t now, uint16_t keys, uint8_t usb);

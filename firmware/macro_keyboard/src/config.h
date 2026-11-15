@@ -38,6 +38,7 @@
 #define BOARD_INFO_VERSION 1 // HELLO byte 17
 #define BOARD_FEATURE_RGB_LED 0x01
 #define BOARD_FEATURE_LOCK 0x02
+#define BOARD_FEATURE_BATTERY 0x04 // CMD_BATTERY answers (set from BOARD_BATTERY, 1.7)
 #define BOARD_FEATURE_AUTO_LOCK 0x08 // settings slot: auto-lock minutes (1.4.0)
 // CH55xduino pin numbers are port * 10 + bit
 #define PIN_PORT(p) ((p) / 10)

@@ -166,8 +166,7 @@ class DeviceClient:
         """WRITE the encoded blob in chunks, then COMMIT. Returns blob size."""
         info = self._require_info()
         if autolock and not info.supports_autolock:
-            raise DeviceError(f"펌웨어 v{info.fw_version}은 자동 잠금을 지원하지 않습니다. "
-                              "펌웨어를 1.4.0 이상으로 업데이트하거나 자동 잠금을 0분으로 두세요")
+            raise DeviceError(f"{info.autolock_problem}. 자동 잠금을 0분으로 두세요")
         try:
             blob = p.encode_blob(slots, lock, info.board, autolock)
         except p.BlobError as e:
@@ -196,6 +195,22 @@ class DeviceClient:
         if not 0 <= slot < self._require_info().board.slot_count:
             raise ValueError(f"slot out of range: {slot}")
         self._request(p.Cmd.TEST, p.test_args(slot), retry_busy=False)
+
+    def battery(self) -> p.Battery | None:
+        """BATTERY (answers while locked too). None when the board has no
+        battery bit in HELLO or the firmware does not know the command."""
+        if not self._require_info().supports_battery:
+            return None
+        try:
+            resp = self._request(p.Cmd.BATTERY, retry_busy=False)
+        except DeviceStatusError as e:
+            if e.status == p.Status.BAD_CMD:
+                return None
+            raise
+        try:
+            return p.parse_battery_result(resp.result)
+        except ValueError as e:
+            raise DeviceError(f"배터리 응답이 올바르지 않습니다: {e}") from e
 
     def reboot_to_bootloader(self) -> None:
         """Send BOOT. The device disconnects afterwards; the client is closed."""

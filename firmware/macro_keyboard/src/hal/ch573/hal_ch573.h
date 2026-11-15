@@ -4,6 +4,8 @@
 // CH573 implementation of src/hal/hal.h on the WCH CH573 EVT SDK. Include
 // hal.h, not this file. USB: own interrupt driver in hal_ch573.c (boot
 // keyboard on EP1, vendor HID on EP2, same descriptors as the CH32V203 app).
+// BLE (BOARD_BLE): ble_ch573.c; kb_* go over USB while it is configured,
+// else over BLE. The config channel (vendor_*) is USB only.
 
 #include <stdint.h>
 
@@ -37,6 +39,18 @@ uint8_t kb_busy(void);
 uint8_t kb_send(uint8_t modifiers, uint8_t keycode);
 void kb_cancel(void);
 uint8_t kb_caps_lock(void);
+uint8_t hal_usb_ready(void); // configured by a host and not suspended
+
+#if BOARD_BLE
+// ble_ch573.c (the link policy calls are in core/bt_app.h)
+void hal_ble_init(void);  // after hal_init, before bt_setup
+void hal_ble_poll(void);  // every main loop pass: the BLE stack (TMOS) runs here
+uint8_t hal_ble_ready(void);
+uint8_t hal_ble_busy(void);
+uint8_t hal_ble_send(uint8_t modifiers, uint8_t keycode);
+void hal_ble_cancel(void);
+uint8_t hal_ble_caps_lock(void);
+#endif
 
 extern uint8_t hal_req[64];
 extern uint8_t hal_res[64];

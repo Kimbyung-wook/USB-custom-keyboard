@@ -44,9 +44,13 @@ def make_var(path: Path, name: str) -> str:
 
 
 def board_files() -> dict[str, Path]:
-    """BOARD_NAME -> board file (shared pin files have no BOARD_NAME)."""
+    """BOARD_NAME -> board file (shared pin files have no BOARD_NAME).
+
+    src/boards holds the boards config.h selects; a CH573 board file sits
+    beside its HAL (src/hal/ch573, chosen by Makefile.ch573 with -DBOARD_HEADER)."""
     out = {}
-    for path in sorted((SRC / "boards").glob("*.h")):
+    paths = sorted((SRC / "boards").glob("*.h")) + sorted((SRC / "hal" / "ch573").glob("*.h"))
+    for path in paths:
         m = re.search(r'^#define\s+BOARD_NAME\s+"([^"]+)"', text(path), re.M)
         if m:
             out[m.group(1)] = path

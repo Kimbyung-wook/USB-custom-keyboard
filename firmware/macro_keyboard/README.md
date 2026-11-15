@@ -92,6 +92,7 @@
 - 2026-11-10: 키마다 LED인 보드의 LED 점검이 둘레를 흐르는 빛으로 회전
 - 2026-11-13: SAYO_2B3(옛 이름 BT_2X3)용 `battery.c`·`bt_led.c`와 CH573 부품 추가(앱 연결 전)
 - 2026-11-13: SAYO_2B3 본 펌웨어 1단계(CH573, USB 유선, BLE 없음) `Makefile.ch573`, `bt_app.c`
+- 2026-11-14: SAYO_2B3 BLE HID 1단계(`ble_ch573.c`, 본딩 1대), 배터리 상태 명령 `0x07`, 설정 RAM 버퍼 하나(`BOARD_STORE_ONE_BUFFER`). 기판에서 유·무선 입력·전환·배터리 % 확인
 - 2026-11-13: SAYO_2X6(12키) 추가, LED 점검 빛 수 `BOARD_LED_RING_CHASE n`
 
 ## 빌드
@@ -132,8 +133,9 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 ### CH573 빌드 (SAYO_2B3, 준비 중)
 
-- 단계: **1단계**(USB 유선 키보드 + 상태 LED + 배터리 측정, BLE 없음). BLE는 2단계(계획 중)
-- 도구: xPack riscv-none-elf-gcc, `mingw32-make`, WCH CH573 EVT SDK(`MK_CH57X_SDK`, 기본 `C:/Users/user/tools/sdk_ch573/EVT`). `tools\build_fw.ps1`에는 아직 없음
+- 단계: **BLE 1단계**(USB 유선 키보드 + BLE HID 키보드 본딩 1대 + 상태 LED + 배터리). 슬롯 3개·동글 연결은 2단계
+- 도구: xPack riscv-none-elf-gcc, `mingw32-make`, WCH CH573 EVT SDK(`MK_CH57X_SDK`, 기본 `C:/Users/user/tools/sdk_ch573/EVT`)
+- 보통은 `tools\build_fw.ps1 -Board sayo_2b3`: 앱 + 자체 부트로더 + 첫 설치 이미지를 한 번에(`Makefile.ch573 full`)
 - `firmware\macro_keyboard`에서
 
 | 명령 | 결과 |
@@ -146,8 +148,11 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - 설정 저장: Data-Flash 0~2,047(블롭 2048 B, `STORE_SIZE`). BLE 짝 정보 자리(0x7E00~)와 안 겹침
 - 보드 헤더: `src/hal/ch573/sayo_2b3.h`(GUI 보드 목록 등록 전이라 `src/boards` 밖, `-DBOARD_HEADER`로 넘김). 칩 정의 `MK_CHIP_CH573`
 - 소스: `src/core/`(공통) + `battery.c`·`bt_led.c`·`bt_app.c`(이 보드만) + `src/hal/ch573/` + SDK 드라이버(clk, gpio, sys, timer0, pwr, adc)
+  - BLE: WCH BLE 라이브러리(EVT `BLE/LIB`, `HAL/MCU.c`·`RTC.c`)와 `HID_Keyboard` 프로필(hiddev, HID·배터리·기기 정보·스캔 변수 서비스). SDK 예제의 APP 자리는 `src/hal/ch573/ble_ch573.c`
+  - BLE 힙 `BLE_HEAP` 5,120 B(기본, `BLE_HEAP=6144`로 바꿀 수 있음). 링크 뒤 `.bss` 위 남는 RAM이 1 KB 미만이면 빌드 실패
+  - RAM 절약: 설정 RAM 버퍼 하나(`BOARD_STORE_ONE_BUFFER`, 아래 코드 구조), 2 KB 그림자 대신 256 B 페이지 캐시, USB 인터럽트 본체는 플래시에
 - Makefile을 고친 뒤에는 `build/ch573` 지우기
-- 장입: 아직 GUI 업데이트 창·`flash.ps1` 대상 아님 → 자체 부트로더에 `uv run python -m gui.core.hidboot flash firmware/macro_keyboard/build/ch573/macro_keyboard-SAYO_2B3.bin` (진입: 키 4를 누른 채 SW1 켜기). 처음 설치는 [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md#처음-설치복구-rom-부트로더-wchisp)
+- 장입: GUI 업데이트 창 또는 `tools\flash.ps1 -Board sayo_2b3`(자체 부트로더, 진입: 키 4를 누른 채 SW1 켜기 또는 `-Enter`). 처음 설치는 `-Full`(PB22 + wchisp, UID 확인) → [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md#설치업데이트)
 - 동작·LED: [BOARD_SAYO_2X3B_RGB 6절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작)
 
 ### 버전과 빌드 날짜
@@ -161,7 +166,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 ### 크기
 
 - 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). SAYO_3X3 앱 12,304바이트, SAYO_2X4 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
-- 준비 중 SAYO_2B3(CH573, 1단계): 앱 12,460바이트(앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트
+- 준비 중 SAYO_2B3(CH573, BLE 1단계): 앱 129,464바이트(BLE 라이브러리 포함, 앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트
 
 **이력 (크기)**
 
@@ -231,7 +236,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 **스크립트 (CH552 보드)**
 
 - CH32V203 보드: [사용 설명서 8장 "스크립트로 올리기"](../../docs/MANUAL.md#스크립트로-올리기)
-- CH573 보드(SAYO_2B3, 준비 중): [CH573 빌드](#ch573-빌드-sayo_2b3-준비-중)의 장입
+- CH573 보드(SAYO_2B3, 준비 중): `tools\flash.ps1 -Board sayo_2b3`, 자세히는 [CH573 빌드](#ch573-빌드-sayo_2b3-준비-중)의 장입
 
 1. 저장소 폴더에서 실행
 2. **키 D를 누른 채** 키보드 연결
@@ -370,22 +375,22 @@ flowchart TB
 | `src/core/input.c/.h` | 스위치 디바운스(20ms), 노브 판정(한 칸 중 2단계 이상), 노브 길게 누르기, 입력을 잠금/문자열 입력으로 보내기 |
 | `src/core/led.c/.h` | LED 표시 정책(색, 깜빡임, 키별 초록/꺼짐), 색 번호 `COLOR_*`(`led.h`)와 색 표 `hal_palette` |
 | `src/core/lock.c/.h` | 잠금 상태, 패턴 입력 판정, 틀린 횟수, 자동 잠금 시간 |
-| `src/core/protocol.c/.h` | Vendor HID 명령 처리 (HELLO/READ/WRITE/COMMIT/TEST/BOOT), HELLO 보드 정보, 펌웨어 식별 문자열 |
-| `src/core/storage.c/.h` | 설정 블롭 저장, CRC 검사, 슬롯 찾기 (문자열, 패턴 암호, 설정 슬롯) |
+| `src/core/protocol.c/.h` | Vendor HID 명령 처리 (HELLO/READ/WRITE/COMMIT/TEST/BOOT, 배터리 보드는 BATTERY), HELLO 보드 정보, 펌웨어 식별 문자열 |
+| `src/core/storage.c/.h` | 설정 블롭 저장, CRC 검사, 슬롯 찾기 (문자열, 패턴 암호, 설정 슬롯). 보드 옵션 `BOARD_STORE_ONE_BUFFER`(지금 SAYO_2B3만): RAM 버퍼 하나로 받음 → 받는 중엔 슬롯 길이 0, 잠금 단계·자동 잠금 분은 따로 보관, COMMIT 거부 때 저장본 다시 읽음 |
 | `src/core/macro.c/.h` | 매크로 해석과 비동기 출력 (키 누름/뗌, DELAY) |
-| `src/core/battery.c/.h` | 배터리 추정(`BOARD_BATTERY` 보드만, 다른 보드 0 B): VDD + 650 mV, 4회 평활, Li-Po 곡선 %, 저전압 3.4 V·위험 3.1 V 플래그. LED 표시 없음 |
+| `src/core/battery.c/.h` | 배터리 추정(`BOARD_BATTERY` 보드만, 다른 보드 0 B): VDD + 650 mV, 4회 평활, Li-Po 곡선 %, 저전압 3.4 V·위험 3.1 V 플래그, 케이블 꽂기 전 값 보관, 배터리 상태 명령 결과(`battery_report`). LED 표시 없음 |
 | `src/core/bt_led.c/.h` | SAYO_2B3 상태 LED(`BOARD_BT_LED` 보드만, 다른 보드 0 B): 슬롯 파랑, 동글·유선 초록, 저전압 빨강, 키 흰색, 잔량 표시. 시간·값은 `bt_led.h` 상수 ([BOARD_SAYO_2X3B_RGB 4절](../../docs/board/BOARD_SAYO_2X3B_RGB.md#led-의미)) |
 | `src/hal/hal.h` | **추상 하드웨어**: 기능 코드가 쓰는 이름 목록과 설명, 칩 구현 고르기 |
 | `src/hal/ch552/hal_ch552.c/.h` | CH55x 구현: 핀 설정, 스위치·노브 읽기(포트 직접), WS2812 LED, DataFlash(코어 `eeprom_*` 매크로), 칩 고유 ID, 부트로더 |
 | `src/hal/ch552/usb/` | USB 디스크립터, 요청 처리, 엔드포인트 (CH55xDuino qmkCompatibleKeyboard 예제 기반, LGPL-2.1) |
 | `src/hal/ch552/main_min.c` | 코어의 `main.c` 대신 쓰는 작은 `main()`과 인터럽트 표(USB, Timer0) |
-| `src/core/bt_app.c/.h` | SAYO_2B3 앱 동작: 키 흰색, USB 연결 초록, 배터리 10초마다 측정·저전압 빨강·위험 시 절전(USB 연결 중엔 안 함), 키 1+6 1초 잔량 파랑, `DEMO=1` 시험 동작 |
-| `src/hal/ch573/` | CH573 HAL(`hal_ch573.c`, `main.c`: TMR0, 키, Data-Flash 설정, USB 부트 키보드 + 벤더 HID `1209:C55D`, BOOT, 절전), 보드 파일 `sayo_2b3.h`, `battery_ch573.c`(VBAT −12 dB, 16회 평균), `led_ch573.c`(상태 LED 핀) |
+| `src/core/bt_app.c/.h` | SAYO_2B3 앱 동작: 키 흰색, USB 연결 초록, 배터리 10초마다 측정·저전압 빨강·위험 시 절전(USB 연결 중엔 안 함), 키 1+6 1초 잔량 파랑, `DEMO=1` 시험 동작. BLE(`BOARD_BLE`): USB 연결 중엔 끊고 광고 멈춤, 광고 60초 뒤 멈춤·키로 재시작, 키 5 누른 채 켜면 페어링 |
+| `src/hal/ch573/` | CH573 HAL(`hal_ch573.c`, `main.c`: TMR0, 키, Data-Flash 설정, USB 부트 키보드 + 벤더 HID `1209:C55D`, BOOT, 절전), `ble_ch573.c`(BLE HID 키보드: 광고·본딩·보고서·배터리 서비스), 보드 파일 `sayo_2b3.h`, `battery_ch573.c`(VBAT −12 dB, 16회 평균), `led_ch573.c`(상태 LED 핀) |
 
 ### PC 검사 (tests/host)
 
 - `tests/host/run.py`로 기능 코드(`src/core`의 `storage.c`, `macro.c`, `lock.c`, `input.c`, `led.c`, `protocol.c`)를 PC(gcc)에서 검사함
-- `src/boards`의 **모든 보드**를 빌드해 돎
+- `src/boards`의 **모든 보드**를 빌드해 돎. 그 밖에 시험용 보드 `TEST_BAT`(배터리 명령), SAYO_2B3 `bt_app` 시험(`bt_app_test.c`)
 - 보통은 `uv run pytest` 한 번으로 실행됨(`tests/gui/test_host_firmware.py` 래퍼, gcc 없으면 skip). 교차 검사(`test_consistency.py`)도 함께
 - 하드웨어 대신 `tests/host/stub/hal_host.h` 사용
 - 확인 항목:
@@ -395,6 +400,9 @@ flowchart TB
   - 가짜 스위치·노브 선을 넣었을 때의 입력과 LED 표시
   - `protocol.c`의 HELLO·READ·WRITE·COMMIT 응답을 GUI 파서로 해석
   - 보드 이름 8자 검사(gcc에서만, SDCC는 코드 크기 때문에 끔)
+  - 배터리 상태 명령(`0x07`): 배터리 보드만 응답, 다른 보드 `BAD_CMD`
+  - 버퍼 하나 저장(`BOARD_STORE_ONE_BUFFER`): 받는 중 동작, COMMIT 거부 뒤 복구
+  - `bt_app` BLE 시나리오: USB 대기, 재연결, 60초 광고 멈춤, 키로 재시작, 페어링 부팅, USB 꽂고 빼기
 
 ```powershell
 uv run python tests\host\run.py

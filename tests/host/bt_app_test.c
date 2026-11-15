@@ -1,6 +1,7 @@
 // Host check of src/core/bt_app.c with bt_led.c and battery.c (tests/host/run.py
 // check_bt_app). Stubs the CH573 HAL calls; prints "<name> <LED bits hex> <sleep>".
-// Built twice: -DBTLED_DEMO=0 (normal) and 1 (LED check build), with
+// Built three times: -DBTLED_DEMO=0 (normal) and 1 (LED check build), and
+// with BOARD_BLE (the BLE link: advertising, USB, timeout, pairing), with
 // -DBOARD_HEADER naming a header that sets BOARD_BT_LED and BOARD_BATTERY.
 #include <stdio.h>
 #include "core/battery.h"
@@ -14,6 +15,27 @@ static uint32_t t;
 int16_t hal_battery_vdd_mv(void) { return vdd; }
 void hal_btled_init(void) { leds = 0; }
 void hal_btled_write(uint8_t bits) { leds = bits; }
+
+#if BOARD_BLE
+// The BLE HAL: the test sets the state a host would bring about
+static uint8_t bleState, bleBonded, blePair = 9;
+static int bleStarts, bleStops, bleForgets;
+void hal_ble_start(uint8_t pair) {
+  blePair = pair;
+  bleState = HAL_BLE_ADV;
+  bleStarts++;
+}
+void hal_ble_stop(void) {
+  bleState = HAL_BLE_IDLE;
+  bleStops++;
+}
+uint8_t hal_ble_state(void) { return bleState; }
+uint8_t hal_ble_bonded(void) { return bleBonded; }
+void hal_ble_forget(void) {
+  bleBonded = 0;
+  bleForgets++;
+}
+#endif
 
 // Run until time `until` with these keys and USB state; 1 if bt_task asked for sleep
 static int run(uint32_t until, uint16_t keys, uint8_t usb) {
@@ -42,10 +64,87 @@ __attribute__((unused)) static uint8_t seen(int n) {
   return s;
 }
 
+#if BOARD_BLE
+// LEDs lit at any time in the next n ms (no USB, no keys)
+static uint8_t seenBle(int n) {
+  uint8_t s = 0;
+  for (; n > 0; n--) {
+    run(t + 1, 0, 0);
+    s |= leds;
+  }
+  return s;
+}
+
+static void ble(const char *name) {
+  printf("%s starts %d stops %d forgets %d pair %d state %d\n", name, bleStarts, bleStops, bleForgets,
+         blePair, bleState);
+}
+#endif
+
 int main(void) {
   t = 0;
-  bt_setup(t);
-#if !BTLED_DEMO
+#if BOARD_BLE
+  // Bonded host, normal power-on, no cable
+  bleBonded = 1;
+  bt_setup(t, 0);
+  run(1400, 0, 0);
+  ble("ble_wait_usb");                      // nothing yet: USB may come up
+  run(1600, 0, 0);
+  ble("ble_reconnect");                     // advertising to the bonded host
+  printf("ble_reconnect_seen %02x\n", seenBle(2500)); // L6 slow blink
+  bleState = HAL_BLE_READY;                 // the host is back
+  show("ble_connected", run(t + 100, 0, 0)); // L6 on
+  show("ble_connected_end", run(t + 3000, 0, 0)); // off after 3 s
+  run(t + 100, 0, 1);                       // cable in, configured
+  ble("ble_usb");                           // link dropped
+  show("ble_usb_led", run(t + 100, 0, 1));  // green
+  run(t + 100, 0, 0);                       // cable out
+  ble("ble_usb_out");                       // advertising again
+  run(t + 59000, 0, 0);
+  ble("ble_adv_59s");
+  run(t + 1000, 0, 0);
+  ble("ble_adv_timeout");                   // stopped after 60 s
+  show("ble_adv_off_led", run(t + 100, 0, 0));
+  run(t + 50, 0x04, 0);                     // any key: advertising again
+  run(t + 50, 0, 0);
+  ble("ble_key_restart");
+  bleState = HAL_BLE_LINK;                  // a host is encrypting the link
+  run(t + 70000, 0, 0);
+  ble("ble_no_timeout_linking");            // no timeout meanwhile
+  bleState = HAL_BLE_READY;
+  run(t + 100, 0, 0);
+  bleState = HAL_BLE_IDLE;                  // link lost
+  run(t + 100, 0, 0);
+  ble("ble_link_lost");                     // reconnecting
+  // Key 5 held at power-on: bond forgotten, advertising to anyone
+  bleStarts = bleStops = 0;
+  bleState = HAL_BLE_IDLE;
+  bt_setup(t, 0x10);
+  run(t + 1600, 0x10, 0);
+  ble("ble_pair");
+  printf("ble_pair_seen %02x\n", seenBle(1000)); // L6 fast blink
+  bleState = HAL_BLE_READY;
+  bleBonded = 1;                            // paired and bonded
+  run(t + 100, 0, 0);
+  bleState = HAL_BLE_IDLE;
+  run(t + 100, 0, 0);
+  ble("ble_pair_then_lost");                // the new host only
+  // Nothing bonded, normal power-on: advertising to anyone
+  bleStarts = bleStops = bleForgets = 0;
+  bleBonded = 0;
+  bleState = HAL_BLE_IDLE;
+  bt_setup(t, 0);
+  run(t + 1600, 0, 0);
+  ble("ble_unbonded");
+  // Cable in at power-on: no advertising at all
+  bleStarts = bleStops = 0;
+  bleBonded = 1;
+  bleState = HAL_BLE_IDLE;
+  bt_setup(t, 0);
+  run(t + 3000, 0, 1);
+  ble("ble_usb_boot");
+#elif !BTLED_DEMO
+  bt_setup(t, 0);
   show("usb_off", run(100, 0, 0));          // nothing lit on battery, full cell
   show("usb_on", run(200, 0, 1));           // green
   show("key_down", run(215, 0x02, 1));      // white blip + green
@@ -73,6 +172,7 @@ int main(void) {
   show("crit_usb", run(115000, 0, 1));
   show("crit_batt", run(116000, 0, 0));
 #else
+  bt_setup(t, 0);
   show("demo_start", run(100, 0, 1));       // green (USB)
   tap(0x01, 1);                             // key 1: slot 2
   show("demo_slot2", run(t + 10, 0, 1));    // blue 2 + green

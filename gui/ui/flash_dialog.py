@@ -207,19 +207,20 @@ class FirmwareDialog(QDialog):
             self.board_label.setText(f"⚠ 연결되어 있던 키보드는 {name}입니다. 다른 보드를 골랐습니다.")
             self.board_label.setStyleSheet(f"color: {ORANGE};")
         else:
-            self.board_label.setText(f"연결되어 있던 키보드: {name} · 업데이트 모드: {self.boot_hint} 꽂기")
+            self.board_label.setText(f"연결되어 있던 키보드: {name} · 업데이트 모드: {self.spec.enter_boot('기')}")
             self.board_label.setStyleSheet("")
         if not self.window_flash:
-            how = (f"키보드를 뽑았다가 <b>{self.boot_hint}</b> 꽂고, PC에서 <code>{self.spec.flash_text}</code>를 "
+            how = (f"{self.spec.power_off} <b>{self.spec.enter_boot('고')}</b>, PC에서 <code>{self.spec.flash_text}</code>를 "
                    "실행하세요 (wchisp). 장입 뒤 브리지를 떼고 다시 꽂습니다. "
                    if self.spec.flash_text else "")
             self.hint.setText(f"⚠ {self.spec.name}({self.spec.chip_name})는 이 창으로 장입할 수 없습니다. "
                               + how + "저장된 설정이 지워질 수 있으니 먼저 백업하세요.")
             return
         hint = ("키보드가 연결되어 있고 잠금이 풀려 있으면 [업데이트 모드로 전환]을 누르세요. "
-                f"잠겨 있거나 연결되어 있지 않으면 키보드를 뽑았다가 <b>{self.boot_hint}</b> 다시 꽂으세요. ")
+                f"잠겨 있거나 연결되어 있지 않으면 {self.spec.power_off} "
+                f"<b>{self.boot_hint}</b> 다시 {self.spec.power_on('세요')}. ")
         if self.spec.hidboot:
-            hint += "업데이트 모드에서는 LED가 보라색입니다. "
+            hint += f"업데이트 모드에서는 {self.spec.boot_led}. "
             if self.spec.factory_boot:
                 hint += f"{self.spec.factory_boot}. "
         elif not self.identified and self.spec.factory_boot:
@@ -433,13 +434,13 @@ class FirmwareDialog(QDialog):
         if reasons and not self.confirm(
                 "펌웨어 확인",
                 "\n".join(reasons) + "\n키보드에 맞지 않으면 키가 동작하지 않을 수 있습니다.\n"
-                f"그래도 장입할까요? (실패해도 {self.boot_hint} 꽂으면 다시 장입할 수 있습니다)"):
+                f"그래도 장입할까요? (실패해도 {self.spec.enter_boot('면')} 다시 장입할 수 있습니다)"):
             return False
         if force_needed and not self.confirm_force(
                 f"{self.hex_warning}입니다. {self.spec.name} 부트로더는 이 파일을 받지 않습니다.\n"
                 "시험 펌웨어처럼 일부러 쓰는 경우에만 강제로 장입하세요. "
                 "맞지 않으면 키가 동작하지 않을 수 있습니다\n"
-                f"(그래도 {self.boot_hint} 꽂으면 다시 장입할 수 있습니다)."):
+                f"(그래도 {self.spec.enter_boot('면')} 다시 장입할 수 있습니다)."):
             return False
         if self.spec.hidboot:
             return self._start_hidboot(force=force_needed)
@@ -490,7 +491,7 @@ class FirmwareDialog(QDialog):
             self._hid_flash_fn(image, progress, force=force)
         except (hidboot.BootError, hidboot.TransportError, OSError) as e:
             self._append(f"✖ {e}")
-            self.stage_label.setText(f"✖ 실패: {e}. 키보드를 뽑았다가 {self.boot_hint} 꽂고 다시 시도하세요 "
+            self.stage_label.setText(f"✖ 실패: {e}. {self.spec.power_off} {self.spec.enter_boot('고')} 다시 시도하세요 "
                                      "(앱이 지워졌어도 업데이트 모드로 들어갑니다)")
             self.stage_label.setStyleSheet(f"font-weight: bold; color: {RED};")
         else:
@@ -537,9 +538,9 @@ class FirmwareDialog(QDialog):
         else:
             if self.progress.stage == flasher.STAGE_WAITING:
                 reason = (f"{flasher.WAIT_SECONDS}초 안에 칩을 찾지 못했습니다. "
-                          f"{self.boot_hint} 다시 꽂고, 칩이 목록에 나타나면 [장입]을 다시 누르세요")
+                          f"{self.boot_hint} 다시 {self.spec.power_on('고')}, 칩이 목록에 나타나면 [장입]을 다시 누르세요")
             else:
-                reason = (f"장입이 끝나지 않았습니다. 키보드를 뽑았다가 {self.boot_hint} 꽂고 다시 시도하세요 "
+                reason = (f"장입이 끝나지 않았습니다. {self.spec.power_off} {self.spec.enter_boot('고')} 다시 시도하세요 "
                           "(업데이트 모드는 그대로 들어갈 수 있습니다)")
             self.stage_label.setText(f"✖ 실패 (종료 코드 {code}). {reason}")
             self.stage_label.setStyleSheet(f"font-weight: bold; color: {RED};")

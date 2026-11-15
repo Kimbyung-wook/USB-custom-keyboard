@@ -331,6 +331,7 @@ class LockPatternEditor(QGroupBox):
         self.steps: list[int] = []
         self.board = board
         self.autolock_supported = True
+        self.autolock_problem = ""
 
         self.display = QLabel()
         self.display.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -428,8 +429,10 @@ class LockPatternEditor(QGroupBox):
         self.autolock_spin.blockSignals(False)
         self._refresh()
 
-    def set_autolock_supported(self, supported: bool) -> None:
+    def set_autolock_supported(self, supported: bool, problem: str = "") -> None:
+        """problem: why not, e.g. "이 보드는 자동 잠금을 지원하지 않습니다"."""
         self.autolock_supported = supported
+        self.autolock_problem = problem or "이 펌웨어는 자동 잠금을 지원하지 않습니다 (펌웨어 1.4.0 이상 필요)"
         self._refresh()
 
     def add_step(self, slot: int) -> None:
@@ -466,7 +469,7 @@ class LockPatternEditor(QGroupBox):
         # Without a pattern there is nothing to lock
         self.autolock_spin.setEnabled(self.autolock_supported and n > 0)
         if not self.autolock_supported:
-            self.autolock_note.setText("이 펌웨어는 자동 잠금을 지원하지 않습니다 (펌웨어 1.4.0 이상 필요)")
+            self.autolock_note.setText(self.autolock_problem)
         elif not n:
             self.autolock_note.setText("패턴 암호를 정하면 쓸 수 있습니다")
         elif self.autolock():

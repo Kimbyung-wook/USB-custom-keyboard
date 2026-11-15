@@ -38,6 +38,13 @@ STATUS_TEXT = {ST_BAD_CMD: "알 수 없는 명령", ST_BAD_ARG: "인수 오류",
 TIMEOUT_MS = 1000
 ERASE_TIMEOUT_MS = 5000
 
+
+def check_timeout_ms(length: int) -> int:
+    """CHECK runs CRC32 over the whole app in the bootloader (CH573: nibble
+    table from flash, up to 446,464 B), then writes the app info: 1 s plus
+    10 ms per KB, e.g. 5.4 s for 446,464 B."""
+    return TIMEOUT_MS + length // 100
+
 # HELLO [3] major: the command set this module speaks. Another major is refused
 # even with --force (that only skips the image's board check)
 BOOT_MAJOR = 1
@@ -148,7 +155,8 @@ class Bootloader:
             if progress:
                 progress(done, len(image))
         crc = zlib.crc32(image)
-        self.request(CMD_CHECK, struct.pack("<II", len(image), crc))
+        self.request(CMD_CHECK, struct.pack("<II", len(image), crc),
+                     timeout_ms=check_timeout_ms(len(image)))
 
     def run(self) -> None:
         self.request(CMD_RUN)
@@ -224,15 +232,18 @@ def open_first(wait_s: float = 0.0) -> Bootloader:
 # ------------------------------------------------------------------ mock
 
 class MockBootloader(Transport):
-    """Simulates firmware/bootloader_ch32v203/main.c for tests."""
+    """Simulates firmware/bootloader_ch32v203/main.c for tests (CH573:
+    app_addr=0x3000, app_max=446464)."""
 
     def __init__(self, board: str = "SAYO_3X3", flash_error: bool = False,
-                 version: tuple[int, int] = (1, 0), write_max: int = 56):
+                 version: tuple[int, int] = (1, 0), write_max: int = 56,
+                 app_addr: int = APP_ADDR, app_max: int = APP_MAX):
         self.board = board
+        self.app_addr, self.app_max = app_addr, app_max
         self.version = version
         self.write_max = write_max
         self.flash_error = flash_error
-        self.flash = bytearray(b"\xff" * APP_MAX)
+        self.flash = bytearray(b"\xff" * app_max)
         self.info: tuple[int, int] | None = None  # (length, crc)
         self.erased = False
         self.ran = False
@@ -247,24 +258,25 @@ class MockBootloader(Transport):
         cmd = rq[0]
         if cmd == CMD_HELLO:
             body = bytes(self.version) + self.board.encode().ljust(16, b"\x00") + bytes(range(12))
-            body += struct.pack("<IIHBB", APP_ADDR, APP_MAX, PAGE_SIZE, self.info is not None,
+            body += struct.pack("<IIHBB", self.app_addr, self.app_max, PAGE_SIZE, self.info is not None,
                                 self.write_max)
             self._reply(rq, ST_OK, body)
         elif cmd == CMD_ERASE:
-            self.flash[:] = b"\xff" * APP_MAX
+            self.flash[:] = b"\xff" * self.app_max
             self.info, self.erased = None, not self.flash_error
             self._reply(rq, ST_OK if self.erased else ST_FLASH_ERR)
         elif cmd == CMD_WRITE:
             addr, n = struct.unpack_from("<IB", rq, 2)
-            ok = (self.erased and 0 < n <= 56 and addr >= APP_ADDR
-                  and addr + n <= INFO_ADDR and addr % PAGE_SIZE + n <= PAGE_SIZE)
+            a = addr - self.app_addr
+            ok = (self.erased and 0 < n <= 56 and a >= 0
+                  and a + n <= self.app_max and addr % PAGE_SIZE + n <= PAGE_SIZE)
             if ok:
-                self.flash[addr - APP_ADDR:addr - APP_ADDR + n] = rq[8:8 + n]
+                self.flash[a:a + n] = rq[8:8 + n]
                 self.writes += 1
             self._reply(rq, ST_OK if ok else ST_BAD_ARG)
         elif cmd == CMD_CHECK:
             length, crc = struct.unpack_from("<II", rq, 2)
-            if not 8 <= length <= APP_MAX:
+            if not 8 <= length <= self.app_max:
                 return self._reply(rq, ST_BAD_ARG)
             got = zlib.crc32(bytes(self.flash[:length]))
             if got != crc:
