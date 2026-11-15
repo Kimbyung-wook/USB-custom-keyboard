@@ -26,6 +26,10 @@
 
 ## 미출시
 
+- [문서] JUZH_3B4 제조사 JieLi(π 마크가 JieLi 로고와 일치, 사용자 확인), 형번 미정(AC63 계열 추정), 1번 핀은 실크 점뿐이라 추정 유지, 체크리스트 16(형번 확정) 추가, 이식 메모(자체 SDK·장입 도구, 백업 방법 미확인) — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-후보-모두-추정-크리스털-주파수로-구별, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 칩 4 × 4 mm 반영: Telink TLSR8258 불일치 3곳(USB·사이 핀·크기)으로 낮음, JieLi 32핀 배치와 한 변 차이로 맞아 유력(추정, 1번 핀 재확인 필요). 체크리스트 1·13 완료, 15 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-32핀-핀-배치-대조-pm-분석-추정-2026-11-15, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] JUZH_3B4 쓰기 명령 조사 중간 결과(공개 도구 884x 03 FE 형식·키ID·LED 패킷, 공장 프로그램의 03 FA·EF·FC 명령과 기종 분기, FA 변형 가능성) 조사 중으로 기록 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#쓰기-명령-조사-중-2026-11-15 — 반영: ☑
+- [문서] JUZH_3B4 공장 채널 읽기 시험 결과: 조회 명령 03 FB FB FB → 응답 03 FB 0C 02 0B(키 12·노브 2 추정), 수동 대기·0 채운 패킷은 응답 없음, 쓰기 미시험 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#공장-채널-읽기-시험-2026-11-15 — 반영: ☑
 - [문서] JUZH_3B4 공장 설정 프로그램(MINI_KEYBOARD, 문자열만 봄)과 ch57x-keyboard-tool 소스 대조: 설정 프로토콜 884x 계열 추정(Report ID 3, 64바이트), 장입 없이 키 설정만 바꾸는 길(사용자 승인 뒤) 기록 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#공장-설정-프로그램프로토콜-884x-계열-추정 — 반영: ☑
 - [문서] JUZH_3B4 USB 열거(514C:8850, 벤더 HID + 키보드·마우스·Consumer)와 크리스털-안테나 사이 핀 없음 반영. Telink 32핀도 낮음, 조건(USB + BLE + 24 MHz + 32핀)을 맞는 후보 미확정. 체크리스트 3·11 완료, 14(벤더 HID 프로토콜) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
 - [문서] JUZH_3B4 Telink TLSR8258 데이터시트 대조(24 MHz·32핀·USB 핀 없음 일치, 안테나-크리스털 사이 AVDD1V2 한 핀 불일치) 반영, 식별 체크리스트 11~13(사이 핀, 안테나 인덕터 연결 핀, 5 × 5 mm) 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#칩-후보-모두-추정-크리스털-주파수로-구별 — 반영: ☑
