@@ -8,7 +8,16 @@
 #include <string.h>
 
 #define VID 0x1209
+// Another firmware may reuse this file with its own PID and product name
+// (firmware/jl_usbkey_ch32v203: -DUSB_PID=0xC560 -DUSB_PRODUCT=...)
+#ifdef USB_PID
+#define PID USB_PID
+#else
 #define PID 0xC55E // the app is 0xC55D
+#endif
+#ifndef USB_PRODUCT
+#define USB_PRODUCT "MacroKeyboard Bootloader"
+#endif
 
 static const uint8_t dev_desc[18] = {
     18, 1, 0x00, 0x02, 0, 0, 0, 64, VID & 0xFF, VID >> 8, PID & 0xFF, PID >> 8,
@@ -27,7 +36,7 @@ static const uint8_t cfg_desc[41] = {
     7, 5, 0x81, 3, 64, 0, 1,                             // EP1 IN, 1 ms
     7, 5, 0x01, 3, 64, 0, 1};                            // EP1 OUT, 1 ms
 
-static const char *const strings[] = {"MacroKeyboard", "MacroKeyboard Bootloader"};
+static const char *const strings[] = {"MacroKeyboard", USB_PRODUCT};
 
 // EP0 64 B; EP1 OUT at 0, IN at 64 (TX_EN + RX_EN, single buffers)
 static __attribute__((aligned(4))) uint8_t ep0[64];

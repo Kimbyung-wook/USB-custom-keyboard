@@ -61,7 +61,7 @@ mingw32-make
 - Makefile을 고친 뒤에는 `rm -rf build` 후 빌드 (make가 `build/src/*.c`를 지움)
   - 본 펌웨어(`Makefile.ch32v203`)·부트로더 Makefile은 헤더 의존성(`-MMD -MP`)이 있어 헤더만 고치면 다시 빌드됨. Makefile을 고쳤을 때는 둘 다 `rm -rf build`
 - QingKe V4는 즉시값 CSR 명령(`csrrci` 등)이 없음 → 전역 인터럽트는 CSR 0x800으로 제어
-- 같은 논리(`test_ch32v203.c`)를 CH573 시험([test_ch573](../../ch573/test_ch573/README.md))과 AC6956C 시험([test_ac6956c](../../ac6956c/test_ac6956c/README.md), 미검증 초안)이 `TEST_HAL_H`·`TEST_PINS_H`로 칩 계층·핀 표를 바꿔 다시 씀. 기본값 그대로면 CH32V203 바이너리는 같음(확인, 2026-11-13)
+- 같은 논리(`test_ch32v203.c`)를 CH573 시험([test_ch573](../../ch573/test_ch573/README.md))과 AC6321A 시험([test_ac6321a](../../ac6321a/test_ac6321a/README.md), 미검증 초안)이 `TEST_HAL_H`·`TEST_PINS_H`로 칩 계층·핀 표를 바꿔 다시 씀. 기본값 그대로면 CH32V203 바이너리는 같음(확인, 2026-11-13)
 
 ## 장입 방법
 

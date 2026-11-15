@@ -454,6 +454,9 @@ int main(void) {
     if (c & 32) hal_hid_write('L');
     hal_hid_write('\n');
   }
+#ifdef HAL_HAS_FLASH_INFO // the HAL types its flash identity (one line)
+  hal_flash_report();
+#endif
   {
     uint32_t f[3];
     if (hal_fault_read(f)) { // the last start came from a CPU exception

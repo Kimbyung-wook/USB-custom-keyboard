@@ -220,6 +220,12 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 - CH32V203 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)·CH573 보드(SAYO_2B3): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
   - 앱 영역만 지움 → 설정 유지. 끊기면 다음에 꽂을 때 부트로더에 머묾
+- JUZH_3B4(JieLi AC6321A, 준비 중): core만 있음, 화면·보드 목록 등록은 아직([보드 문서](../docs/board/BOARD_KEY12_JUZHEN_V01.md#jieli-sdk장입-조사))
+  - `core/jluboot.py`: ROM USB 다운로드 모드(UBOOT, USB 저장장치)에 SCSI 명령. jl-uboot-tool 일부 이식(MIT 고지). Windows SPTI, 드라이버 변경 없음(읽기·쓰기로 열 때 관리자 권한이 필요할 수 있음)
+  - 진입(USB만, 어댑터·동글 없음, `ENTRY_METHODS`·`enter_uboot`): 공장 펌웨어 = 벤더 HID(`514C:8850` Report 3)에 `03 EF EF` + 0 채움 65 B, 우리 펌웨어 = BOOT 명령. UBOOT 장치 `4C4A:3442`, 이름 "UBOOT"
+  - 순서: RAM 로더 실행(BD19 `bd19loader.bin`, 0x2000) → 칩·플래시 ID 대조 → 전체 백업(두 번 읽어 비교, SHA-256) → 지우기·쓰기·확인 읽기 → 재시작. 단 BD19 로더는 이 칩에서 동작 안 함(PM 시험, 2026-11-15) → 플래시 단계는 다시 설계 필요
+  - `core/jl_usbkey.py`: USB_KEY 어댑터(`1209:C560`) 명령. 어댑터는 보류(화면·보드 목록에서 안 씀)
+  - 가짜 장치 시험: `tests/gui/test_jluboot.py`
   - 부트로더가 없는 키보드(처음 설치): BOOT 브리지 + `tools\flash.ps1 -Board <보드> -Full` 안내. SAYO_2B3는 `flash.ps1 -Board sayo_2b3 -Full`을 먼저 실행한 뒤 PB22-GND + SW1 켜기(ROM 부트로더 6~15초 제한)
   - 부트로더가 옛 보드 이름을 알려도 보드 목록의 `aliases`(예: `BT_2X3` → SAYO_2B3)로 같은 보드로 봄
   - 자세히: [docs/BOOTLOADER_CH32V203.md](../docs/BOOTLOADER_CH32V203.md)

@@ -42,14 +42,14 @@
 
 - SAYO_2X6: 칩·키·LED 핀 확인 끝, 보드 파일 있음 → 위 생성 표와 아래 업데이트 표에 들어감. 본 펌웨어 키 입력·GUI 설정은 확인 전
 - SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 BLE 1단계(USB 유선 + 블루투스 HID 기기 1대, 배터리 %) 기판 확인(2026-11-14). 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록에 등록함 → 위 생성 표와 아래 업데이트 표에 들어감. 슬롯 3개·동글 연결은 2단계
-- JUZH_3B4: 12키 + 노브 2 무선, 칩 각인 `BP3D136-21A4`(QFN32 4×4, 24 MHz 크리스털, JieLi AC6956C로 판단(핀 대조 + 31번 도통, 사용자 확인)). 공장 펌웨어 USB `514C:8850`(HID). 식별 중, 공장 펌웨어 보존(장입 금지). 장입 경로는 ROM USB 모드(UBOOT, 조사·미검증)
+- JUZH_3B4: 12키 + 노브 2 무선, 칩 각인 `BP3D136-21A4`(QFN32 4×4, 24 MHz 크리스털, JieLi AC6321A(BD19 = AC632N 계열, BLE 전용)로 판단(UBOOT 이름 BD19, 실크 점 = 1번, RF·OSC·USB0 배치, 사용자 확인. AC6956C 판단 철회)). 공장 펌웨어 USB `514C:8850`(HID). 이식 준비 중, 공장 펌웨어·부트로더는 지워도 됨(사용자 결정, 장입은 "ㄱㄱ" 뒤). 장입 경로는 ROM USB 모드(UBOOT): 처음 설치는 공장 벤더 HID `03 EF EF`로 진입(확인), 이후 GUI BOOT 명령(설계 중)
 - SAYO_2X6 이름은 확정(기판 `2x6_RGB`). SAYO_2B3 이름도 확정(옛 이름 BT_2X3, 2026-11-13). JUZH_3B4 이름 확정(2026-11-15). 파일 위치와 할 일: [NEW_BOARD.md 9절](NEW_BOARD.md#9-식별-전-보드)
 
 | 이름 | 제품 | 배치 | 칩 | 문서 |
 |---|---|---|---|---|
 | SAYO_2X6 | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열 | CH32V203C8U6 (핀 확인 끝, 본 펌웨어 확인 중) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
 | SAYO_2B3 | SayoDevice 6키, 무선(별도 USB 동글), 기판 `2x3M_BLE_Ver1.1` | 2행 × 3열 | CH573F (QFN28), 동글 CH582F | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
-| JUZH_3B4 | 판매처 확인 필요, 12키 + 노브 2, 무선, 기판 `KEY12-JUZHEN_V01` | 3행 × 4열 | JieLi AC6956C(각인 `BP3D136-21A4`, 이식 방법 조사 중) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
+| JUZH_3B4 | 판매처 확인 필요, 12키 + 노브 2, 무선, 기판 `KEY12-JUZHEN_V01` | 3행 × 4열 | JieLi AC6321A(각인 `BP3D136-21A4`, 이식 준비 중) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
 
 ## 펌웨어 업데이트
 

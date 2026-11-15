@@ -33,6 +33,8 @@
 | USB VID:PID (우리 펌웨어, **코드**) | 앱 `1209:C55D` | 앱 `1209:C55D`, 자체 부트로더 `1209:C55E` | 앱 `1209:C55D`, 자체 부트로더 `1209:C55E` (CH32V203과 같은 값) | 동글 `1209:C55F` (공장 펌웨어는 `8089:0008`) |
 | 근거 | 자료표 CH552 V1F, 1장 개요 표·2장 특성·7장 전원 | 자료표 CH32V203 V2.6, 특성·표 2-1(제품 자원)·표 3-1-1(핀 정의) | CH573 EVT SDK(`Link.ld`, 드라이버), WCHISPTool·wchisp, 시험 펌웨어 `tests/hw/ch573/test_ch573` (2026-11-13), 자료표(전압) | CH583 EVT SDK(`Link.ld`), 자료표 CH583DS1(핀 배치만 확인), 동글 펌웨어 `firmware/dongle_ch582`, 칩 표기 사용자 관찰(2026-11-13) |
 
+- CH32V203 보조 펌웨어: JieLi USB_KEY 어댑터 [firmware/jl_usbkey_ch32v203](../firmware/jl_usbkey_ch32v203/README.md)(JUZH_3B4용, **보류**: 공장 벤더 HID `03 EF EF`로 UBOOT 진입이 돼 불필요). `1209:C560` "JieLi USB_KEY adapter", 우리 부트로더 없이 칩 전체 이미지(0x08000000~, 3,428 B), 자체 부트로더의 `usb_hid.c`를 PID·제품 이름만 바꿔 씀
+
 ## 우리 펌웨어의 사용량
 
 - 근거: [firmware/macro_keyboard/README.md](../firmware/macro_keyboard/README.md#크기) "크기" (빌드 시각에 따라 ±4 B), 동글은 [firmware/dongle_ch582/README.md](../firmware/dongle_ch582/README.md)

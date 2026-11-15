@@ -26,7 +26,7 @@
 - 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
 - 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6956C, 이식 방법 조사 중)
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6321A, 이식 준비 중)
 
 ## 핵심 요구사항
 
@@ -183,7 +183,7 @@ stateDiagram-v2
 | 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6_RGB.md](docs/board/BOARD_SAYO_2X6_RGB.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
 | 보드 세부 (준비 중) | [board/BOARD_SAYO_2X3B_RGB.md](docs/board/BOARD_SAYO_2X3B_RGB.md) | 6키(2×3) 블루투스(CH573F), 준비 중: 핀·부트로더·본 펌웨어 BLE 1단계 |
 | 보드 세부 (준비 중) | [board/BOARD_DONGLE_CH582.md](docs/board/BOARD_DONGLE_CH582.md) | SAYO_2B3용 USB 동글(CH582F): BLE → USB HID, 짝짓기(재꽂기), 장입 순서 |
-| 보드 세부 (준비 중) | [board/BOARD_KEY12_JUZHEN_V01.md](docs/board/BOARD_KEY12_JUZHEN_V01.md) | JUZH_3B4 12키 + 노브 2 무선. 칩 JieLi AC6956C(식별 기록, 체크리스트, 핀 표, SDK·장입 조사), 공장 펌웨어 보존 |
+| 보드 세부 (준비 중) | [board/BOARD_KEY12_JUZHEN_V01.md](docs/board/BOARD_KEY12_JUZHEN_V01.md) | JUZH_3B4 12키 + 노브 2 무선. 칩 JieLi AC6321A(식별 기록, 체크리스트, 핀 표, SDK·장입 조사), 공장 펌웨어 지워도 됨 |
 | 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
 | 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |
@@ -205,10 +205,11 @@ stateDiagram-v2
 | [tests/hw/mk6k1nl/test_mk6k1nl/](tests/hw/mk6k1nl/test_mk6k1nl/) | MK6K1NL(키마다 LED) 하드웨어 확인용 테스트 펌웨어: LED 체인 순서와 키 핀 |
 | [tests/hw/ch32v203/test_ch32v203/](tests/hw/ch32v203/test_ch32v203/) | CH32V203 보드(8키, 9키, 12키) 하드웨어 확인: GPIO 감시, LED 핀 탐색 |
 | [tests/hw/ch573/test_ch573/](tests/hw/ch573/test_ch573/) | CH573 보드(SAYO_2B3) 하드웨어 확인: 키·LED 핀, 전압(ADC) |
-| [tests/hw/ac6956c/test_ac6956c/](tests/hw/ac6956c/test_ac6956c/) | AC6956C 보드(JUZH_3B4) 하드웨어 확인, **미검증 초안**(빌드·장입 안 함) |
+| [tests/hw/ac6321a/test_ac6321a/](tests/hw/ac6321a/test_ac6321a/) | AC6321A 보드(JUZH_3B4) 하드웨어 확인, **미검증 초안**(빌드·장입 안 함) |
 | [tests/hw/ch582_dongle/](tests/hw/ch582_dongle/) | CH582 동글 핀 시험: 쓰는 USB 포트, 32 kHz 크리스털 |
 | [firmware/bootloader_ch573/](firmware/bootloader_ch573/) | CH573 자체 HID 부트로더 ([BOOTLOADER_CH573.md](docs/BOOTLOADER_CH573.md)) |
 | [firmware/dongle_ch582/](firmware/dongle_ch582/) | CH582 블루투스 동글 펌웨어 (빌드·PC 검사·장입 방법 포함) |
+| [firmware/jl_usbkey_ch32v203/](firmware/jl_usbkey_ch32v203/) | JieLi USB_KEY 어댑터(CH32V203): JUZH_3B4를 ROM 다운로드 모드(UBOOT)로 넣음. **보류**(`03 EF EF`로 진입돼 불필요), 빌드만 |
 | [tools/](tools/) | 개발용 스크립트 (아래 표) |
 
 | tools/ 파일 | 용도 |
