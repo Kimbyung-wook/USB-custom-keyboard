@@ -49,7 +49,7 @@
 |---|---|---|---|---|
 | SAYO_2X6 | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열 | CH32V203C8U6 (핀 확인 끝, 본 펌웨어 확인 중) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
 | SAYO_2B3 | SayoDevice 6키, 무선(별도 USB 동글), 기판 `2x3M_BLE_Ver1.1` | 2행 × 3열 | CH573F (QFN28), 동글 CH582F | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
-| JUZH_3B4 | 제조사 확인 필요, 12키 + 노브 2, 무선, 기판 `KEY12-JUZHEN_V01` | 3행 × 4열 | `BP3D136-21A4` (정체 미확인, 식별 중) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
+| JUZH_3B4 | 판매처 확인 필요, 12키 + 노브 2, 무선, 기판 `KEY12-JUZHEN_V01` | 3행 × 4열 | JieLi AC6956C(각인 `BP3D136-21A4`, 이식 방법 조사 중) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
 
 ## 펌웨어 업데이트
 

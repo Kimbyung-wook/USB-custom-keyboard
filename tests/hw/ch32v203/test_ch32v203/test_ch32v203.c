@@ -488,5 +488,8 @@ int main(void) {
       hal_adc_report();
     }
 #endif
+#ifdef HAL_HAS_IDLE // RTOS chips (AC6956C): watchdog and a yield to the system tasks
+    hal_idle();
+#endif
   }
 }

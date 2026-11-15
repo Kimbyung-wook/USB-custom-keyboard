@@ -204,10 +204,10 @@
 |---|---|---|---|---|
 | `SAYO_2X6` | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열, 12키 | CH32V203C8U6, 키·LED 핀 확인, 보드 파일·자체 부트로더 있음, 본 펌웨어 확인 중(2026-11-13) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
 | `SAYO_2B3` | SayoDevice 6키 | 2행 × 3열, 6키 | 블루투스. 기판 `2x3M_BLE_Ver1.1`, CH573F. 키·LED 핀 확인, 자체 부트로더 설치, 본 펌웨어 1단계(USB 유선), 동글 CH582F 미장입(2026-11-13) | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
-| `JUZH_3B4` | 제조사 확인 필요, 12키 + 노브 2 | 3행 × 4열, 12키 | 블루투스·배터리. 기판 `KEY12-JUZHEN_V01`, 칩 각인 `BP3D136-21A4`(정체 미확인). 식별 중, 공장 펌웨어 보존(2026-11-15) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
+| `JUZH_3B4` | 제조사 확인 필요, 12키 + 노브 2 | 3행 × 4열, 12키 | 블루투스·배터리. 기판 `KEY12-JUZHEN_V01`, 칩 JieLi AC6956C(각인 `BP3D136-21A4`). 이식 방법 조사 중, 공장 펌웨어 보존(2026-11-15) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
 
 - SAYO_2B3 파일 위치(지금): 보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`, HAL `src/hal/ch573/`, 빌드 `firmware/macro_keyboard/Makefile.ch573`, 자체 부트로더 `firmware/bootloader_ch573/`, 시험 펌웨어 `tests/hw/ch573/test_ch573/`, 동글 `firmware/dongle_ch582/`·`tests/hw/ch582_dongle/`. GUI 보드 목록·칩 표·`build_fw.ps1`·`flash.ps1`에 등록됨(2026-11-14)
-- JUZH_3B4: 문서만 있음. 칩을 알기 전에는 코드 파일을 만들지 않음(식별 체크리스트는 보드 문서 1절)
+- JUZH_3B4: 문서만 있음. 칩은 AC6956C로 정해짐. 시험 펌웨어는 펌웨어 세션이 초안을 만든 뒤 `tests/hw/` 아래에 둠(장입은 공장 펌웨어 백업·사용자 승인 뒤). 식별 체크리스트는 보드 문서 1절
 
 ### 9-1. 파일 구조
 
