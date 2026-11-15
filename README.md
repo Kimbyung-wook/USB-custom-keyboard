@@ -26,7 +26,7 @@
 - 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
 - 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F)
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, 칩 식별 중)
 
 ## 핵심 요구사항
 
@@ -158,7 +158,7 @@ stateDiagram-v2
 ## 하드웨어 요약
 
 - 보드별 칩·키·LED·부트로더·진입 키: [docs/BOARDS.md](docs/BOARDS.md)
-- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](docs/board/BOARD_SAYO_2X6_RGB.md), 준비 중 [SAYO_2B3](docs/board/BOARD_SAYO_2X3B_RGB.md), [동글](docs/board/BOARD_DONGLE_CH582.md))
+- 핀·확인 결과: `docs/board/BOARD_<보드>.md` ([MK6K1N](docs/board/BOARD_MK6K1N.md), [MK6K1NL](docs/board/BOARD_MK6K1NL.md), [SAYO_3X3](docs/board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](docs/board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](docs/board/BOARD_SAYO_2X6_RGB.md), 준비 중 [SAYO_2B3](docs/board/BOARD_SAYO_2X3B_RGB.md), [동글](docs/board/BOARD_DONGLE_CH582.md), [JUZH_3B4](docs/board/BOARD_KEY12_JUZHEN_V01.md))
 
 ## 폴더 구조
 
@@ -183,6 +183,7 @@ stateDiagram-v2
 | 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6_RGB.md](docs/board/BOARD_SAYO_2X6_RGB.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
 | 보드 세부 (준비 중) | [board/BOARD_SAYO_2X3B_RGB.md](docs/board/BOARD_SAYO_2X3B_RGB.md) | 6키(2×3) 블루투스(CH573F), 준비 중: 핀·부트로더·본 펌웨어 BLE 1단계 |
 | 보드 세부 (준비 중) | [board/BOARD_DONGLE_CH582.md](docs/board/BOARD_DONGLE_CH582.md) | SAYO_2B3용 USB 동글(CH582F): BLE → USB HID, 짝짓기(재꽂기), 장입 순서 |
+| 보드 세부 (준비 중) | [board/BOARD_KEY12_JUZHEN_V01.md](docs/board/BOARD_KEY12_JUZHEN_V01.md) | JUZH_3B4 12키 + 노브 2 무선. 칩 식별 중(후보 표, 식별 체크리스트), 공장 펌웨어 보존 |
 | 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
 | 설계 | [BOARD_INFO.md](docs/BOARD_INFO.md) | 보드 정보(HELLO), 보드 목록, 칩 표 설계 |
 | 설계 | [BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) | CH32V203 자체 HID 부트로더: 플래시 배치, 시작 순서, 명령 |

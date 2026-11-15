@@ -3,7 +3,7 @@
 - 시중 매크로 키보드를 이 프로젝트 펌웨어로 바꾸는 순서. 지금까지 4개 보드(MK6K1N, MK6K1NL, SAYO_3X3, SAYO_2X4)에서 밟은 순서를 정리
 - 보드별 결과는 [BOARDS.md](BOARDS.md)와 `docs/board/BOARD_<보드>.md`
 - 아래 1~7은 칩이 **CH552** 또는 **CH32V203**일 때. 다른 칩이면 [8. 새 칩](#8-새-칩-ch552ch32v203-외)부터 확인
-- 식별 전에 미리 준비하는 보드(SAYO_2X6, SAYO_2B3)와 파일 위치: [9. 식별 전 보드](#9-식별-전-보드)
+- 식별 전에 미리 준비하는 보드(SAYO_2X6, SAYO_2B3, JUZH_3B4)와 파일 위치: [9. 식별 전 보드](#9-식별-전-보드)
 
 ## 0. 한눈에 보기
 
@@ -196,15 +196,18 @@
 ## 9. 식별 전 보드
 
 - 칩·핀·LED·부트로더를 모르는 상태에서 미리 준비하는 범위와 파일 위치. 코드 세션도 이 표를 따름
-- 이름 확정: SAYO_2X6(기판 `2x6_RGB` 확인), SAYO_2B3(옛 이름 BT_2X3. Sayo 제품, 2B3 = 2×3 블루투스, 8자 이하, 2026-11-13)
+- 이름 확정: SAYO_2X6(기판 `2x6_RGB` 확인), SAYO_2B3(옛 이름 BT_2X3. Sayo 제품, 2B3 = 2×3 블루투스, 8자 이하, 2026-11-13), JUZH_3B4(기판 `KEY12-JUZHEN_V01`, 3B4 = 3×4 블루투스, 노브 2는 이름에 없음, 2026-11-15)
+- 블루투스 보드 이름: `<이름>_<행>B<열>`. 문서 파일은 기판 표기 그대로(예: `BOARD_KEY12_JUZHEN_V01.md`)
 - SAYO_2X6: 핀 확인 끝(2026-11-13). 아래 9-1의 "식별 후" 항목(보드 파일, `config.h`, `boards.py`, 빌드·장입 스크립트, host 시험)은 만들어짐. 그림(`buttons_<보드>.svg` 등)만 남음. 같은 칩이라 칩 표·HAL·시험 펌웨어는 새로 안 만듦
 
 | 이름 | 제품 | 배치 | 알려진 것 | 문서 |
 |---|---|---|---|---|
 | `SAYO_2X6` | SayoDevice 12키, 기판 `2x6_RGB` | 2행 × 6열, 12키 | CH32V203C8U6, 키·LED 핀 확인, 보드 파일·자체 부트로더 있음, 본 펌웨어 확인 중(2026-11-13) | [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md) |
 | `SAYO_2B3` | SayoDevice 6키 | 2행 × 3열, 6키 | 블루투스. 기판 `2x3M_BLE_Ver1.1`, CH573F. 키·LED 핀 확인, 자체 부트로더 설치, 본 펌웨어 1단계(USB 유선), 동글 CH582F 미장입(2026-11-13) | [BOARD_SAYO_2X3B_RGB.md](board/BOARD_SAYO_2X3B_RGB.md), 동글 [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md) |
+| `JUZH_3B4` | 제조사 확인 필요, 12키 + 노브 2 | 3행 × 4열, 12키 | 블루투스·배터리. 기판 `KEY12-JUZHEN_V01`, 칩 각인 `BP3D136-21A4`(정체 미확인). 식별 중, 공장 펌웨어 보존(2026-11-15) | [BOARD_KEY12_JUZHEN_V01.md](board/BOARD_KEY12_JUZHEN_V01.md) |
 
-- SAYO_2B3 파일 위치(지금): 보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`, HAL `src/hal/ch573/`, 빌드 `firmware/macro_keyboard/Makefile.ch573`, 자체 부트로더 `firmware/bootloader_ch573/`, 시험 펌웨어 `tests/hw/ch573/test_ch573/`, 동글 `firmware/dongle_ch582/`·`tests/hw/ch582_dongle/`. GUI 보드 목록·칩 표·`build_fw.ps1`에는 아직 없음
+- SAYO_2B3 파일 위치(지금): 보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`, HAL `src/hal/ch573/`, 빌드 `firmware/macro_keyboard/Makefile.ch573`, 자체 부트로더 `firmware/bootloader_ch573/`, 시험 펌웨어 `tests/hw/ch573/test_ch573/`, 동글 `firmware/dongle_ch582/`·`tests/hw/ch582_dongle/`. GUI 보드 목록·칩 표·`build_fw.ps1`·`flash.ps1`에 등록됨(2026-11-14)
+- JUZH_3B4: 문서만 있음. 칩을 알기 전에는 코드 파일을 만들지 않음(식별 체크리스트는 보드 문서 1절)
 
 ### 9-1. 파일 구조
 

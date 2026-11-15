@@ -26,6 +26,8 @@
 
 ## 미출시
 
+- [문서] JUZH_3B4 관찰 반영: 크리스털 24 MHz, 32핀(QFN32 추정), π 마크, 안테나 25번 핀(22번에서 정정), 공장 펌웨어 USB 안 잡힘. 칩 후보는 Telink TLSR825x 유력, JieLi AC63x는 32핀 칩 RF 핀(8/16/17번)이 25번과 달라 낮음 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md#1-개요, docs/BOARDS.md#준비-중-보드 — 반영: ☑
+- [문서] 새 보드 JUZH_3B4(12키 + 노브 2 무선, 기판 KEY12-JUZHEN_V01, 칩 BP3D136-21A4 식별 중) 문서: 칩 후보 표, 식별 체크리스트, 공장 펌웨어 보존 주의. 준비 중 보드 목록에 추가 — 문서 영향: docs/board/BOARD_KEY12_JUZHEN_V01.md, docs/BOARDS.md#준비-중-보드, docs/NEW_BOARD.md#9-식별-전-보드, README.md — 반영: ☑
 - [도구] gen_docs.py gen_pins가 CH573 보드(SAYO_2B3)도 만듦: 키 GPIO 표 + 상태 LED 표(L3~L8, GPIO, 색, 용도). LED 핀은 보드 파일 BOARD_BT_LED_PINS로 옮김(led_ch573.c가 읽음, 동작 같음), bt_led.h 주석의 핀과 다르면 생성 실패 — 문서 영향: docs/board/BOARD_SAYO_2X3B_RGB.md#3-칩-핀맵 — 반영: ☑
 - [문서] BT_2X3 별칭 통과를 기판 확인됨으로(앱 129,464 B·129,792 B 장입), 재페어링 반복 원인(Windows 옛 LTK 암호화 실패 → 끊음) 설명 — 문서 영향: docs/BOOTLOADER_CH573.md#보드-이름-확인과-별칭, docs/board/BOARD_SAYO_2X3B_RGB.md#자체-부트로더-ch573, docs/BOARD_INFO.md#5-1-보드-목록-guicoreboardspy-새-파일, docs/TROUBLESHOOTING.md#3-10-무선sayo_2b3-붙었다-끊기기를-반복 — 반영: ☑
 - [문서] SAYO_2B3 BLE 1단계·배터리 명령·스크립트·GUI 등록 반영: 기판 확인(2026-11-14) 결과, 키 5 재페어링·Windows 옛 장치 제거 안내, 붙었다 끊기기 반복 증상(TROUBLESHOOTING 3-10), BOARDS 업데이트 표에 SAYO_2B3 — 문서 영향: docs/board/BOARD_SAYO_2X3B_RGB.md#6-본-펌웨어에서의-동작, docs/MANUAL.md#블루투스-연결, docs/TROUBLESHOOTING.md#3-10-무선sayo_2b3-붙었다-끊기기를-반복, docs/BOARDS.md#펌웨어-업데이트, README.md#현재-상태 — 반영: ☑
