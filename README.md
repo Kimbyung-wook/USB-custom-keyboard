@@ -15,9 +15,9 @@
 <!-- gen:versions -->
 | 항목 | 버전 | 정의한 곳 |
 |---|---|---|
-| 펌웨어 | 1.7.1 | `firmware/macro_keyboard/src/config.h` |
-| GUI | 1.7.1 | `gui/core/version.py` |
-| Python 프로젝트 | 1.7.1 | `pyproject.toml` |
+| 펌웨어 | 1.7.2 | `firmware/macro_keyboard/src/config.h` |
+| GUI | 1.7.2 | `gui/core/version.py` |
+| Python 프로젝트 | 1.7.2 | `pyproject.toml` |
 | CH32V203 부트로더 | 1.0 | `firmware/bootloader_ch32v203/main.c` |
 | 설정 프로토콜 | 2 | `firmware/macro_keyboard/src/core/protocol.h` |
 | 보드 정보 (HELLO) | 1 | `firmware/macro_keyboard/src/config.h` |

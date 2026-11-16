@@ -24,6 +24,17 @@ volatile __xdata uint8_t UpPoint2_Busy;
 volatile __xdata uint8_t vendorRequestPending;
 
 void USBInit() {
+  // Force a clean re-enumeration at startup. If the D+ pull-up is already on
+  // (the ROM bootloader can reset us into the app without the cable being
+  // unplugged, e.g. after a vnproch55x "Reset OK"), the host keeps its old
+  // enumeration and the app can end up answering on a stale one -- seen as
+  // "device descriptor request failed" (Code 43), cleared only by replugging.
+  // Dropping the pull-up first makes the host see a disconnect, so it enumerates
+  // the app fresh. At a cold plug-in the pull-up is still off, so this only adds
+  // the delay (invisible at boot). hal_enter_bootloader does the same the other
+  // way (100 ms); 50 ms is enough for the host to register the disconnect here.
+  USB_CTRL = 0;
+  delayMicroseconds(50000); // ~50 ms
   USBDeviceCfg();         // Device mode configuration
   USBDeviceEndPointCfg(); // Endpoint configuration
   USBDeviceIntCfg();      // Interrupt configuration
