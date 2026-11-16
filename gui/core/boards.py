@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import chips
-from .protocol import (BOARD_FEATURE_AUTO_LOCK, BOARD_FEATURE_BATTERY, BOARD_FEATURE_LOCK,
+from .protocol import (BOARD_FEATURE_AUTO_LOCK, BOARD_FEATURE_BATTERY, BOARD_FEATURE_BLE, BOARD_FEATURE_LOCK,
                        BOARD_FEATURE_RGB_LED, Board)
 
 # vnproch55x -c: the bootloader entry pin written with the firmware
@@ -36,6 +36,9 @@ class BoardSpec:
     # Power switch to turn off and on instead of unplugging (a battery keeps the
     # board running when the cable is pulled), e.g. "SW1"
     power_switch: str = ""
+    # Bluetooth: the keyboard keeps pairings (bonds, slot hosts) outside the
+    # config blob; a factory reset clears them too
+    bluetooth: bool = False
     # What the board shows while our bootloader waits (hidboot boards)
     boot_led: str = "LED가 보라색입니다"
     # Flashed through the JieLi ROM's USB download mode (gui/core/jluboot.py)
@@ -161,9 +164,10 @@ BOARDS = (
     # Pins: firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h. Settings over USB only
     BoardSpec("SAYO_2B3", "6키 (2x3), 노브 없음, 블루투스 (CH573)",
               Board(keys=6, knobs=0, rows=2, name="SAYO_2B3", chip_id=0x73,
-                    # HELLO 0x0E: the firmware adds AUTO_LOCK to lock boards, BATTERY from BOARD_BATTERY
-                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_BATTERY | BOARD_FEATURE_AUTO_LOCK),
-              boot_config=0, boot_key="4", hidboot=True, power_switch="SW1",
+                    # HELLO 0x1E: the firmware adds AUTO_LOCK to lock boards, BATTERY from BOARD_BATTERY, BLE from BOARD_BLE
+                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_BATTERY | BOARD_FEATURE_AUTO_LOCK
+                    | BOARD_FEATURE_BLE),
+              boot_config=0, boot_key="4", hidboot=True, power_switch="SW1", bluetooth=True,
               boot_led="L5 빨강 LED가 깜빡입니다",
               # The ROM bootloader leaves after about 6-15 s without traffic: start
               # flash.ps1 first (it waits for the chip), then enter
@@ -195,7 +199,7 @@ PREPARING = (
     BoardSpec("JUZH_3B4", "12키 (3x4) + 노브 2개, 블루투스 (AC6321A)",
               Board(keys=12, knobs=2, rows=3, name="JUZH_3B4", chip_id=0,
                     features=BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
-              boot_config=0, jieli=True, chip_text="AC6321A", knob_column=True, knob_leds=3, rotatable=True,
+              boot_config=0, jieli=True, bluetooth=True, chip_text="AC6321A", knob_column=True, knob_leds=3, rotatable=True,
               boot_text="USB를 꽂은 채 GUI의 [UBOOT로 전환]으로",
               factory_boot="공장 펌웨어 상태면 USB를 꽂고 업데이트 창에서 진입 방법 "
                            "'공장 펌웨어'로 [UBOOT로 전환]을 누르세요 (벤더 HID 명령 03 EF EF)",

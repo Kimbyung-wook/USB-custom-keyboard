@@ -288,6 +288,7 @@ static void runInput(int count, char **steps) {
     if (s[0] == 'p') switches |= (hal_sw_t)(1u << atoi(s + 1));
     else if (s[0] == 'r') switches &= (hal_sw_t)~(1u << atoi(s + 1));
     else if (s[0] == 'e') encoderLines = (uint8_t)strtol(s + 1, NULL, 2);
+    else if (s[0] == 'y') ready = (uint8_t)atoi(s + 1); // link ready (USB/BLE)
     else if (s[0] == 'w') wait = (uint32_t)atoi(s + 1);
     runLoop(wait);
     printf("\n");

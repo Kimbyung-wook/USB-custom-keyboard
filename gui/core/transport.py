@@ -144,6 +144,7 @@ class MockDevice(Transport):
         self.connected = True
         self.in_bootloader = False
         self.commit_count = 0
+        self.bonds_cleared = 0              # CLEAR_BONDS answered (BLE boards)
         self.requests: list[p.Request] = []
         self._out: deque[bytes] = deque()
         self.lock_state = LOCK_OPEN
@@ -325,6 +326,14 @@ class MockDevice(Transport):
             if self.board_info is None or not self.board_info.features & p.BOARD_FEATURE_BATTERY:
                 return reply(p.Status.BAD_CMD)
             return reply(p.Status.OK, p.encode_battery_result(self.battery))
+
+        if cmd == p.Cmd.CLEAR_BONDS:   # allowed while locked: erases only
+            if self.board_info is None or not self.board_info.features & p.BOARD_FEATURE_BLE:
+                return reply(p.Status.BAD_CMD)
+            self.bonds_cleared += 1
+            self.connected = False     # reply, then reset: USB comes back
+            self._init_lock()
+            return reply(p.Status.OK)
 
         if cmd == p.Cmd.BOOT:
             # Reply first, then "drop off the bus".

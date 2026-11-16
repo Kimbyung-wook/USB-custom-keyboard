@@ -35,6 +35,17 @@ void hal_ble_forget(void) {
   bleBonded = 0;
   bleForgets++;
 }
+// Stage 2: three slots. The test only needs the current slot and the counts;
+// per-slot bonding behaviour lives in the chip HAL (ble_ch573.c), not here.
+static uint8_t bleSlot;
+static int bleSelects;
+uint8_t hal_ble_slot(void) { return bleSlot; }
+void hal_ble_select_slot(uint8_t s) {
+  if (s < 3 && s != bleSlot) {
+    bleSlot = s;
+    bleSelects++;
+  }
+}
 #endif
 
 // Run until time `until` with these keys and USB state; 1 if bt_task asked for sleep
@@ -78,6 +89,9 @@ static uint8_t seenBle(int n) {
 static void ble(const char *name) {
   printf("%s starts %d stops %d forgets %d pair %d state %d\n", name, bleStarts, bleStops, bleForgets,
          blePair, bleState);
+}
+static void chord(const char *name) {
+  printf("%s slot %d selects %d forgets %d\n", name, bleSlot, bleSelects, bleForgets);
 }
 #endif
 
@@ -143,6 +157,29 @@ int main(void) {
   bt_setup(t, 0);
   run(t + 3000, 0, 1);
   ble("ble_usb_boot");
+  // ---- stage 2 chords: pick a slot, re-pair, exactly two keys ----
+  bleStarts = bleStops = bleForgets = bleSelects = 0;
+  bleSlot = 0;
+  bleBonded = 0;
+  bleState = HAL_BLE_IDLE;
+  bt_setup(t, 0);
+  run(t + 1600, 0, 0);
+  run(t + 1900, BT_CHORD_SLOT2, 0); // key 6 + key 2, held 1.9 s
+  chord("chord_slot2_early");        // not yet
+  run(t + 300, BT_CHORD_SLOT2, 0);  // past 2 s
+  chord("chord_slot2");              // slot 1
+  run(t + 50, 0, 0);
+  run(t + 2100, BT_CHORD_SLOT3, 0); // key 6 + key 3
+  chord("chord_slot3");              // slot 2
+  run(t + 50, 0, 0);
+  run(t + 2100, BT_CHORD_SLOT1 | (1u << 3), 0); // three keys down
+  chord("chord_three_keys");         // no change
+  run(t + 50, 0, 0);
+  run(t + 2100, BT_CHORD_REPAIR, 0); // key 5 + key 6
+  chord("chord_repair");             // forgets the current slot
+  run(t + 50, 0, 0);
+  run(t + 2100, BT_CHORD_SLOT1, 0); // key 6 + key 1
+  chord("chord_slot1");              // back to slot 0
 #elif !BTLED_DEMO
   bt_setup(t, 0);
   show("usb_off", run(100, 0, 0));          // nothing lit on battery, full cell

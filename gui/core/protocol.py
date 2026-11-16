@@ -48,6 +48,7 @@ BOARD_FEATURE_RGB_LED = 0x01
 BOARD_FEATURE_LOCK = 0x02
 BOARD_FEATURE_BATTERY = 0x04     # answers BATTERY (battery boards, firmware 1.7)
 BOARD_FEATURE_AUTO_LOCK = 0x08   # settings slot with auto-lock minutes (firmware 1.4.0)
+BOARD_FEATURE_BLE = 0x10         # Bluetooth: answers CLEAR_BONDS (SAYO_2B3)
 AUTOLOCK_MAX_MINUTES = 255
 MAX_SLOTS = 63
 BOARD_NAME_LEN = 8
@@ -185,6 +186,7 @@ class Cmd(IntEnum):
     TEST = 0x05
     BOOT = 0x06
     BATTERY = 0x07   # boards with BOARD_FEATURE_BATTERY only (others: BAD_CMD)
+    CLEAR_BONDS = 0x08   # BOARD_FEATURE_BLE only (others: BAD_CMD); resets after the reply
 
 
 class Status(IntEnum):
@@ -365,6 +367,10 @@ class HelloInfo:
     @property
     def supports_battery(self) -> bool:
         return self.board_info is not None and bool(self.board_info.features & BOARD_FEATURE_BATTERY)
+
+    @property
+    def supports_ble(self) -> bool:
+        return self.board_info is not None and bool(self.board_info.features & BOARD_FEATURE_BLE)
 
     @property
     def autolock_problem(self) -> str:

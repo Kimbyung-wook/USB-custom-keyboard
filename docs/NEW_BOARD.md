@@ -187,7 +187,11 @@
 
 - 빌드: 칩마다 Makefile을 따로 둠(`firmware/macro_keyboard/Makefile.ch573`, SDK 경로 `MK_CH57X_SDK`). `tools/build_fw.ps1`에는 아직 없음
 - 보드 헤더: GUI 보드 목록(`gui/core/boards.py`)에 넣기 전에는 `src/boards/`가 아닌 HAL 폴더에 둠(`src/hal/ch573/sayo_2b3.h`, `-DBOARD_HEADER`로 지정). 보드 목록과 맞추는 교차 검사를 피하려는 것
-- 설정 저장: 코드 플래시와 따로 있는 Data-Flash 32 KB를 씀 → 앱을 업데이트해도 설정 유지. BLE 짝 정보(SNV)는 같은 Data-Flash 끝(0x7E00)이라 겹치지 않게 배치
+- 설정 저장: 코드 플래시와 따로 있는 Data-Flash 32 KB를 씀 → 앱을 업데이트해도 설정 유지. BLE 짝 정보(SNV)는 같은 Data-Flash 끝(SAYO_2B3 0x7C00~0x8000)이라 겹치지 않게 배치
+- BLE 본딩 수: SDK `CH57X_BLEInit`이 `SNVNum`을 정하지 않아 본딩 1개만 남음 → 여러 기기를 기억하려면 링커 `--wrap`으로 설정 함수를 바꿔 `SNVNum`을 늘림(SDK는 고치지 않음)
+- BLE 주소: 주소를 바꾸려면 `GAPROLE_STARTED`에서 `GAP_ConfigDeviceAddr(ADDRTYPE_STATIC, …)`(바이트와 종류를 함께). `MacAddr[]`에 static 형식 바이트를 넣으면 public 종류로 광고돼 페어링·입력이 깨짐
+- BLE 재연결: Windows는 본딩된 링크를 스스로 암호화하지 않음 → 주변기기가 보안 요청(`GAPBondMgr_PeriSecurityReq`)을 보내야 HID 입력이 나감. 휴대폰(RPA)은 주소가 바뀌어 화이트리스트로 거를 수 없음
+- 연결 중 Data-Flash 쓰기는 인터럽트를 막아 BLE 연결 설정(GATT 탐색)을 깨뜨릴 수 있음 → 끊길 때 씀
 - ROM 부트로더: 핀(PB22)을 GND에 댄 채 전원을 켜야 들어가고 몇 초 뒤 앱으로 돌아감. wchisp는 WinUSB 드라이버(Zadig) 필요 → 자체 HID 부트로더를 먼저 올리고 이후는 키 진입·BOOT 명령으로 업데이트
 - USB 장치 구현: 모르는 GET_DESCRIPTOR 요청에 STALL하면 Windows가 코드 10을 낼 수 있음 → 0바이트로 답함([BOOTLOADER_CH573.md](BOOTLOADER_CH573.md#windows-코드-10-고친-문제-2026-11-13))
 - 저속 클록: 32 kHz 크리스털 핀이 다른 용도(키)면 내부 LSI로 BLE를 돌림. 시험 펌웨어에서 크리스털 핀부터 확인

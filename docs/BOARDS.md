@@ -1,6 +1,7 @@
 # 지원 보드 요약
 
 - 보드마다 다른 점만 모은 표. 사용법·업데이트 절차는 공통 문서 [MANUAL.md](MANUAL.md)
+- 요구사항·식별자: [REQUIREMENTS.md](REQUIREMENTS.md)
 - 핀·LED·확인 결과는 보드별 세부 문서
 - 보드 이름 = HELLO 보드 이름 = 펌웨어 보드 파일(`firmware/macro_keyboard/src/boards/<보드>.h`) = GUI 보드 목록(`gui/core/boards.py`)
 
@@ -19,11 +20,11 @@
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
 - 칩: CH552 = CH552G, CH32V203 = CH32V203C8U6
-- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), SAYO_3X3 4096바이트(4070자), SAYO_2X4 4096바이트(4072자)
+- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), SAYO_3X3 4096바이트(4070자), SAYO_2X4 4096바이트(4072자), SAYO_2X6 4096바이트(4064자), SAYO_2B3 2048바이트(2028자)
 - RGB 보드의 LED: 색별 음극(캐소드) 묶음 + 키별 양극(애노드)
 - 세부 문서: [MK6K1N](board/BOARD_MK6K1N.md), [MK6K1NL](board/BOARD_MK6K1NL.md), [SAYO_3X3](board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](board/BOARD_SAYO_2X6_RGB.md)(본 펌웨어 확인 중)
 
-- 노브 없는 보드: 패턴 입력 시작은 **아무 키 2초**, 단계는 키만, 키는 누를 때 입력 ([MANUAL 10장](MANUAL.md#10-노브-없는-보드에서-다른-점))
+- 노브 없는 보드: 패턴 입력 시작은 **아무 키 2초**, 단계는 키만, 키는 누를 때 입력([REQ-KEY-05](REQUIREMENTS.md#key-입력)) ([MANUAL 10장](MANUAL.md#10-노브-없는-보드에서-다른-점))
 - 패턴 암호·자동 잠금: 모든 보드에 있음
 - 키마다 LED인 보드: 풀린 상태에서 누르는 동안 누른 키만 초록, 나머지는 꺼짐(노브는 모두 초록)
 - 꽂을 때 LED 점검(`BOARD_LED_SELF_TEST`): 모든 보드. 그동안 키 입력은 되지만 키 LED 표시는 없음. 색 바퀴(빨강→노랑→초록→청록→파랑→보라→빨강)를 한 바퀴 3초씩 2번 → 0.3초 꺼짐 (약 6.3초). 키마다 LED인 보드는 빛이 키 둘레를 시계방향으로 흐름(SAYO_2X6은 빛 2개, 다른 보드는 1개, 각 보드 문서 4·6절)
@@ -41,7 +42,7 @@
 ## 준비 중 보드
 
 - SAYO_2X6: 칩·키·LED 핀 확인 끝, 보드 파일 있음 → 위 생성 표와 아래 업데이트 표에 들어감. 본 펌웨어 키 입력·GUI 설정은 확인 전
-- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 BLE 1단계(USB 유선 + 블루투스 HID 기기 1대, 배터리 %) 기판 확인(2026-11-14). 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록에 등록함 → 위 생성 표와 아래 업데이트 표에 들어감. 슬롯 3개·동글 연결은 2단계
+- SAYO_2B3: 키·LED 핀, 전원 확인. 자체 부트로더(`firmware/bootloader_ch573`, 진입 키 4, [BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)) 설치·확인. 본 펌웨어 BLE 1단계(USB 유선 + 블루투스 HID 기기 1대, 배터리 %) 기판 확인(2026-11-14). 동글 펌웨어(`firmware/dongle_ch582`, `1209:C55F`, [BOARD_DONGLE_CH582.md](board/BOARD_DONGLE_CH582.md))는 빌드만, 미장입. GUI 보드 목록에 등록함 → 위 생성 표와 아래 업데이트 표에 들어감. BLE 2단계 슬롯 3개([REQ-BLE-04](REQUIREMENTS.md#ble-무선동글)) 장입, 슬롯 1·2 기판 확인(2026-11-16). 동글 연결은 다음([REQ-BLE-12](REQUIREMENTS.md#ble-무선동글))
 - JUZH_3B4: 12키(가로: 3행 × 4열 왼쪽) + 노브 2(오른쪽 위·아래) 무선, 반시계 90° 세로(키 4×3 아래, 노브 위쪽 왼쪽·오른쪽)도 씀(GUI "세로 보기"), 노브 사이 LED 3개 = BT 슬롯 LED(계획), 충전 LED 2개(3색 패키지로 보임, 확인된 색 R·G, 하드웨어 표시 추정), 핀 미확인, 본 펌웨어 HAL 초안 있음(`src/hal/ac6321a/`, 칩 미검증, 핀 미정), GUI는 준비 중 목록(`PREPARING`), 칩 각인 `BP3D136-21A4`(QFN32 4×4, 24 MHz 크리스털, JieLi AC6321A(BD19 = AC632N 계열, BLE 전용) 확정(UBOOT 이름 BD19, 실크 점 = 1번, RF·OSC 배치, USB0 14·15 도통, 사용자 확인. AC6956C 판단 철회, [칩 특성](CHIPS.md#jieli-ac6321a-juzh_3b4-준비-중))). 공장 펌웨어 USB `514C:8850`(HID). **시험 펌웨어 장입 뒤 USB·BLE 안 잡혀 복구 불가, 보류**(2026-11-15. ROM 진입은 USB 키·UART 키 하드웨어뿐, 납땜·어댑터 불가. 되살리려면 Blue Pill USB 키 송신기(납땜 없음, 실물 미시험), 납땜 지원 또는 JieLi USB 업데이터 동글). 공장 펌웨어 백업 있음(저장소 밖). 장입 경로는 ROM USB 모드(UBOOT): 처음 설치는 공장 벤더 HID `03 EF EF`로 진입(확인), 이후 GUI BOOT 명령(설계 중)
 - SAYO_2X6 이름은 확정(기판 `2x6_RGB`). SAYO_2B3 이름도 확정(옛 이름 BT_2X3, 2026-11-13). JUZH_3B4 이름 확정(2026-11-15). 파일 위치와 할 일: [NEW_BOARD.md 9절](NEW_BOARD.md#9-식별-전-보드)
 

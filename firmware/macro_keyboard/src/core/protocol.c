@@ -19,12 +19,17 @@
 #else
 #define FEATURE_BATTERY 0
 #endif
+#ifdef BOARD_BLE
+#define FEATURE_BLE BOARD_FEATURE_BLE
+#else
+#define FEATURE_BLE 0
+#endif
 __code struct {
   uint8_t head[7];
   char name[8];
 } boardInfo = {{BOARD_INFO_VERSION, BOARD_CHIP_ID, BOARD_KEYS, BOARD_KNOBS,
                 BOARD_ROWS,
-                BOARD_FEATURES | FEATURE_BATTERY |
+                BOARD_FEATURES | FEATURE_BATTERY | FEATURE_BLE |
                     ((BOARD_FEATURES & BOARD_FEATURE_LOCK) ? BOARD_FEATURE_AUTO_LOCK : 0),
                 0},
                BOARD_NAME};
@@ -153,6 +158,14 @@ uint8_t protocol_poll(void) {
   // Works while locked: the charge gives nothing away
   case CMD_BATTERY:
     battery_report(res + 3);
+    break;
+#endif
+
+#ifdef BOARD_BLE
+  // Clear BLE pairing (erase-only): fine while locked, like WRITE/COMMIT. The
+  // reply carries no bond data; app.c flushes it, then clears and resets.
+  case CMD_CLEAR_BONDS:
+    event = PROTO_EVT_FACTORY;
     break;
 #endif
 

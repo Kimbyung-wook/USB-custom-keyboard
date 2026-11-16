@@ -1,8 +1,9 @@
 # macro_keyboard: 본 펌웨어 v1.7
 
-- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중) / CH573F: SAYO_2B3(준비 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
 - 이 문서의 예시는 MK6K1N 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
+- 요구사항: [docs/REQUIREMENTS.md](../../docs/REQUIREMENTS.md)
 - [gui](../../gui/) 설정 프로그램과 [PROTOCOL.md](../../docs/PROTOCOL.md) v2 규격으로 통신함
 
 ## 기능
@@ -11,7 +12,7 @@
 |---|---|
 | USB 구성 | 인터페이스 0: HID 키보드, 인터페이스 1: 설정용 Vendor HID (64바이트) |
 | 슬롯 | 키 A~F, 노브 시계 방향/반시계 방향/누르기 (9개) |
-| 저장 | DataFlash 128바이트. 헤더와 슬롯 길이 정보 26바이트를 빼면 **9개 슬롯 합계 102자** (패턴 암호를 쓰면 `2 + 단계 수`바이트만큼 줄어듦). CH32V203(8·9키)은 플래시 끝 4 KB: 9키 합계 4070자, 8키 4072자 |
+| 저장 | DataFlash 128바이트. 헤더와 슬롯 길이 정보 26바이트를 빼면 **9개 슬롯 합계 102자** (패턴 암호를 쓰면 `2 + 단계 수`바이트만큼 줄어듦). CH32V203(8·9·12키)은 플래시 끝 4 KB: 9키 합계 4070자, 8키 4072자, 12키 4064자. CH573(SAYO_2B3)은 Data-Flash 2 KB: 6키 합계 2028자 |
 | 매크로 | `{ENTER}` `{TAB}` `{UP}` `{F5}` 등 키 이름, `{CTRL+C}` 같은 조합키, `{DELAY:n}`, `{{` `}}` |
 | Caps Lock | 켜져 있어도 영문 대소문자가 쓴 그대로 입력되도록 보정 |
 | 연속 입력 | 출력 중에 누른 키는 최대 8개까지 순서대로 대기 |
@@ -145,7 +146,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 | `mingw32-make -f Makefile.ch573 full` | `…-SAYO_2B3-full.bin`: 자체 부트로더 + 앱 정보 + 앱(`firmware/bootloader_ch573/mkfull.py`). 처음 설치용(wchisp) |
 
 - 배치: 자체 부트로더 뒤 0x3000, 최대 446,464 B. 숫자는 `firmware/bootloader_ch573/boot_layout.h`에서 읽음
-- 설정 저장: Data-Flash 0~2,047(블롭 2048 B, `STORE_SIZE`). BLE 짝 정보 자리(0x7E00~)와 안 겹침
+- 설정 저장: Data-Flash 0~2,047(블롭 2048 B, `STORE_SIZE`). 슬롯 상태 0x7000, BLE 짝 정보 0x7C00~0x8000(본딩 4개)과 안 겹침
 - 보드 헤더: `src/hal/ch573/sayo_2b3.h`(GUI 보드 목록 등록 전이라 `src/boards` 밖, `-DBOARD_HEADER`로 넘김). 칩 정의 `MK_CHIP_CH573`
 - 소스: `src/core/`(공통) + `battery.c`·`bt_led.c`·`bt_app.c`(이 보드만) + `src/hal/ch573/` + SDK 드라이버(clk, gpio, sys, timer0, pwr, adc)
   - BLE: WCH BLE 라이브러리(EVT `BLE/LIB`, `HAL/MCU.c`·`RTC.c`)와 `HID_Keyboard` 프로필(hiddev, HID·배터리·기기 정보·스캔 변수 서비스). SDK 예제의 APP 자리는 `src/hal/ch573/ble_ch573.c`

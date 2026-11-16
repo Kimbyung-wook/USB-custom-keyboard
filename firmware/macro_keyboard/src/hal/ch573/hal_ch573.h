@@ -45,6 +45,7 @@ uint8_t hal_usb_ready(void); // configured by a host and not suspended
 // ble_ch573.c (the link policy calls are in core/bt_app.h)
 void hal_ble_init(void);  // after hal_init, before bt_setup
 void hal_ble_poll(void);  // every main loop pass: the BLE stack (TMOS) runs here
+void hal_ble_factory_reset(void); // CMD_CLEAR_BONDS: erase all pairing, reset
 uint8_t hal_ble_ready(void);
 uint8_t hal_ble_busy(void);
 uint8_t hal_ble_send(uint8_t modifiers, uint8_t keycode);
@@ -63,6 +64,7 @@ void vendor_send(void);
 void hal_init(void);
 void hal_usb_start(void);
 void hal_enter_bootloader(void); // firmware/bootloader_ch573 (enter mark)
+void hal_reset(void);            // plain software reset (re-init BLE for a new slot)
 uint8_t hal_chip_uid(uint8_t i);
 void hal_deep_sleep(void);       // LEDs off, shutdown: back with the power switch
 

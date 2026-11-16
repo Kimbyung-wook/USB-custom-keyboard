@@ -35,6 +35,14 @@ void app_loop(void) {
     while (vendor_in_busy() && (uint16_t)(hal_ms() - start) < 100)
       ;
     enterBootloader();
+#if BOARD_BLE
+  } else if (event == PROTO_EVT_FACTORY) {
+    // Let the OK reply go out, then clear BLE pairing and reset
+    uint16_t start = hal_ms();
+    while (vendor_in_busy() && (uint16_t)(hal_ms() - start) < 100)
+      ;
+    hal_ble_factory_reset();
+#endif
   } else if (event == PROTO_EVT_SAVED) {
     led_saved();
   }

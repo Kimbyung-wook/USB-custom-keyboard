@@ -46,7 +46,7 @@
 | 19 | 키 수 K | `6` |
 | 20 | 노브 수 N | `1` |
 | 21 | 키 배치 행 수 R (열 수는 `ceil(K / R)`, 마지막 줄은 덜 찰 수 있음) | `2` |
-| 22 | 기능 비트: bit0 RGB LED 있음, bit1 패턴 암호 지원, bit2 배터리 상태 명령([PROTOCOL `0x07`](PROTOCOL.md#0x07-battery), SAYO_2B3), bit3 설정 슬롯(펌웨어 1.4) | `0x03` (1.4부터 `0x0B`) |
+| 22 | 기능 비트: bit0 RGB LED 있음, bit1 패턴 암호 지원, bit2 배터리 상태 명령([PROTOCOL `0x07`](PROTOCOL.md#0x07-battery), SAYO_2B3), bit3 설정 슬롯(펌웨어 1.4), bit4 블루투스(페어링 지우기 명령 [PROTOCOL `0x08`](PROTOCOL.md#0x08-clear_bonds), SAYO_2B3) | `0x03` (1.4부터 `0x0B`) |
 | 23 | 예약 (`0`) | `0` |
 | 24~31 | 보드 이름 (ASCII 8바이트, 남는 곳은 `0`) | `"MK6K1N"` |
 | 32~35 | 칩 고유 ID (4바이트, 모르면 `0`) — 아래 "정할 것" 3번 | `7D E2 0F BD` |
@@ -195,7 +195,7 @@ class Board:
 - MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
 - SAYO_3X3: 9키(3x3), SAYO_2X4: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
 - 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
-- SAYO_2B3(CH573, 6키 블루투스, 준비 중): 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`, 기능 비트 `0x0E`(패턴 암호·배터리·설정 슬롯)(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`)
+- SAYO_2B3(CH573, 6키 블루투스, 준비 중): 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`, 기능 비트 `0x1E`(패턴 암호·배터리·설정 슬롯·블루투스)(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`)
   - 업데이트 진입: 키 4를 누른 채 **SW1 켜기**(USB를 꽂는 게 아님). 보드 목록 `power_switch="SW1"`으로 안내·재진입 문구가 "SW1을 껐다가 … 켜세요"로 바뀜, `boot_led`로 "L5 빨강 LED가 깜빡입니다"
   - 처음 설치: `tools\flash.ps1 -Board sayo_2b3 -Full`을 먼저 실행한 뒤 PB22-GND + SW1 켜기(ROM 부트로더는 6~15초 뒤 빠져나감)
   - 이미 설치된 자체 부트로더는 옛 이름 `BT_2X3`을 알림 → 이 보드의 `aliases`로 같은 보드로 봄(기판 확인: 이 상태로 `hidboot` SAYO_2B3 앱 장입 성공, 2026-11-13~14)
@@ -309,6 +309,7 @@ class Board:
 |---|---|
 | 2026-11-15 | 준비 중 보드 목록 `PREPARING`(JUZH_3B4, AC6321A): 노브 오른쪽 열·슬롯 LED 3개·세로 보기. HELLO 칩 ID 미정(0) |
 | 2026-11-14 | SAYO_2B3 보드 목록 등록(SW1 진입 안내, 별칭 `BT_2X3`을 `aliases`로). 기능 비트 bit2 = 배터리 상태 명령(`0x07`) |
+| 2026-11-16 | 기능 비트 bit4 = 블루투스(페어링 지우기 명령 `0x08`), SAYO_2B3 `0x1E` |
 | 2026-11-13 | 준비 중 CH573 보드 SAYO_2B3: 칩 ID `0x73`, 자체 부트로더 HELLO(45 = 칩, 21~28 = UID), 옛 이름 `BT_2X3` 별칭(`PENDING_ALIASES`). 칩 표에 CH573 추가, 보드 목록 등록 전 |
 | 2026-11-07 | CH32V203 칩 ID `0x19` 확인(wchisp `0x3019`). CH32V203 보드는 맞지 않는 `.bin`을 지우기 전에 거부(`--force`로만). CH552 보드의 "노브를 누른 채 꽂기" 진입 없앰. 진행 순서 **5~6번 완료**: 8키·9키 모두 CH32V203C8U6, 펌웨어 이식과 자체 HID 부트로더 ([PORT_CH32V203.md](old/PORT_CH32V203.md)) |
 | 2026-10-31 | 진행 순서 **1~4번 완료**. 두 번째 보드 **MK6K1NL**(키마다 LED, 펌웨어·GUI 1.5.0) 추가. GUI 1.6.0: 업데이트 창에 **장입할 보드** 선택(처음 설치 포함). 펌웨어 HAL 분리([펌웨어 README 코드 구조](../firmware/macro_keyboard/README.md#코드-구조)). 보드별 값은 [BOARDS.md](BOARDS.md) |

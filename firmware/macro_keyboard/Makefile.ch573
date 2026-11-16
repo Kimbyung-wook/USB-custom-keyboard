@@ -22,6 +22,8 @@ SDK_LD := $(EXAM)/SRC/Ld/Link.ld
 BL_DIR := ../bootloader_ch573
 BOARD := SAYO_2B3
 DEMO ?= 0
+DIAG ?= 0 # BLE input diagnostic: keys show the HID send state on the LEDs
+SLOT_ADDR ?= 1 # 0 = A/B test: chip MAC (BLE_MAC=FALSE), no per-slot address
 # Config store in Data-Flash (RAM: one copy in storage.c, BOARD_STORE_ONE_BUFFER)
 STORE_SIZE := 2048
 # BLE stack heap (SDK config.h BLE_MEMHEAP_SIZE, 6 KB there; the library wants
@@ -37,7 +39,7 @@ FLASH_SIZE := $(call layout,BOOT_FLASH_SIZE)
 APP_MAX := $(shell echo $$(($(FLASH_SIZE) - $(APP_ADDR))))
 APP_LEN := $(shell printf '0x%X' $(APP_MAX))
 
-SUFFIX := $(if $(filter 1,$(DEMO)),-demo,)
+SUFFIX := $(if $(filter 1,$(DEMO)),-demo,)$(if $(filter 0,$(SLOT_ADDR)),-noaddr,)$(if $(filter 1,$(DIAG)),-diag,)
 TARGET := macro_keyboard-$(BOARD)$(SUFFIX)
 OUT := build/ch573
 BUILD := $(OUT)/obj-$(BOARD)$(SUFFIX)
@@ -51,8 +53,12 @@ SIZE := $(PREFIX)size
 NM := $(PREFIX)nm
 
 ARCH := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8 -mno-save-restore
+# SLOT_ADDR=1 (default): each slot advertises its own static random address, set
+# with GAP_ConfigDeviceAddr(ADDRTYPE_STATIC, ...) in GAPROLE_STARTED
+# (src/hal/ch573/ble_ch573.c). SLOT_ADDR=0 keeps the chip's public address (A/B).
 DEFS := -DMK_CHIP_CH573 -DBOARD_HEADER='"hal/ch573/sayo_2b3.h"' -DBLOB_CAPACITY=$(STORE_SIZE) \
-        -DBTLED_DEMO=$(DEMO) -DBLE_MEMHEAP_SIZE=$(BLE_HEAP) $(EXTRA_DEFS)
+        -DBTLED_DEMO=$(DEMO) -DBLE_DIAG=$(DIAG) -DSLOT_ADDR=$(SLOT_ADDR) \
+        -DBLE_MEMHEAP_SIZE=$(BLE_HEAP) $(EXTRA_DEFS)
 CFLAGS := $(ARCH) $(DEFS) -MMD -MP -Os -g -ffunction-sections -fdata-sections -fno-common \
           -Wall -Wextra -Wno-unused-parameter
 ASFLAGS := $(ARCH) -x assembler-with-cpp
@@ -61,8 +67,10 @@ INCS := -Isrc -Isrc/core -Isrc/hal/ch573 -I$(DRV)/inc -I$(EXAM)/SRC/RVMSIS
 # HAL/include/config.h; Windows does not tell it from src/config.h)
 BLE_INCS := -I$(KBD)/Profile/include -I$(KBD)/APP/include -I$(BLE)/HAL/include -I$(BLE)/LIB -I$(DRV)/inc -I$(EXAM)/SRC/RVMSIS
 LDSCRIPT := $(BUILD)/app.ld
+# --wrap=CH57X_BLEInit: our __wrap_CH57X_BLEInit (src/hal/ch573/ble_ch573.c)
+# replaces the SDK's BLE config init so SNVNum can be set for multi-slot bonds
 LDFLAGS := $(ARCH) -T $(LDSCRIPT) -nostartfiles -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).map \
-           --specs=nano.specs --specs=nosys.specs
+           -Wl,--wrap=CH57X_BLEInit --specs=nano.specs --specs=nosys.specs
 
 SRCS_ASM := startup_CH573.S
 SRCS_C := app.c input.c led.c lock.c macro.c protocol.c storage.c battery.c bt_led.c bt_app.c \

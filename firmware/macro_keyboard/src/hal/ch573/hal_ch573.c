@@ -466,6 +466,16 @@ void hal_enter_bootloader(void) {
   }
 }
 
+// Plain software reset (not the bootloader): clear the enter mark so the
+// bootloader runs the app, then reset. Used to re-init the BLE stack with a
+// new slot's address (ble_ch573.c). Does not return.
+void hal_reset(void) {
+  R8_GLOB_RESET_KEEP = 0;
+  SYS_ResetExecute();
+  while (1) {
+  }
+}
+
 void hal_deep_sleep(void) {
   hal_btled_write(0);
   usbStop();

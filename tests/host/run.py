@@ -259,6 +259,13 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
     has_bat = bool(board and board.features & 0x04)
     check(f"{name}: BATTERY answered only with the battery feature bit",
           (bat[0][0], bat[0][1], bat[0][2]), (0x87, 6, 0 if has_bat else 1))
+    # CMD_CLEAR_BONDS (0x08): BLE boards only (feature bit 0x10). A non-BLE board
+    # answers ST_BAD_CMD (1) and never advertises the bit, so nothing leaks.
+    cb = [bytes.fromhex(line.split()[1]) for line in run(exe, out, old, extra=["proto", "0842"])
+          if line.startswith("res ")]
+    has_ble = bool(board and board.features & 0x10)
+    check(f"{name}: CLEAR_BONDS refused without the BLE feature bit",
+          (cb[0][0], cb[0][1], cb[0][2], has_ble), (0x88, 0x42, 1, False))
     # 56 bytes: the blob, then erased bytes
     check(f"{name}: READ returns the blob", p.parse_read_result(res[1].result),
           (0, old.ljust(p.MAX_CHUNK, b"\xff")[:p.MAX_CHUNK]))
@@ -282,6 +289,28 @@ def check_board(out: Path, name: str, header: Path | None = None) -> None:
                re.findall(r"L\d\.[0-9a-f]{2,3}\.\d", text)), (2, ["L0.00.0", "L1.00.0"]))
     if name in LED_RING:
         check_ring(exe, out, blob, name, layout.keys)
+
+    # Overlapping presses (rollover): on a knob-less board every key types on
+    # press, in press order, even while an earlier key is still held -- nothing
+    # is held off (SAYO_2B3 keys 5/6 no longer suppress, user 2026-11-16).
+    if not layout.knobs and layout.keys >= 6:
+        roll = " ".join(run(exe, out, blob, extra=[
+            "input", "p3", "w30", "p4", "w30", "r3", "w30", "r4", "w30",   # d then e, d held
+            "p4", "w30", "p5", "w30", "r4", "w30", "r5", "w300"])[3:])      # e then f, e held
+        check(f"{name}: rollover types every key in press order",
+              " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", roll)),
+              keys((0, 0x07), (0, 0x08), (0, 0x08), (0, 0x09)))
+
+    # A key pressed while the link is not ready (BLE not connected yet, or a USB
+    # bus reset / KVM switch) is dropped, not queued for whoever connects next;
+    # once ready, a fresh press types. kb_send uses BLE when USB is unconfigured,
+    # so this is the wireless path too.
+    if not layout.knobs:
+        gated = " ".join(run(exe, out, blob, extra=[
+            "input", "y0", "p0", "w30", "r0", "w300",   # pressed while not ready: dropped
+            "y1", "w300", "p1", "w30", "r1", "w300"])[3:])  # ready now: a new press types
+        check(f"{name}: a key before the link is ready is dropped, later keys type",
+              " ".join(re.findall(r"\b[0-9a-f]{2}:[0-9a-f]{2}\b", gated)), keys((0, 0x05)))
 
     if layout.knobs:
         return
@@ -409,7 +438,15 @@ BT_APP_WANT = {  # "<LED bits> <sleep>" or a plain value; bits as BT_LED_WANT
             "ble_pair": "starts 1 stops 0 forgets 1 pair 1 state 1", "ble_pair_seen": "08",
             "ble_pair_then_lost": "starts 2 stops 0 forgets 1 pair 0 state 1",
             "ble_unbonded": "starts 1 stops 0 forgets 0 pair 1 state 1",
-            "ble_usb_boot": "starts 0 stops 1 forgets 0 pair 1 state 0"},
+            "ble_usb_boot": "starts 0 stops 1 forgets 0 pair 1 state 0",
+            # stage 2 chords: key 6 + 1/2/3 picks a slot (held 2 s), key 5 + 6
+            # re-pairs, a third key cancels, each fires once
+            "chord_slot2_early": "slot 0 selects 0 forgets 0",
+            "chord_slot2": "slot 1 selects 1 forgets 0",
+            "chord_slot3": "slot 2 selects 2 forgets 0",
+            "chord_three_keys": "slot 2 selects 2 forgets 0",
+            "chord_repair": "slot 2 selects 2 forgets 1",
+            "chord_slot1": "slot 0 selects 3 forgets 1"},
 }
 
 
@@ -432,6 +469,19 @@ def check_bt_app(out: Path) -> None:
             [str(exe)], capture_output=True, text=True, check=True).stdout.splitlines())
         check(f"bt_app{' ' + str(demo) if demo else ''}: LED states", got, want)
 
+
+
+def check_ble_addr(out: Path) -> None:
+    """src/core/ble_addr.h: per-slot, per-generation BLE address derivation is
+    distinct, a valid static random address, and changes on a re-pair."""
+    exe = out / "ble_addr_test.exe"
+    subprocess.run(["gcc", "-std=c99", "-Wall", "-Werror", "-I", str(SRC),
+                    str(HERE / "ble_addr_test.c"), "-o", str(exe)], check=True)
+    got = dict(ln.split(" ", 1) for ln in subprocess.run(
+        [str(exe)], capture_output=True, text=True, check=True).stdout.splitlines())
+    check("ble_addr: slot/generation addresses", got,
+          {"distinct": "1", "static_top_bits": "1", "not_degenerate": "1",
+           "slots_differ": "1", "regen_changes": "1"})
 
 
 def check_battery_cmd(out: Path) -> None:
@@ -842,6 +892,7 @@ def main() -> int:
         check_battery_cmd(out)
         check_bt_led(out)
         check_bt_app(out)
+        check_ble_addr(out)
         check_bt_boot_key()
         check_staging(out)
 

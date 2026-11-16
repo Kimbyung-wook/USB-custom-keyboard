@@ -8,7 +8,7 @@
 // returns which LEDs are on, the chip HAL drives the pins
 // (CH573: src/hal/ch573/led_ch573.c). Only built with BOARD_BT_LED.
 //
-// Links: 3 BLE slots (blue L6/L7/L8) + the USB dongle (green L4).
+// Links: 3 BLE slots (blue L8/L7/L6 = slot 1/2/3) + the USB dongle (green L4).
 // At most BTLED_MAX_ON LEDs light together (more dimmed the LEDs in the pin
 // test); the lowest-priority ones are dropped.
 
@@ -18,9 +18,9 @@
 #define BTLED_WHITE 0x01 // L3 PA4: key press
 #define BTLED_GREEN 0x02 // L4 PA5: dongle / USB cable
 #define BTLED_RED 0x04   // L5 PA15: battery
-#define BTLED_BLUE1 0x08 // L6 PA14: BLE slot 1
+#define BTLED_BLUE1 0x08 // L8 PA12: BLE slot 1
 #define BTLED_BLUE2 0x10 // L7 PA13: BLE slot 2
-#define BTLED_BLUE3 0x20 // L8 PA12: BLE slot 3
+#define BTLED_BLUE3 0x20 // L6 PA14: BLE slot 3
 
 // Slots: 0..2 = BLE devices 1..3, 3 = dongle
 #define BTLED_SLOTS_BLE 3

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import html
 import sys
+import time
 from typing import Callable
 
 from PySide6.QtCore import QSettings, Qt, QTimer
@@ -28,6 +29,16 @@ POLL_INTERVAL_MS = 2000
 BATTERY_INTERVAL_MS = 10000   # the firmware measures every 10 s
 BATTERY_COLORS = {"critical": "#c62828", "low": "#e65100"}
 TEST_COUNTDOWN_S = 3
+RESET_OPTIONS = ("JSON으로 저장한 뒤 초기화", "저장하지 않고 초기화", "취소")
+RESET_LAST_TEXT = "정말로 공장 초기화할까요? 지운 설정은 되돌릴 수 없습니다."
+RESET_TIP = ("장치의 모든 설정(키·노브 문자열, 패턴 암호, 자동 잠금)과 블루투스 페어링을 지우고 "
+             "공장 상태로 되돌립니다. 잠겨 있어도 됩니다 (기존 내용은 읽지 않고 지움)")
+# A Bluetooth board whose firmware has no CLEAR_BONDS (HELLO BLE bit off)
+PAIRING_UNSUPPORTED_TEXT = ("이 펌웨어는 블루투스 페어링 지우기를 지원하지 않아 페어링은 남습니다 "
+                            "(펌웨어를 업데이트하면 함께 지웁니다).")
+# After CLEAR_BONDS the keyboard resets; USB comes back in about a second
+RESET_RECONNECT_TRIES = 20
+RESET_RECONNECT_S = 0.25
 
 # Fits in 128 bytes (125 with header and slot lengths)
 SAMPLE_SLOTS = [
@@ -163,11 +174,14 @@ class MainWindow(QMainWindow):
         self.save_btn.clicked.connect(self.save_to_device)
         self.test_btn = QPushButton("테스트 입력")
         self.test_btn.clicked.connect(self.start_test)
+        self.reset_btn = QPushButton("공장 초기화")
+        self.reset_btn.setToolTip(RESET_TIP)
+        self.reset_btn.clicked.connect(self.factory_reset)
         self.export_btn = QPushButton("JSON 내보내기")
         self.export_btn.clicked.connect(self.export_json)
         self.import_btn = QPushButton("JSON 불러오기")
         self.import_btn.clicked.connect(self.import_json)
-        for b in (self.read_btn, self.save_btn, self.test_btn):
+        for b in (self.read_btn, self.save_btn, self.test_btn, self.reset_btn):
             actions.addWidget(b)
         actions.addStretch(1)
         actions.addWidget(self.export_btn)
@@ -184,6 +198,17 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------ dialogs (overridable in tests)
     def ask(self, title: str, text: str) -> bool:
         return QMessageBox.question(self, title, text) == QMessageBox.Yes
+
+    def choose(self, title: str, text: str, options: list[str]) -> int | None:
+        """A question with its own buttons; the index picked, None when closed.
+        The last option is the cancel button."""
+        box = QMessageBox(QMessageBox.Warning, title, text, parent=self)
+        buttons = [box.addButton(o, QMessageBox.RejectRole if i == len(options) - 1 else QMessageBox.AcceptRole)
+                   for i, o in enumerate(options)]
+        box.setDefaultButton(buttons[-1])
+        box.exec()
+        picked = box.clickedButton()
+        return buttons.index(picked) if picked in buttons else None
 
     def inform(self, title: str, text: str) -> None:
         QMessageBox.information(self, title, text)
@@ -333,6 +358,7 @@ class MainWindow(QMainWindow):
         self.save_btn.setEnabled(on and self.blob_size() <= self.capacity
                                  and p.lock_error(self.lock, self.board) is None)
         self.test_btn.setEnabled(unlocked and self._countdown == 0)
+        self.reset_btn.setEnabled(on and self._countdown == 0)   # also while locked
         self.refresh_btn.setEnabled(True)
         # Nothing to show or edit without a keyboard (see clear_config)
         for w in (self.device_view, self.editor, self.export_btn, self.import_btn):
@@ -672,6 +698,113 @@ class MainWindow(QMainWindow):
             if self.lock and not self.device_locked:
                 msg += "\n패턴 암호는 키보드를 다시 꽂을 때부터 적용됩니다."
             self.inform("저장 완료", msg)
+        return True
+
+    def _sleep(self, seconds: float) -> None:   # tests: no waiting
+        time.sleep(seconds)
+
+    def _reconnect_after_reset(self) -> bool:
+        """The keyboard resets after CLEAR_BONDS: wait for USB to come back."""
+        self.disconnect_device()
+        for _ in range(RESET_RECONNECT_TRIES):
+            self._sleep(RESET_RECONNECT_S)
+            QApplication.processEvents()
+            if self.connect_device(quiet=True):
+                return True
+        return False
+
+    def factory_reset(self, confirm: bool = True) -> bool:
+        """Everything back to the factory state: an empty blob (no strings, no
+        lock pattern, auto-lock off) through WRITE/COMMIT, allowed while locked
+        like any save (the old strings and pattern are gone, nothing is shown).
+        Then, on Bluetooth boards (HELLO BLE bit), CLEAR_BONDS: the keyboard
+        clears every pairing and resets, and the window connects again.
+
+        Unlocked: offers to export the device's strings to JSON first. Locked:
+        nothing is read (READ answers LOCKED), so no export is offered."""
+        if not self.connected:
+            self.error("공장 초기화", "장치가 연결되어 있지 않습니다")
+            return False
+        spec = boards.find(self.board.name)
+        ble = self.client.info.supports_ble
+        old_firmware = bool(spec and spec.bluetooth) and not ble   # a BT board without the command
+        locked = self.device_locked
+        cfg = None
+        if not locked:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                cfg = self.client.read_config()
+            except DeviceError as e:
+                QApplication.restoreOverrideCursor()
+                self._handle_device_error("공장 초기화 실패", e)
+                return False
+            QApplication.restoreOverrideCursor()
+        if confirm:
+            what = "장치의 모든 설정(키·노브 문자열, 패턴 암호, 자동 잠금)"
+            what += "과 블루투스 페어링을" if ble else "을"
+            text = f"{what} 지우고 공장 상태로 되돌립니다. 되돌릴 수 없습니다."
+            if ble:
+                text += "\n블루투스 기기와는 다시 페어링해야 합니다. 키보드가 다시 시작합니다."
+            elif old_firmware:
+                text += "\n" + PAIRING_UNSUPPORTED_TEXT
+            if locked:
+                text += ("\n\n장치가 잠겨 있어 저장된 설정을 읽지 않습니다. "
+                         "기존 문자열과 패턴 암호는 되찾을 수 없습니다.")
+                if not self.ask("공장 초기화", text + "\n\n계속할까요?"):
+                    return False
+            else:
+                used = sum(1 for s_ in cfg.slots if s_) if cfg.valid else 0
+                text += f"\n지금 장치의 키 매핑: {used}개"
+                if cfg.lock:
+                    text += ", 패턴 암호 있음"
+                if self.has_unsaved():
+                    text += "\n저장하지 않은 화면의 편집 내용도 함께 사라집니다."
+                text += "\n\n초기화하기 전에 지금 장치의 설정을 JSON 파일로 저장해 두기를 권합니다."
+                pick = self.choose("공장 초기화", text, list(RESET_OPTIONS))
+                if pick == 0:
+                    path = self.choose_save_path()
+                    if not path:
+                        return False
+                    try:
+                        backup.save(path, cfg.slots, self.board)
+                    except OSError as e:
+                        self.error("내보내기 실패", f"{e}\n초기화하지 않았습니다.")
+                        return False
+                    self.statusBar().showMessage(f"내보냈습니다: {path}", 5000)
+                elif pick != 1:
+                    return False
+            if not self.ask("공장 초기화 (마지막 확인)", RESET_LAST_TEXT):
+                return False
+        blank = [""] * self.board.slot_count
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self.client.write_config(blank, lock=[], autolock=0)
+            self.client.hello()     # no pattern any more: open
+        except DeviceError as e:
+            QApplication.restoreOverrideCursor()
+            self._handle_device_error("공장 초기화 실패", e)
+            return False
+        self._refresh_connection()
+        self._load_slots(blank, [], from_device=True, autolock=0)
+        done = "공장 상태로 되돌렸습니다"
+        if ble:
+            try:
+                self.client.clear_bonds()        # closes the client: the keyboard resets
+            except DeviceError as e:
+                QApplication.restoreOverrideCursor()
+                self._handle_device_error("공장 초기화 실패",
+                                          DeviceError(f"설정은 지웠지만 블루투스 페어링을 지우지 못했습니다: {e}"))
+                return False
+            back = self._reconnect_after_reset()
+            done += ", 블루투스 페어링도 지웠습니다"
+            if not back:
+                done += ". 키보드가 다시 연결되지 않았습니다. [연결]을 누르세요"
+        elif old_firmware:
+            done += " (이 펌웨어는 블루투스 페어링을 지우지 못해 페어링은 남아 있습니다)"
+        QApplication.restoreOverrideCursor()
+        self.statusBar().showMessage(done, 5000)
+        if confirm:
+            self.inform("공장 초기화 완료", done + ".")
         return True
 
     def start_test(self, confirm: bool = True) -> bool:

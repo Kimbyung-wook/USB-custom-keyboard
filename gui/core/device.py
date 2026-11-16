@@ -212,6 +212,17 @@ class DeviceClient:
         except ValueError as e:
             raise DeviceError(f"배터리 응답이 올바르지 않습니다: {e}") from e
 
+    def clear_bonds(self) -> None:
+        """CLEAR_BONDS: erase every Bluetooth pairing (fine while locked). The
+        keyboard resets after the reply, so the client is closed; connect again."""
+        if not self._require_info().supports_ble:
+            raise DeviceError("이 보드(펌웨어)는 블루투스 페어링 지우기를 지원하지 않습니다")
+        try:
+            self._request(p.Cmd.CLEAR_BONDS, retry_busy=False)
+        except (DeviceTimeoutError, NotConnectedError):
+            pass  # it may reset before the reply gets through
+        self.close()
+
     def reboot_to_bootloader(self) -> None:
         """Send BOOT. The device disconnects afterwards; the client is closed."""
         try:

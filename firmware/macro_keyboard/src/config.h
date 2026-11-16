@@ -40,6 +40,7 @@
 #define BOARD_FEATURE_LOCK 0x02
 #define BOARD_FEATURE_BATTERY 0x04 // CMD_BATTERY answers (set from BOARD_BATTERY, 1.7)
 #define BOARD_FEATURE_AUTO_LOCK 0x08 // settings slot: auto-lock minutes (1.4.0)
+#define BOARD_FEATURE_BLE 0x10 // BLE board: CMD_CLEAR_BONDS clears pairing (set from BOARD_BLE)
 // CH55xduino pin numbers are port * 10 + bit
 #define PIN_PORT(p) ((p) / 10)
 #define PIN_BIT(p) (1 << ((p) % 10))

@@ -137,10 +137,10 @@ def test_switch_between_boards(qapp):
 
 
 def test_sayo_2b3_without_rgb(qapp):
-    """SAYO_2B3 HELLO features 0x0E: lock, auto-lock, battery; no RGB."""
+    """SAYO_2B3 HELLO features 0x1E: lock, auto-lock, battery, BLE; no RGB."""
     w = window(SAYO_2B3)
     assert w.connect_device()
-    assert w.board.chip_id == 0x73 and w.board.features == 0x0E
+    assert w.board.chip_id == 0x73 and w.board.features == 0x1E
     for s in (3, 0):
         w.lock_editor.input_buttons[s].click()
     assert w.lock_editor.isEnabled() and w.lock_editor.autolock_spin.isEnabled()
