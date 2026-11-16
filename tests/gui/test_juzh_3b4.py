@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-03, REQ-GUI-07
 """JUZH_3B4 (JieLi AC6321A, 12 keys 3 x 4, 2 knobs on the right, BT slot LEDs,
 portrait view)
 and its update window. Fakes only: no HID report or SCSI command reaches a

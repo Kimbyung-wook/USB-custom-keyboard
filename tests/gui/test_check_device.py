@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (tools/check_device.py)
 """tools/check_device.py against the mock keyboard."""
 import sys
 from pathlib import Path

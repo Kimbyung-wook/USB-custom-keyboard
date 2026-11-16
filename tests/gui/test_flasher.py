@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (펌웨어 업데이트 창)
 """Firmware upload helpers (gui/core/flasher.py) and the update dialog."""
 import sys
 import textwrap

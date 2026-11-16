@@ -126,7 +126,7 @@ class Board:
 - 표는 `tools/gen_docs.py`가 `gui/core/chips.py`에서 만듦. "지원"은 vnproch55x로 올릴 수 있는지
 - 업로드 도구: CH551·CH552·CH554는 vnproch55x `-t <칩>`(CH554는 확인 필요). CH32V203은 자체 HID 부트로더(`hidboot.py`, `.bin`), 처음 한 번만 wchisp + BOOT 브리지 ([BOOTLOADER_CH32V203.md](BOOTLOADER_CH32V203.md))
 - CH32V203은 SAYO_3X3, SAYO_2X4, SAYO_2X6에서 지원(자체 부트로더)
-- CH573(칩 ID `0x73`, 준비 중 SAYO_2B3): 칩 표에 있음(앱 영역 446,464 B, vnproch55x 미지원, 자체 HID 부트로더 `hidboot`로 올림). 보드 목록(5-1)에도 있음
+- CH573(칩 ID `0x73`, SAYO_2B3): 칩 표에 있음(앱 영역 446,464 B, vnproch55x 미지원, 자체 HID 부트로더 `hidboot`로 올림). 보드 목록(5-1)에도 있음
   - 자체 HID 부트로더(`1209:C55E`, CH32V203과 같은 명령)가 HELLO 바이트 45로 `0x73`, 21~28로 8바이트 UID를 알림([BOOTLOADER_CH573.md](BOOTLOADER_CH573.md)). 처음 설치는 wchisp(ROM 부트로더, WinUSB 드라이버)
 - 옛 이름 별칭: 보드의 `aliases`(예: SAYO_2B3의 `BT_2X3`). 기판 부트로더가 옛 이름을 알려도 `hidboot` 보드 확인 통과, 화면은 `SAYO_2B3 (옛 이름 BT_2X3)`
   - 목록 등록 전 보드는 `PENDING_ALIASES`(옛 이름 → 지금 이름)에 두고, 등록할 때 그 보드의 `aliases`로 옮김(지금은 비어 있음). pytest가 이름·별칭 8자 이하, 중복 없음을 검사
@@ -195,7 +195,7 @@ class Board:
 - MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
 - SAYO_3X3: 9키(3x3), SAYO_2X4: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
 - 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
-- SAYO_2B3(CH573, 6키 블루투스, 준비 중): 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`, 기능 비트 `0x1E`(패턴 암호·배터리·설정 슬롯·블루투스)(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`)
+- SAYO_2B3(CH573, 6키 블루투스): 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`, 기능 비트 `0x1E`(패턴 암호·배터리·설정 슬롯·블루투스)(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`)
   - 업데이트 진입: 키 4를 누른 채 **SW1 켜기**(USB를 꽂는 게 아님). 보드 목록 `power_switch="SW1"`으로 안내·재진입 문구가 "SW1을 껐다가 … 켜세요"로 바뀜, `boot_led`로 "L5 빨강 LED가 깜빡입니다"
   - 처음 설치: `tools\flash.ps1 -Board sayo_2b3 -Full`을 먼저 실행한 뒤 PB22-GND + SW1 켜기(ROM 부트로더는 6~15초 뒤 빠져나감)
   - 이미 설치된 자체 부트로더는 옛 이름 `BT_2X3`을 알림 → 이 보드의 `aliases`로 같은 보드로 봄(기판 확인: 이 상태로 `hidboot` SAYO_2B3 앱 장입 성공, 2026-11-13~14)

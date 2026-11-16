@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-01, REQ-GUI-02, REQ-GUI-03, REQ-GUI-04, REQ-GUI-05, REQ-GUI-06
 """Headless smoke test of the main window against the mock device."""
 import pytest
 

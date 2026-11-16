@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (동글 펌웨어 PC 시험)
 """Runs the dongle core PC test (firmware/dongle_ch582/test/run.py) so `uv run pytest` covers it; needs gcc."""
 from __future__ import annotations
 

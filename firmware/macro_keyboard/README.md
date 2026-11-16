@@ -1,6 +1,6 @@
 # macro_keyboard: 본 펌웨어 v1.7
 
-- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중) / CH573F: SAYO_2B3(준비 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중) / CH573F: SAYO_2B3(본 펌웨어 확인 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
 - 이 문서의 예시는 MK6K1N 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
 - 요구사항: [docs/REQUIREMENTS.md](../../docs/REQUIREMENTS.md)
@@ -106,7 +106,7 @@
   - 헤더 의존성(`-MMD -MP`): 헤더만 고쳐도 그 헤더를 쓰는 파일을 다시 빌드. Makefile을 고친 뒤에는 그대로 `rm -rf build`
   - 부트로더 `make full`은 `EXTRA_DEFS`(빌드 날짜)를 받아 앱 빌드에 넘김
   - 도구 경로: 환경 변수 `MK_EVT_SDK`(WCH EVT SDK), `MK_RISCV_BIN`(riscv-none-elf-gcc `bin` 폴더), `MK_WCHISP`(wchisp.exe)가 있으면 기본 경로보다 먼저 씀. Makefile 4개(본 펌웨어, 부트로더, test_ch32v203, diag)와 `tools\build_fw.ps1`·`flash.ps1` 공통
-- **CH573 보드(SAYO_2B3, 준비 중)**: `Makefile.ch573`, SDK 경로 `MK_CH57X_SDK` → [아래 CH573 빌드](#ch573-빌드-sayo_2b3-준비-중), 부트로더 [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md)
+- **CH573 보드(SAYO_2B3)**: `Makefile.ch573`, SDK 경로 `MK_CH57X_SDK` → [아래 CH573 빌드](#ch573-빌드-sayo_2b3), 부트로더 [BOOTLOADER_CH573](../../docs/BOOTLOADER_CH573.md)
 
 - Arduino IDE + CH55xDuino 0.0.26
 - Windows는 [TROUBLESHOOTING 1-1](../../docs/TROUBLESHOOTING.md)의 `sdcc.sh` 패치 필요
@@ -132,7 +132,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - **Sketch → Export Compiled Binary** → `build\CH55xDuino.mcs51.ch552\macro_keyboard.ino.hex` 생성
 - 빌드 날짜가 안 들어감(GUI에 `빌드 날짜 없음`)
 
-### CH573 빌드 (SAYO_2B3, 준비 중)
+### CH573 빌드 (SAYO_2B3)
 
 - 단계: **BLE 1단계**(USB 유선 키보드 + BLE HID 키보드 본딩 1대 + 상태 LED + 배터리). 슬롯 3개·동글 연결은 2단계
 - 도구: xPack riscv-none-elf-gcc, `mingw32-make`, WCH CH573 EVT SDK(`MK_CH57X_SDK`, 기본 `C:/Users/user/tools/sdk_ch573/EVT`)
@@ -194,8 +194,8 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 ### 크기
 
-- 현재(1.7.0): MK6K1N 9,629바이트, MK6K1NL 10,006바이트 (CH552 최대 14,336바이트). SAYO_3X3 앱 12,304바이트, SAYO_2X4 12,292바이트 (앱 영역 최대 52,992바이트). 빌드 시각에 따라 ±4바이트
-- 준비 중 SAYO_2B3(CH573, BLE 1단계): 앱 129,464바이트(BLE 라이브러리 포함, 앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트
+- 현재(1.7.1, 2026-11-16 빌드): SAYO_3X3 앱 12,576바이트, SAYO_2X4 12,564바이트, SAYO_2X6 12,608바이트(앱 영역 최대 52,992바이트). CH552는 1.7.0에서 잰 값: MK6K1N 9,629바이트, MK6K1NL 10,006바이트(최대 14,336바이트, 1.7.1 값 확인 필요). 빌드 시각에 따라 ±4바이트
+- SAYO_2B3(CH573, 블루투스 슬롯 3개): 앱 131,656바이트(2026-11-16 빌드, 장입판 131,648바이트, BLE 라이브러리 포함, 앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트. RAM 여유 1,168바이트 + 스택 512바이트
 
 **이력 (크기)**
 
@@ -208,6 +208,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 - HAL 분리([코드 구조](#코드-구조))로 모듈 사이 호출이 늘어 84~120바이트 커짐
 - 2026-11-07 (1.7.0): 색 바퀴 점검(CH552도), 초록 LED 변경 → 위 현재 크기
+- 2026-11-16 (1.7.1): CH32V203 보드 다시 잼(SAYO_2X6 추가), SAYO_2B3 블루투스 슬롯 3개 판
 - 2026-11-07: "노브를 누른 채 꽂기" 진입 삭제 → MK6K1N 8,726, MK6K1NL 8,949바이트
 - 그 전 버전(MK6K1N 기준, 변화는 바로 아래 버전 대비):
 
@@ -265,7 +266,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 **스크립트 (CH552 보드)**
 
 - CH32V203 보드: [사용 설명서 8장 "스크립트로 올리기"](../../docs/MANUAL.md#스크립트로-올리기)
-- CH573 보드(SAYO_2B3, 준비 중): `tools\flash.ps1 -Board sayo_2b3`, 자세히는 [CH573 빌드](#ch573-빌드-sayo_2b3-준비-중)의 장입
+- CH573 보드(SAYO_2B3): `tools\flash.ps1 -Board sayo_2b3`, 자세히는 [CH573 빌드](#ch573-빌드-sayo_2b3)의 장입
 
 1. 저장소 폴더에서 실행
 2. **키 D를 누른 채** 키보드 연결

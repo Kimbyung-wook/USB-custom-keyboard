@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (장치 통신, 잠금 REQ-LOCK-07·09)
 import pytest
 
 from gui.core import protocol as p

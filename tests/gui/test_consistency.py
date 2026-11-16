@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (여러 파일의 같은 수치)
 """Numbers and lists written in more than one place agree.
 
 Read with regular expressions only (nothing is generated): the CH32V203 flash
@@ -115,6 +116,47 @@ def test_board_file_matches_gui(name):
         assert spec.boot_key == str(int(d["BOARD_BOOT_KEY"]) + 1)
     else:
         assert not hid, "a board with our bootloader needs BOARD_BOOT_KEY"
+
+
+def hello_features(path) -> int:
+    """HELLO byte 5 as firmware/macro_keyboard/src/core/protocol.c builds it:
+    BOARD_FEATURES, AUTO_LOCK on lock boards, BATTERY and BLE from BOARD_BATTERY
+    and BOARD_BLE."""
+    d = defines(path)
+    bits = {k: number(v) for k, v in defines(SRC / "config.h").items() if k.startswith("BOARD_FEATURE_")}
+
+    def value(expr: str) -> int:
+        expr = expr.strip()
+        if expr in d and expr != d[expr]:
+            return value(d[expr])
+        if expr in bits:
+            return bits[expr]
+        return number(expr)
+
+    def ored(expr: str) -> int:
+        out = 0
+        for part in expr.strip().strip("()").split("|"):
+            out |= value(part)
+        return out
+
+    f = ored(d["BOARD_FEATURES"])
+    if f & bits["BOARD_FEATURE_LOCK"]:
+        f |= bits["BOARD_FEATURE_AUTO_LOCK"]
+    if "BOARD_BATTERY" in d:
+        f |= bits["BOARD_FEATURE_BATTERY"]
+    if "BOARD_BLE" in d and value(d["BOARD_BLE"]):
+        f |= bits["BOARD_FEATURE_BLE"]
+    return f
+
+
+JUZH_FILE = SRC / "hal" / "ac6321a" / "juzh_3b4.h"
+
+
+@pytest.mark.parametrize("name", sorted(BOARD_FILES) + ["JUZH_3B4"])
+def test_board_features_match_hello(name):
+    """boards.py features = what the firmware's HELLO sends (offline preview, mock devices)."""
+    path = JUZH_FILE if name == "JUZH_3B4" else BOARD_FILES[name]
+    assert boards.find(name).layout.features == hello_features(path)
 
 
 def test_config_h_selects_every_board():

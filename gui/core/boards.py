@@ -113,14 +113,19 @@ def _object(word: str) -> str:
     return "을" if word[-1] in "LMNR136780" else "를"
 
 
+# features = the HELLO byte 5 the firmware sends: BOARD_FEATURES of the board file,
+# AUTO_LOCK added to lock boards, BATTERY / BLE from BOARD_BATTERY / BOARD_BLE
+# (firmware/macro_keyboard/src/core/protocol.c; tests/gui/test_consistency.py)
 BOARDS = (
     BoardSpec("MK6K1N", "6키 + 노브 1개 (CH552G)",
-              Board(keys=6, knobs=1, rows=2, name="MK6K1N", chip_id=0x52),
+              Board(keys=6, knobs=1, rows=2, name="MK6K1N", chip_id=0x52,
+                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
               boot_config=BOOT_P15, boot_key="D",
               factory_boot="키 E를 누른 채 꽂으세요"),
     # Same pins as MK6K1N, with an LED under every key (tests/hw/mk6k1nl/test_mk6k1nl)
     BoardSpec("MK6K1NL", "6키 + 노브 1개, 키마다 LED (CH552G)",
-              Board(keys=6, knobs=1, rows=2, name="MK6K1NL", chip_id=0x52),
+              Board(keys=6, knobs=1, rows=2, name="MK6K1NL", chip_id=0x52,
+                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
               boot_config=BOOT_P15, boot_key="D",
               factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
                            "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
@@ -198,7 +203,9 @@ PREPARING = (
     # HELLO chip ID not decided yet (0: "unknown")
     BoardSpec("JUZH_3B4", "12키 (3x4) + 노브 2개, 블루투스 (AC6321A)",
               Board(keys=12, knobs=2, rows=3, name="JUZH_3B4", chip_id=0,
-                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
+                    # HELLO 0x1E like SAYO_2B3 (hal/ac6321a/juzh_3b4.h: BOARD_BATTERY 1, BOARD_BLE = MK_BLE, 1 by default)
+                    features=BOARD_FEATURE_LOCK | BOARD_FEATURE_BATTERY | BOARD_FEATURE_AUTO_LOCK
+                    | BOARD_FEATURE_BLE),
               boot_config=0, jieli=True, bluetooth=True, chip_text="AC6321A", knob_column=True, knob_leds=3, rotatable=True,
               boot_text="USB를 꽂은 채 GUI의 [UBOOT로 전환]으로",
               factory_boot="공장 펌웨어 상태면 USB를 꽂고 업데이트 창에서 진입 방법 "

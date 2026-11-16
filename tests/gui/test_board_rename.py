@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-03
 """Boards renamed (2026-11-08: 3X3V_RGB -> SAYO_3X3, 2X4V_RGB -> SAYO_2X4).
 
 Keyboards flashed before the rename (bootloader 1.0, firmware 1.7.0) report

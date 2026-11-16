@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-06
 import json
 
 import pytest

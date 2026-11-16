@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (버전 표시)
 """Version / build-date text (gui/core/version.py)."""
 import sys
 import types

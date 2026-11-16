@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-09 (잠긴 상태 REQ-LOCK-09)
 """[공장 초기화]: an empty config (no strings, no lock pattern, auto-lock off)
 through the usual WRITE/COMMIT, also while locked; then on Bluetooth boards
 (HELLO BLE bit) CLEAR_BONDS, after which the keyboard resets and the window
@@ -74,10 +75,10 @@ def assert_factory(w, board):
     assert w.slots == [""] * board.slot_count and w.lock == [] and w.autolock == 0 and not w.has_unsaved()
 
 
-def test_only_sayo_2b3_has_the_ble_bit():
-    assert SAYO_2B3.bluetooth and SAYO_2B3.layout.features & p.BOARD_FEATURE_BLE
+def test_only_bluetooth_boards_have_the_ble_bit():
+    for spec in boards.ALL_BOARDS:
+        assert bool(spec.layout.features & p.BOARD_FEATURE_BLE) == spec.bluetooth, spec.name
     assert SAYO_2B3.layout.features == 0x1E          # as the firmware's HELLO
-    assert not any(s.layout.features & p.BOARD_FEATURE_BLE for s in boards.ALL_BOARDS if s is not SAYO_2B3)
 
 
 @pytest.mark.parametrize("spec", boards.BOARDS, ids=lambda s: s.name)

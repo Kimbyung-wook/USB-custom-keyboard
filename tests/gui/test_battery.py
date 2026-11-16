@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-08
 """BATTERY (0x07): battery boards (HELLO feature bit 0x04, SAYO_2B3) report
 the cell; the window shows it under the firmware line and polls every 10 s."""
 import struct

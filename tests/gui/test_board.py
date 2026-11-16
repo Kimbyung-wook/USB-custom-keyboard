@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-03
 """Board info (docs/BOARD_INFO.md): slot names, HELLO bytes 17-35, and a GUI
 built for keyboards other than the 6-key one."""
 import pytest

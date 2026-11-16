@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (펌웨어 업데이트, JieLi UBOOT)
 """JieLi UBOOT (gui/core/jluboot.py) and the USB_KEY adapter (gui/core/jl_usbkey.py)
 against fakes: nothing is sent to a real device."""
 import hashlib

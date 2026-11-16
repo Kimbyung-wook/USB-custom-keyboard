@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (자동 잠금 REQ-LOCK-06)
 """Auto-lock minutes: the settings slot after the lock slot (firmware 1.4.0)."""
 import pytest
 

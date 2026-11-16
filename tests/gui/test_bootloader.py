@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (펌웨어 업데이트, CH552 부트로더)
 from gui.core import bootloader as b
 
 DETECT_REPLY = bytes([0xA1, 0x00, 0x02, 0x00, 0x52, 0x11])

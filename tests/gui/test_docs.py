@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (문서 검사)
 """The Markdown docs agree with the repository.
 
 - generated regions are up to date (tools/gen_docs.py --check)

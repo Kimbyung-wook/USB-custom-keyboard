@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): REQ-GUI-03
 """Layouts beyond 6/8/9 keys: the GUI draws and edits any layout HELLO
 reports (keys, rows, knobs).
 

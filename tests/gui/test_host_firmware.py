@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (펌웨어 PC 시험)
 """Runs the firmware host test (tests/host/run.py) so `uv run pytest` covers it; needs gcc."""
 from __future__ import annotations
 

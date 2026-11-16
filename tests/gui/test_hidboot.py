@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (펌웨어 업데이트, 자체 부트로더)
 import struct
 import zlib
 from pathlib import Path

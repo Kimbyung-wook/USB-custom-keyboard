@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (문자열 문법)
 import pytest
 
 from gui.core import macro

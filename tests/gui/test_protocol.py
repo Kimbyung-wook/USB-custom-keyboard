@@ -1,3 +1,4 @@
+# 요구사항(docs/REQUIREMENTS.md): 없음 (프로토콜 형식)
 import struct
 
 import pytest

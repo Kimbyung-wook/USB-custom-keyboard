@@ -5,7 +5,8 @@
 - 대상 보드 ([요약 표](docs/BOARDS.md))
   - CH552G, 키 6개 + 노브 1개: **MK6K1N**(LED 1개), **MK6K1NL**(키마다 LED)
   - CH32V203C8U6, 노브 없음: **SAYO_3X3**(9키), **SAYO_2X4**(8키), **SAYO_2X6**(12키), 키마다 RGB LED
-  - 준비 중: CH573F 6키 무선 **SAYO_2B3**(USB 유선 + 블루투스 슬롯 3개) + CH582F USB 동글(블루투스 → USB)
+  - CH573F 무선: **SAYO_2B3**(6키, USB 유선 + 블루투스 슬롯 3개)
+  - 준비 중: CH582F USB 동글(블루투스 → USB), JUZH_3B4(보류)
 - PC GUI에서 문자열 확인·수정
 - 펌웨어 업로드, 설정, 문자열 출력을 모두 USB 포트 하나로 처리
 
@@ -26,7 +27,7 @@
 - 버전 변수: 펌웨어 `FW_MAJOR`/`FW_MINOR`/`FW_PATCH`, GUI `VERSION`, 부트로더 `BL_VER_MAJOR`/`BL_VER_MINOR`
 - 설정 통신 규격: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
-- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6). 준비 중: SAYO_2B3 (CH573F) + 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6321A, 시험 장입 뒤 복구 불가로 보류)
+- 지원 보드: MK6K1N, MK6K1NL (CH552G) / SAYO_3X3, SAYO_2X4, SAYO_2X6 (CH32V203C8U6) / SAYO_2B3 (CH573F). 준비 중: 동글 (CH582F), JUZH_3B4 (12키 + 노브 2 무선, JieLi AC6321A, 시험 장입 뒤 복구 불가로 보류)
 
 ## 핵심 요구사항
 
@@ -34,7 +35,7 @@
 
 | 식별자 | 요구사항 | 현재 상태 |
 |---|---|---|
-| REQ-BOARD-01 | 시중 매크로 키보드의 **핀맵을 식별해서 펌웨어를 개조** | ✅ CH552·CH32V203 보드 5개 핀맵 식별, 본 펌웨어로 실제 장치 동작 확인(SAYO_2X6은 키 입력 확인 전). SAYO_2B3(CH573F) 키·LED 핀 식별 ([BOARDS.md](docs/BOARDS.md)) |
+| REQ-BOARD-01 | 시중 매크로 키보드의 **핀맵을 식별해서 펌웨어를 개조** | ✅ CH552·CH32V203·CH573 보드 6개 핀맵 식별, 본 펌웨어로 실제 장치 동작 확인(SAYO_2X6은 키 입력 확인 전, SAYO_2B3은 USB·블루투스 입력 확인) ([BOARDS.md](docs/BOARDS.md)) |
 | REQ-KEY-01 | **키마다 길게(약 20자 이상)** 입력 (원래 제품은 약 8자) | ✅ CH552 보드: 9개 슬롯이 **합계 102자**(DataFlash 128바이트)를 나눠 씀. 노브에 키 하나씩 넣으면 키 6개 합계 85자(평균 약 14자). CH32V203 보드: 합계 4070자(9키)·4072자(8키). **GUI가 전체·남은 글자 수를 계산해 저장 가능 여부 표시** |
 | REQ-KEY-03 | 노브는 **단순 기능**(방향키, Enter 등 키 하나)으로 충분 | ✅ 노브 시계 방향/반시계 방향/누르기에 키 하나 또는 짧은 매크로 할당 |
 | REQ-LOCK-01 | **연결할 때마다 패턴 암호를 입력해야 출력**(아무나 못 쓰게). 패턴은 GUI에서 설정. 입력 전 빨간 LED, 통과 후 파란 LED | ✅ 모든 보드, 실제 장치에서 동작 확인 |
@@ -47,7 +48,7 @@
 
 | 기능 | 내용 |
 |---|---|
-| 하드웨어 조사 | ✅ 5개 보드 핀·LED·부트로더 확인 ([BOARDS.md](docs/BOARDS.md)). SAYO_2X6(12키): 본 펌웨어 키 입력·GUI 설정 확인 전 |
+| 하드웨어 조사 | ✅ 6개 보드 핀·LED·부트로더 확인 ([BOARDS.md](docs/BOARDS.md)). SAYO_2X6(12키): 본 펌웨어 키 입력·GUI 설정 확인 전 |
 | 본 펌웨어 ([firmware/macro_keyboard](firmware/macro_keyboard/)) | ✅ 키별 문자열 입력, 빌드와 PC 검사(host_test) 통과 |
 | 설정 통신 규격 | ✅ [docs/PROTOCOL.md](docs/PROTOCOL.md) |
 | 설정 GUI | ✅ 실제 장치와 동작 확인. 키보드 없이 `--mock`으로도 실행 가능 |
@@ -55,7 +56,7 @@
 | 보드 정보 | ✅ HELLO로 칩·키/노브 수·보드 이름을 알리고 GUI가 그 배치로 화면 구성 ([docs/BOARD_INFO.md](docs/BOARD_INFO.md)) |
 | 펌웨어 업데이트 | ✅ GUI 업데이트 창: 장입할 보드 선택, 파일 식별 문자열 확인, 식별 못 한 키보드(공장 펌웨어 등)도 확인 후 장입. CH32V203 보드는 **자체 HID 부트로더**로 브리지 없이 업데이트(처음 한 번만 BOOT 브리지, [docs/BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md)) |
 | 키별 LED | ✅ MK6K1NL·SAYO_3X3·SAYO_2X4: 누르는 동안 누른 키만 초록, 나머지는 꺼짐 |
-| 무선 키보드 SAYO_2B3 (준비 중) | 🔶 CH573F. 핀·전원 확인, 자체 HID 부트로더 설치·확인([BOOTLOADER_CH573.md](docs/BOOTLOADER_CH573.md)). 본 펌웨어 BLE 1단계: USB 유선 + 블루투스 HID(기기 1대, 키 5 재페어링, 60초 광고 멈춤), 유·무선 자동 전환, 배터리 %(BLE 배터리 서비스, 설정 명령 `0x07`) 기판 확인(2026-11-14). GUI 보드 목록 등록, `build_fw.ps1`·`flash.ps1 -Board sayo_2b3`. BLE 2단계 슬롯 3개(REQ-BLE-04) 기판 확인(2026-11-16, 판 131,648 B, CRC32 3ACC4E29): 슬롯 1 PC·슬롯 2 휴대폰 입력, 재연결(전원 재시작 포함), 슬롯 분리. 키 5·6도 누를 때 입력(REQ-KEY-08, 장입됨, 기판 확인 전). 동글 연결은 다음(REQ-BLE-12) |
+| 무선 키보드 SAYO_2B3 | 🔶 CH573F. 핀·전원 확인, 자체 HID 부트로더 설치·확인([BOOTLOADER_CH573.md](docs/BOOTLOADER_CH573.md)). 본 펌웨어 BLE 1단계: USB 유선 + 블루투스 HID(기기 1대, 키 5 재페어링, 60초 광고 멈춤), 유·무선 자동 전환, 배터리 %(BLE 배터리 서비스, 설정 명령 `0x07`) 기판 확인(2026-11-14). GUI 보드 목록 등록, `build_fw.ps1`·`flash.ps1 -Board sayo_2b3`. BLE 2단계 슬롯 3개(REQ-BLE-04) 기판 확인(2026-11-16, 판 131,648 B, CRC32 3ACC4E29): 슬롯 1 PC·슬롯 2 휴대폰 입력, 재연결(전원 재시작 포함), 슬롯 분리. 키 5·6도 누를 때 입력(REQ-KEY-08, 장입됨, 기판 확인 전). 동글 연결은 다음(REQ-BLE-12) |
 | 블루투스 동글 (준비 중) | 🔶 CH582F, BLE HID 키보드를 USB 키보드로 전달(`1209:C55F`). 펌웨어 빌드·PC 검사 통과, 미장입([board/BOARD_DONGLE_CH582.md](docs/board/BOARD_DONGLE_CH582.md)) |
 
 ### 이력
@@ -72,6 +73,7 @@
 - 2026-11-14: SAYO_2B3 블루투스 1단계 기판 확인, GUI 보드 목록·스크립트 등록
 - 2026-11-16: 요구사항 식별자([docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)), 핵심 요구사항 #1~#4 → REQ 식별자. SAYO_2B3 슬롯 3개 장입·슬롯 1·2 기판 확인
 - 2026-11-16: SAYO_2B3 블루투스 입력 고침, PC·휴대폰 입력·재연결·슬롯 분리 기판 확인
+- 2026-11-16: SAYO_2X6·SAYO_2B3를 지원 보드로(준비 중은 동글·JUZH_3B4)
 
 ## 잠금 상태도
 
@@ -184,8 +186,8 @@ stateDiagram-v2
 | 보드 세부 | [board/BOARD_MK6K1NL.md](docs/board/BOARD_MK6K1NL.md) | 6키 + 노브, 키마다 LED. 버튼 매핑, 칩 핀맵, LED 체인 |
 | 보드 세부 | [board/BOARD_SAYO_3X3_RGB.md](docs/board/BOARD_SAYO_3X3_RGB.md) | 9키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
 | 보드 세부 | [board/BOARD_SAYO_2X4_RGB.md](docs/board/BOARD_SAYO_2X4_RGB.md) | 8키 (CH32V203). 버튼 매핑, 48핀 칩 핀맵, LED, 부팅, 확인 결과 |
-| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X6_RGB.md](docs/board/BOARD_SAYO_2X6_RGB.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
-| 보드 세부 (준비 중) | [board/BOARD_SAYO_2X3B_RGB.md](docs/board/BOARD_SAYO_2X3B_RGB.md) | 6키(2×3) 블루투스(CH573F), 준비 중: 핀·부트로더·본 펌웨어 BLE 1단계 |
+| 보드 세부 | [board/BOARD_SAYO_2X6_RGB.md](docs/board/BOARD_SAYO_2X6_RGB.md) | SayoDevice 12키(2×6, CH32V203). 핀 확인 끝, 본 펌웨어 확인 중(키 입력·GUI 설정 확인 전) |
+| 보드 세부 | [board/BOARD_SAYO_2X3B_RGB.md](docs/board/BOARD_SAYO_2X3B_RGB.md) | 6키(2×3) 블루투스(CH573F): 핀·부트로더·본 펌웨어(USB 유선 + 블루투스 슬롯 3개) |
 | 보드 세부 (준비 중) | [board/BOARD_DONGLE_CH582.md](docs/board/BOARD_DONGLE_CH582.md) | SAYO_2B3용 USB 동글(CH582F): BLE → USB HID, 짝짓기(재꽂기), 장입 순서 |
 | 보드 세부 (준비 중) | [board/BOARD_KEY12_JUZHEN_V01.md](docs/board/BOARD_KEY12_JUZHEN_V01.md) | JUZH_3B4 12키 + 노브 2 무선. 칩 JieLi AC6321A(식별 기록, 체크리스트, 핀 표, SDK·장입 조사), 공장 펌웨어 지워도 됨 |
 | 칩 | [CHIPS.md](docs/CHIPS.md) | 칩 특성 표(코어, 클럭, Flash·부트로더·앱 영역, RAM, 설정 저장, 핀·GPIO, USB, 전압)와 펌웨어 사용량 |
@@ -245,7 +247,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
   - `macro_keyboard.ino.hex`
 - 키마다 LED가 있는 보드: `-Board mk6k1nl`로 빌드 → `macro_keyboard-MK6K1NL.hex`
 - CH32V203 보드: `-Board sayo_3x3`(9키), `-Board sayo_2x4`(8키), `-Board sayo_2x6`(12키) → 앱 `.bin` + 부트로더 + 전체 이미지 ([BOOTLOADER_CH32V203.md](docs/BOOTLOADER_CH32V203.md) 빌드)
-- CH573 보드(SAYO_2B3, 준비 중): `-Board sayo_2b3` → 앱 `.bin` + 부트로더 + 첫 설치 이미지(`Makefile.ch573 full`, [펌웨어 README](firmware/macro_keyboard/README.md#ch573-빌드-sayo_2b3-준비-중))
+- CH573 보드(SAYO_2B3): `-Board sayo_2b3` → 앱 `.bin` + 부트로더 + 첫 설치 이미지(`Makefile.ch573 full`, [펌웨어 README](firmware/macro_keyboard/README.md#ch573-빌드-sayo_2b3))
 - 동글(CH582F): `firmware\dongle_ch582`에서 `mingw32-make` ([동글 README](firmware/dongle_ch582/README.md))
 - 보드별 파일 이름: [BOARDS.md](docs/BOARDS.md)
 
