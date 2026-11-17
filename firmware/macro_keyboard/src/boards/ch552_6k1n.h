@@ -1,9 +1,10 @@
 #ifndef __MK_BOARD_CH552_6K1N_H__
 #define __MK_BOARD_CH552_6K1N_H__
 
-// The 6-key + 1-knob CH552G keyboard PCB that MK6K1N and MK6K1NL share:
-// chip, key/knob count and pins (docs/PINMAP.md). A board file sets
-// BOARD_NAME, BOARD_LED_COUNT and BOARD_KEY_LEDS, then includes this.
+// The 6-key + 1-knob CH552G keyboard PCB (the MK6K1NL board): chip, key/knob
+// count and pins (docs/PINMAP.md). Kept apart from the board file so the pins
+// and port layout stay in one place; a board file sets BOARD_NAME,
+// BOARD_LED_COUNT and BOARD_KEY_LEDS, then includes this.
 
 #if !defined(BOARD_NAME) || !defined(BOARD_LED_COUNT) || !defined(BOARD_KEY_LEDS)
 #error the board file sets BOARD_NAME, BOARD_LED_COUNT and BOARD_KEY_LEDS first

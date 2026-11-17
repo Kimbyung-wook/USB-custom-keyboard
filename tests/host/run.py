@@ -28,7 +28,7 @@ def keys(*pairs: tuple[int, int] | str) -> str:
     return " ".join(out)
 
 
-def build(out_dir: Path, board: str = "MK6K1N", header: Path | None = None) -> Path:
+def build(out_dir: Path, board: str = "MK6K1NL", header: Path | None = None) -> Path:
     """The firmware's functions against the host HAL (stub/hal_host.h); with
     ``header`` a board file outside src/boards (src/config.h BOARD_HEADER)."""
     exe = out_dir / f"host_test_{board}.exe"
@@ -731,7 +731,9 @@ def main() -> int:
         # on both boards. Slots type a..i: key C = 06, CW = 0a, CCW = 0b.
         letters = p.encode_blob(list("abcdefghi"))
         locked = p.encode_blob(list("abcdefghi"), [3, 6])     # D, then knob CW
-        for board, exe_b in (("MK6K1N", exe), ("MK6K1NL", build(out, "MK6K1NL"))):
+        # MK6K1NL (the board once called MK6K1N; renamed 2026-11-17). exe is the
+        # default MK6K1NL build.
+        for board, exe_b in (("MK6K1NL", exe),):
             key_leds = board == "MK6K1NL"
 
             def typed(blob: bytes, *steps: str) -> tuple[str, str]:

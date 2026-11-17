@@ -1,7 +1,7 @@
 # macro_keyboard: 본 펌웨어 v1.7
 
-- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1N, MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중) / CH573F: SAYO_2B3(본 펌웨어 확인 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
-- 이 문서의 예시는 MK6K1N 기준
+- 대상: [docs/BOARDS.md](../../docs/BOARDS.md)의 보드 전부 (CH552G: MK6K1NL / CH32V203: SAYO_3X3, SAYO_2X4, SAYO_2X6(본 펌웨어 확인 중) / CH573F: SAYO_2B3(본 펌웨어 확인 중)). 보드별 핀은 `docs/board/BOARD_<보드>.md`
+- 이 문서의 예시는 MK6K1NL 기준
 - 키·노브 동작마다 저장된 문자열(매크로)을 HID 키보드 입력으로 출력함
 - 요구사항: [docs/REQUIREMENTS.md](../../docs/REQUIREMENTS.md)
 - [gui](../../gui/) 설정 프로그램과 [PROTOCOL.md](../../docs/PROTOCOL.md) v2 규격으로 통신함
@@ -33,7 +33,6 @@
 - 꽂을 때 LED 점검(`BOARD_LED_SELF_TEST`, 모든 보드): 약 6.3초, `src/core/led.c`
   - 색은 색 바퀴(빨강→노랑→초록→청록→파랑→보라→빨강)를 3초 주기로 2번, 끝나면 0.3초 꺼짐
   - 키마다 LED인 보드(`BOARD_LED_RING`): 빛 하나가 둘레를 1번 키부터 시계방향으로 흐름(이웃한 두 칸 교차 페이드: 현재 칸이 어두워지는 동안 다음 칸이 밝아짐), 한 바퀴 1초. 둘레 순서는 SAYO_3X3 1, 2, 3, 6, 9, 8, 7, 4(가운데 5번은 계속 켜짐), SAYO_2X4 1, 2, 3, 4, 8, 7, 6, 5, SAYO_2X6 1~6, 12~7(빛 2개), MK6K1NL A, B, C, F, E, D
-  - MK6K1N: LED 1개라 색 바퀴만
   - 빛 수: 보드 헤더의 `BOARD_LED_RING_CHASE n`(1 이상) = 빛 n개가 둘레에 고르게 떨어져 흐름. 둘레 칸 수가 n으로 나눠져야 함(아니면 빌드 실패). SAYO_2X6은 2, 다른 보드는 1
   - `BOARD_LED_RING_CHASE 0`이면 무지개 회전(모든 칸이 켜진 채 색이 시계방향으로 이동)
 
@@ -194,7 +193,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 ### 크기
 
-- 현재(1.7.2, 2026-11-17 빌드): SAYO_3X3 앱 12,580바이트, SAYO_2X4 12,564바이트, SAYO_2X6 12,612바이트(앱 영역 최대 52,992바이트). CH552: MK6K1N 9,649바이트, MK6K1NL 10,540바이트(최대 14,336바이트, 부팅 USB 재열거로 1.7.1 대비 각 +10바이트). 빌드 시각에 따라 ±4바이트
+- 현재(1.7.2, 2026-11-17 빌드): SAYO_3X3 앱 12,580바이트, SAYO_2X4 12,564바이트, SAYO_2X6 12,612바이트(앱 영역 최대 52,992바이트). CH552: MK6K1NL 10,540바이트(최대 14,336바이트, 부팅 USB 재열거로 1.7.1 대비 +10바이트). 빌드 시각에 따라 ±4바이트
 - SAYO_2B3(CH573, 블루투스 슬롯 3개): 앱 131,656바이트(2026-11-16 빌드, 장입판 131,648바이트, BLE 라이브러리 포함, 앱 영역 최대 446,464바이트), 자체 부트로더 5,204바이트. RAM 여유 1,168바이트 + 스택 512바이트
 
 **이력 (크기)**
@@ -210,6 +209,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 - 2026-11-07 (1.7.0): 색 바퀴 점검(CH552도), 초록 LED 변경 → 위 현재 크기
 - 2026-11-16 (1.7.1): CH32V203 보드 다시 잼(SAYO_2X6 추가), SAYO_2B3 블루투스 슬롯 3개 판
 - 2026-11-17 (1.7.2): CH552 부팅 때 USB 재열거(USBInit 앞에서 풀업 끄고 50 ms 뒤 올림) → MK6K1N·MK6K1NL 각 +10바이트
+- 2026-11-17: MK6K1N 빌드 대상을 MK6K1NL로 통합(같은 기판). 위 이력의 MK6K1N 값은 옛 MK6K1N 빌드(LED 8자리)
 - 2026-11-07: "노브를 누른 채 꽂기" 진입 삭제 → MK6K1N 8,726, MK6K1NL 8,949바이트
 - 그 전 버전(MK6K1N 기준, 변화는 바로 아래 버전 대비):
 
@@ -228,15 +228,14 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 | 보드 파일 | 보드 | LED | 하드웨어 확인 |
 |---|---|---|---|
-| `mk6k1n.h` | MK6K1N: 6키 + 노브 | 눈에 보이는 LED 1개(체인 위치를 몰라 8자리에 같은 색) | [BOARD_MK6K1N](../../docs/board/BOARD_MK6K1N.md) |
-| `mk6k1nl.h` | MK6K1NL: 6키 + 노브, 핀은 MK6K1N과 같음 | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
+| `mk6k1nl.h` | MK6K1NL: 6키 + 노브 (옛 이름 MK6K1N, PCB `ANXIN-K6-VT1-LED-V01`) | **키마다 1개**(체인 0~5 = 키 A~F). 누르는 동안 누른 키만 초록, 나머지는 꺼짐(평소 모두 파랑). 패턴 입력 중(전체 빨강)에는 누른 키만 잠깐 꺼짐 | [BOARD_MK6K1NL](../../docs/board/BOARD_MK6K1NL.md) |
 | `sayo_3x3.h` | SAYO_3X3: 9키 (CH32V203) | 키마다 RGB (색별 캐소드 + 키별 애노드) | [BOARD_SAYO_3X3](../../docs/board/BOARD_SAYO_3X3_RGB.md) |
 | `sayo_2x4.h` | SAYO_2X4: 8키 (CH32V203) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X4](../../docs/board/BOARD_SAYO_2X4_RGB.md) |
 | `sayo_2x6.h` | SAYO_2X6: 12키 (CH32V203, 기판 `2x6_RGB`) | 키마다 RGB (9키와 같은 방식) | [BOARD_SAYO_2X6_RGB](../../docs/board/BOARD_SAYO_2X6_RGB.md) (본 펌웨어 확인 중) |
 
-- **공통 기판 파일** `ch552_6k1n.h`: 두 보드가 같은 기판이라 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠
+- **공통 기판 파일** `ch552_6k1n.h`: 칩·키/노브 수·행 수·핀·스위치 비트 표·핀 배치 검사(`#error`)를 한 곳에 둠(같은 기판의 다른 판이 생기면 같이 씀)
   - HAL 선택(`BOARD_HAL_CH55X`)도 여기서 정함
-- `mk6k1n.h` / `mk6k1nl.h`: 각자 이름(`BOARD_NAME`)과 LED(`BOARD_LED_COUNT`, `BOARD_KEY_LEDS`: 1 = LED i가 키 i 아래)를 정한 뒤 `ch552_6k1n.h`를 include함
+- `mk6k1nl.h`: 이름(`BOARD_NAME`)과 LED(`BOARD_LED_COUNT`, `BOARD_KEY_LEDS`: 1 = LED i가 키 i 아래)를 정한 뒤 `ch552_6k1n.h`를 include함
 - 보드 요약: [docs/BOARDS.md](../../docs/BOARDS.md), 핀 그림: `docs/board/BOARD_<보드>.md`
 - 새 보드 추가:
   - 기판(핀)이 같으면: 이름과 LED만 정한 보드 파일 하나
@@ -245,15 +244,15 @@ powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1
 
 | 명령 | 매크로 | 추가 복사본 |
 |---|---|---|
-| `tools/build_fw.ps1 -Board mk6k1n` | `-DBOARD_MK6K1N` | `build/macro_keyboard-MK6K1N.hex` |
 | `tools/build_fw.ps1 -Board mk6k1nl` | `-DBOARD_MK6K1NL` | `build/macro_keyboard-MK6K1NL.hex` |
 | `tools/build_fw.ps1 -Board sayo_3x3` / `sayo_2x4` / `sayo_2x6` | `BOARD=SAYO_3X3` / `SAYO_2X4` / `SAYO_2X6` (`Makefile.ch32v203`) | `build/ch32v203/macro_keyboard-<보드>.bin`(목적 파일 `obj-<보드>/`), 전체 이미지 `full-<보드>.bin`(`flash.ps1`은 안 씀) |
-| `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1n` | – |
+| `-Board` 생략, Arduino IDE 빌드 | 없음 → `mk6k1nl`(`config.h` 기본) | `-Board` 생략은 `build/macro_keyboard-MK6K1NL.hex` |
 
+- 빌드 대상은 5개(mk6k1nl, sayo_3x3, sayo_2x4, sayo_2x6, sayo_2b3). 옛 이름 `mk6k1n`은 빌드 대상이 아님(`-Board mk6k1n` 안 됨). 옛 이름 MK6K1N 펌웨어는 GUI가 HELLO 별칭으로 MK6K1NL로 인식(`gui/core/boards.py`)
 - `macro_keyboard-<보드>.hex`는 GUI 펌웨어 업데이트 창이 먼저 고르는 파일
 - 보드 정보 전달:
   - HELLO 바이트 17~35([docs/PROTOCOL.md](../../docs/PROTOCOL.md))
-  - hex 안 식별 문자열 `MKFW1:<보드>:<칩>:<버전>`(예: `MKFW1:MK6K1N:CH552:1.3.0`) → GUI가 올리기 전에 보드와 칩 확인
+  - hex 안 식별 문자열 `MKFW1:<보드>:<칩>:<버전>`(예: `MKFW1:MK6K1NL:CH552:1.3.0`) → GUI가 올리기 전에 보드와 칩 확인
 - 보드 이름은 GUI 보드 목록 `gui/core/boards.py`와 같아야 함
 
 ## 업로드
@@ -289,7 +288,7 @@ powershell -ExecutionPolicy Bypass -File tools\flash.ps1 -Hex firmware\macro_key
 ### 1. 연결 확인
 
 1. GUI 실행: `uv run python -m gui`
-2. 상단에 `● 연결됨 - …`, `MK6K1N (키 6 + 노브 1) / 용량 128바이트`, `펌웨어 v1.7.0 (빌드 …)` 표시되면 설정 통신 정상
+2. 상단에 `● 연결됨 - …`, `MK6K1NL (키 6 + 노브 1) / 용량 128바이트`, `펌웨어 v1.7.0 (빌드 …)` 표시되면 설정 통신 정상
    - 빌드 날짜가 방금 빌드한 시각인지 확인(새 펌웨어가 올라갔다는 표시)
 3. 처음에는 "설정 없음"으로 빈 슬롯 9개 표시
 
@@ -401,8 +400,8 @@ flowchart TB
 | `macro_keyboard.ino` | CH552 시작점: `setup()`/`loop()`에서 `app_setup()`/`app_loop()`만 부름 |
 | `src/core/app.c/.h` | 시작 순서(HAL, 저장, 잠금, 입력, USB)와 반복문(통신, 입력, 잠금, 문자열, LED), BOOT·저장 알림 처리 |
 | `src/config.h` | 버전, 빌드 날짜, USB ID, 보드 파일 고르기, 슬롯 번호, 용량, 잠금 설정값 |
-| `src/boards/ch552_6k1n.h` | 6키 + 노브 CH552G 기판: HAL 선택, 칩, 키/노브/행 수, 핀 배치, 스위치 비트 표, 핀 배치 검사 (MK6K1N, MK6K1NL 공통) |
-| `src/boards/mk6k1n.h`, `mk6k1nl.h` | 보드 이름과 LED (LED 1개를 8자리로 / 키마다 1개) |
+| `src/boards/ch552_6k1n.h` | 6키 + 노브 CH552G 기판: HAL 선택, 칩, 키/노브/행 수, 핀 배치, 스위치 비트 표, 핀 배치 검사 (MK6K1NL) |
+| `src/boards/mk6k1nl.h` | 보드 이름과 LED (키마다 1개) |
 | `src/core/input.c/.h` | 스위치 디바운스(20ms), 노브 판정(한 칸 중 2단계 이상), 노브 길게 누르기, 입력을 잠금/문자열 입력으로 보내기 |
 | `src/core/led.c/.h` | LED 표시 정책(색, 깜빡임, 키별 초록/꺼짐), 색 번호 `COLOR_*`(`led.h`)와 색 표 `hal_palette` |
 | `src/core/lock.c/.h` | 잠금 상태, 패턴 입력 판정, 틀린 횟수, 자동 잠금 시간 |

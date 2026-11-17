@@ -48,11 +48,11 @@
 | 21 | 키 배치 행 수 R (열 수는 `ceil(K / R)`, 마지막 줄은 덜 찰 수 있음) | `2` |
 | 22 | 기능 비트: bit0 RGB LED 있음, bit1 패턴 암호 지원, bit2 배터리 상태 명령([PROTOCOL `0x07`](PROTOCOL.md#0x07-battery), SAYO_2B3), bit3 설정 슬롯(펌웨어 1.4), bit4 블루투스(페어링 지우기 명령 [PROTOCOL `0x08`](PROTOCOL.md#0x08-clear_bonds), SAYO_2B3) | `0x03` (1.4부터 `0x0B`) |
 | 23 | 예약 (`0`) | `0` |
-| 24~31 | 보드 이름 (ASCII 8바이트, 남는 곳은 `0`) | `"MK6K1N"` |
+| 24~31 | 보드 이름 (ASCII 8바이트, 남는 곳은 `0`) | `"MK6K1NL"` |
 | 32~35 | 칩 고유 ID (4바이트, 모르면 `0`) — 아래 "정할 것" 3번 | `7D E2 0F BD` |
 
 - 바이트 7~8 **저장 용량**(지금도 있음)은 그대로 씀. 칩마다 DataFlash가 다르면 펌웨어가 그 값을 보냄
-- 바이트 17이 `0`이면(펌웨어 1.0~1.2.x, 그 자리가 0) GUI는 **기본 보드**로 봄: CH552, 키 6개, 노브 1개, 2행, 이름 `MK6K1N`
+- 바이트 17이 `0`이면(펌웨어 1.0~1.2.x, 그 자리가 0) GUI는 **기본 보드**로 봄: CH552, 키 6개, 노브 1개, 2행, 이름 `MK6K1NL`(옛 이름 `MK6K1N`)
 - 펌웨어 쪽 비용 예상: 상수 19바이트를 `__code` 표에서 복사하는 반복문 정도, 약 40~60바이트(실제 결과는 6절)
 
 ### 프로토콜 버전을 올릴지
@@ -73,7 +73,7 @@ class Board:
     keys: int             # K
     knobs: int            # N
     rows: int             # R
-    name: str             # "MK6K1N"
+    name: str             # "MK6K1NL"
     capacity: int         # HELLO 바이트 7~8
     uid: bytes = b""
 
@@ -105,7 +105,7 @@ class Board:
 
 - 키: `R`행, 열 수 `ceil(K / R)`. 버튼 최소 크기는 키 수에 따라 줄임(예: 12개 이상이면 72×56)
 - 노브: 키 격자 오른쪽에 노브마다 원 하나 + 동작 버튼 3개. 노브 0개면 노브 영역 숨김
-- 창 제목/연결 막대: `● 연결됨 · MK6K1N (CH552, 키 6 + 노브 1) · 펌웨어 v1.3.0 (빌드 …) · 용량 128바이트`
+- 창 제목/연결 막대: `● 연결됨 · MK6K1NL (CH552, 키 6 + 노브 1) · 펌웨어 v1.3.0 (빌드 …) · 용량 128바이트`
 - 키가 많아도 편집 칸(오른쪽 매크로 편집기)은 하나 → 화면 크기는 크게 안 늘어남
 
 ## 4. 칩 표와 펌웨어 업데이트
@@ -135,7 +135,7 @@ class Board:
 - **업데이트 모드 칩 목록**: 부트로더 Detect가 돌려준 칩 ID로 이 표를 찾아 최대 크기와 업로드 도구를 정함
   - 표에 없거나 "미지원"이면 [장입]을 막고 이유를 보여 줌
 - CH32V203 칩 ID: wchisp `CH32V203C8U6[0x3019]` = 칩 0x30, 계열 0x19. HELLO와 GUI의 칩 ID는 계열 값 `0x19` (확인됨)
-- **펌웨어 파일 확인**: 펌웨어 안에 식별 문자열을 하나 넣음(예: `"MKFW1:MK6K1N:CH552"`, 약 20바이트). GUI가 hex에서 찾아 확인:
+- **펌웨어 파일 확인**: 펌웨어 안에 식별 문자열을 하나 넣음(예: `"MKFW1:MK6K1NL:CH552"`, 약 20바이트). GUI가 hex에서 찾아 확인:
 
 | 경우 | 동작 |
 |---|---|
@@ -154,8 +154,8 @@ class Board:
 - 보드마다 이름 하나, 펌웨어 빌드 하나. 칩, 키/노브 수, 핀 배치, 부트로더 진입 핀은 보드에 딸린 값
 - 키 수를 실행 중에 알아내지 않음: 연결되지 않은 핀은 "안 눌린 키"와 똑같이 읽혀 구분 불가
 - 보드 이름(HELLO 24~31, 8자) 규칙:
-  - 기본: `MK` + 키 수 + `K` + 노브 수 + `N` (예: `MK6K1N`)
-  - 키 수가 같은데 기판이 다르면 끝에 구분 글자 (예: `MK6K1NL`)
+  - 기본: `MK` + 키 수 + `K` + 노브 수 + `N`, 키마다 LED면 끝에 `L` (예: `MK6K1NL`)
+  - 옛 이름 `MK6K1N`: 같은 기판을 LED 1개 보드로 잘못 보고 붙인 이름. 2026-11-17 `MK6K1NL`로 통일, 지금은 `gui/core/boards.py` 별칭
   - Sayo 제품은 `SAYO_<행>X<열>` (`SAYO_3X3`, `SAYO_2X4`). 펌웨어 1.7.0까지는 기판 표기(`3X3V_RGB`, `2X4V_RGB`)를 썼고, 지금은 `gui/core/boards.py` 별칭
   - CH32V203 보드 이름은 **정확히 8자** (USB 시리얼 문자열 길이, `usbd_desc.c`)
   - 8자 검사는 gcc 빌드(host 테스트, CH32V203)에서만. SDCC(CH552)는 코드 크기 때문에 끔
@@ -167,13 +167,13 @@ class Board:
 
 | 항목 | 예 (지금 키보드) | 쓰는 곳 |
 |---|---|---|
-| 보드 이름 | `MK6K1N` | HELLO, 펌웨어 식별 문자열, 처음 설치 때 목록 |
+| 보드 이름 | `MK6K1NL` | HELLO, 펌웨어 식별 문자열, 처음 설치 때 목록 |
 | 설명 | "6키 + 노브 1개 (CH552G)" | 처음 설치 때 목록 |
 | 칩 계열 / 칩 ID | CH55x / `0x52` | 업데이트 모드 칩과 맞춰 보기, 업로드 도구 고르기 |
 | 키 수 / 노브 수 / 행 수 | 6 / 1 / 2 | 펌웨어 없이도 화면을 그릴 때(처음 설치 미리 보기) |
 | **부트로더 진입 핀** | P1.5 (키 D) | 업로드할 때 함께 쓰는 진입 설정(아래 5-3) |
 | 사용자 안내 | "키 D를 누른 채 꽂으세요" | 업데이트 모드 들어가는 방법 안내 |
-| 펌웨어 파일 | `macro_keyboard-MK6K1N.hex` | 처음 설치 때 기본으로 고르는 파일 |
+| 펌웨어 파일 | `macro_keyboard-MK6K1NL.hex` | 처음 설치 때 기본으로 고르는 파일 |
 
 - HELLO의 보드 정보가 진짜 값. 목록은 **펌웨어가 아직 없을 때**(업데이트 모드, 처음 설치) 쓰는 참고 자료
 - 둘이 다르면 HELLO를 믿음
@@ -183,8 +183,7 @@ class Board:
 <!-- gen:boards -->
 | 보드 | 칩 | 키 / 노브 / 줄 | LED | 업데이트 진입 | 처음 설치 | 펌웨어 파일 |
 |---|---|---|---|---|---|---|
-| MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
-| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
+| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 제조사 펌웨어가 있으면 키 E를 누른 채 꽂으세요. 키로 들어가지 않으면(장입 실패 뒤 등) 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-1, 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
 | SAYO_3X3 | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_3x3 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin` |
 | SAYO_2X4 | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board sayo_2x4 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X4.bin` |
 | SAYO_2X6 | CH32V203 | 12 / 0 / 2 | 키마다 RGB LED 12개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_2x6 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X6.bin` |
@@ -192,7 +191,7 @@ class Board:
 <!-- /gen:boards -->
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
-- MK6K1N: 6키 + 노브 1개, LED 1개. MK6K1NL: 키마다 LED, 핀은 MK6K1N과 같음
+- MK6K1NL: 6키 + 노브 1개, 키마다 LED(옛 이름 MK6K1N, 별칭)
 - SAYO_3X3: 9키(3x3), SAYO_2X4: 8키(2x4). 둘 다 노브 없음, 키별 RGB LED
 - 진입: CH552 보드는 ROM 부트로더 진입 핀 P1.5(키 D). CH32V203 보드는 자체 부트로더(진입 키), 처음 설치는 BOOT 브리지
 - SAYO_2B3(CH573, 6키 블루투스): 앱 HELLO는 칩 `0x73`, 키 6 / 노브 0 / 2줄, 이름 `SAYO_2B3`, 기능 비트 `0x1E`(패턴 암호·배터리·설정 슬롯·블루투스)(보드 헤더 `firmware/macro_keyboard/src/hal/ch573/sayo_2b3.h`)
@@ -221,7 +220,7 @@ class Board:
 1. [펌웨어 업데이트] 창을 열고 키보드를 업데이트 모드로 꽂음
    - 공장 펌웨어에는 BOOT 명령이 없음 → 보드 목록의 "사용자 안내"대로 들어감
 2. 칩 목록에 칩이 나타나면 그 칩 계열의 보드만 보여 줌
-   - 예: CH552 → `MK6K1N`, `MK6K1NL` / CH32V203 → `SAYO_3X3`, `SAYO_2X4`, `SAYO_2X6` / CH573 → `SAYO_2B3`
+   - 예: CH552 → `MK6K1NL` / CH32V203 → `SAYO_3X3`, `SAYO_2X4`, `SAYO_2X6` / CH573 → `SAYO_2B3`
 3. 사용자가 보드를 고르면 그 보드의 펌웨어 파일을 기본으로 채우고 키 배치 미리 보기를 보여 줌(키 수를 눈으로 맞춰 보도록)
 4. [장입] 후 키보드가 다시 시작하면 ①로 넘어가 HELLO로 확인. HELLO 보드 이름이 고른 보드와 다르면 알려 줌
 
@@ -230,7 +229,7 @@ class Board:
 ### 5-3. 보드별 부트로더 진입 핀
 
 - CH55x 부트로더는 업로드할 때 함께 쓰는 **진입 설정**(vnproch55x `-c`)에 따라 "어느 핀을 누른 채 꽂으면 업데이트 모드로 들어갈지"가 정해짐
-- 진입 설정은 보드 목록의 `boot_config`에서 가져옴(MK6K1N: `BOOT_P15`, P1.5 = 키 D)
+- 진입 설정은 보드 목록의 `boot_config`에서 가져옴(MK6K1NL: `BOOT_P15`, P1.5 = 키 D)
   - 업데이트 창은 **장입할 보드**를 목록에서 고르게 함(처음에는 HELLO의 보드)
   - 키보드를 식별할 수 없으면(공장 펌웨어, 보드 정보 없음, 목록에 없는 보드) 고른 보드가 맞는지 확인받은 뒤 장입(GUI 1.6.0)
 - **진입 설정을 보드 목록에서 가져오는 이유**: 다른 기판에서 P1.5가 키가 아니면, 이 값으로 올린 뒤 다음 업데이트 때 업데이트 모드로 들어가기 어려워짐([TROUBLESHOOTING.md 2-3](TROUBLESHOOTING.md#2-3-다운로드-실패-후-장치가-전혀-인식되지-않음-복구))
@@ -253,13 +252,13 @@ class Board:
 ## 6. 펌웨어 쪽
 
 - 보드별 값은 `src/config.h`가 아니라 **보드 파일** `src/boards/*.h`에 둠
-  - 빌드할 때 `-DBOARD_MK6K1N`처럼 하나를 고름(`tools/build_fw.ps1 -Board mk6k1n`). 안 고르면 `mk6k1n`
-  - 같은 기판을 쓰는 보드는 공통 기판 파일을 include함: `ch552_6k1n.h`(MK6K1N, MK6K1NL 공통)
+  - 빌드할 때 `-DBOARD_MK6K1NL`처럼 하나를 고름(`tools/build_fw.ps1 -Board mk6k1nl`). 안 고르면 `mk6k1nl`. 옛 이름 MK6K1N은 GUI HELLO 별칭만(빌드 대상 아님)
+  - 같은 기판을 쓰는 보드는 공통 기판 파일을 include함: `ch552_6k1n.h`(MK6K1NL)
 
 | 파일 | 내용 |
 |---|---|
 | `src/boards/ch552_6k1n.h` | HAL 선택(`BOARD_HAL_CH55X`), 칩(`BOARD_CHIP`, `BOARD_CHIP_ID`), 키/노브/행 수(`BOARD_KEYS`, `BOARD_KNOBS`, `BOARD_ROWS`), 기능 비트, 핀 배치(`PIN_*`), 키 스캔 표(`BOARD_SWITCH_BITS`, P1에 있는 스위치 수 `BOARD_P1_SWITCHES`), 핀 배치 검사(`#error`) |
-| `src/boards/mk6k1n.h`, `mk6k1nl.h` | 보드 이름(`BOARD_NAME`), LED 수(`BOARD_LED_COUNT`), 키별 LED 여부(`BOARD_KEY_LEDS`) |
+| `src/boards/mk6k1nl.h` | 보드 이름(`BOARD_NAME`), LED 수(`BOARD_LED_COUNT`), 키별 LED 여부(`BOARD_KEY_LEDS`) |
 
 - `SLOT_COUNT`는 `BOARD_KEYS + 3 * BOARD_KNOBS`로 계산(`src/config.h`)
   - 잠금 검사(`< SLOT_COUNT`)와 블롭 검사는 이 값을 씀

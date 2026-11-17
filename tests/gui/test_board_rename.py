@@ -180,3 +180,41 @@ def test_board_names_fit_hello():
     assert len(set(names + aliases)) == len(names) + len(aliases)
     # Once the board is in BOARDS, its earlier names belong in its aliases
     assert not set(boards.PENDING_ALIASES.values()) & set(names)
+
+
+# ---- 2026-11-17: MK6K1N was the MK6K1NL board all along (UID 7de20fbd,
+# PCB ANXIN-K6-VT1-LED-V01); firmware before the rename reports MK6K1N
+
+OLD_6K = p.Board(keys=6, knobs=1, rows=2, name="MK6K1N", chip_id=0x52,
+                 features=p.BOARD_FEATURE_RGB_LED | p.BOARD_FEATURE_LOCK | p.BOARD_FEATURE_AUTO_LOCK)
+
+
+def test_mk6k1n_is_an_earlier_name_of_mk6k1nl():
+    spec = boards.find("MK6K1N")
+    assert spec is boards.find("MK6K1NL") and spec.name == "MK6K1NL"
+    assert boards.current_name("MK6K1N") == "MK6K1NL" and boards.same("MK6K1N", "MK6K1NL")
+    assert boards.display_name("MK6K1N") == "MK6K1NL (옛 이름 MK6K1N)"
+    assert "MK6K1N" not in [b.name for b in boards.ALL_BOARDS]
+    assert spec.firmware_file == "macro_keyboard-MK6K1NL.hex" and "키마다 LED" in spec.description
+
+
+def test_main_window_shows_an_old_mk6k1n_as_mk6k1nl():
+    from PySide6.QtWidgets import QApplication
+    from gui.ui.app import MainWindow, make_mock_connector
+    _app = QApplication.instance() or QApplication([])  # noqa: F841
+    w = MainWindow(make_mock_connector(MockDevice(board=OLD_6K)), auto_reconnect=False)
+    names = [w.board_combo.itemData(i) for i in range(w.board_combo.count())]
+    assert "MK6K1N" not in names and "MK6K1NL" in names            # not offered in the picker
+    assert w.connect_device()
+    assert w.board_combo.currentData() == "MK6K1NL"
+    assert "MK6K1NL (옛 이름 MK6K1N)" in w.conn_label.text()
+    assert "키 D" in w.boot_hint
+    w.close()
+
+
+def test_check_device_takes_mk6k1n():
+    lines: list[str] = []
+    code = cd.main([], connect=lambda: MockDevice(board=OLD_6K), out=lines.append)
+    text = "\n".join(lines)
+    assert code == 0, text
+    assert "옛 보드 이름 MK6K1N" in text and "MK6K1NL와 같음" in text

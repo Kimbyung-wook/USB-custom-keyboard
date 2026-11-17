@@ -41,7 +41,7 @@
   and wchisp flash follows at once. Data-Flash (settings, BLE bonds) stays.
 
 .EXAMPLE
-  .\tools\flash.ps1 -Hex tests\hw\mk6k1n\test_pinmap\build\CH55xDuino.mcs51.ch552\test_pinmap.ino.hex
+  .\tools\flash.ps1 -Hex firmware\macro_keyboard\build\macro_keyboard-MK6K1NL.hex
 .EXAMPLE
   .\tools\flash.ps1 -Board sayo_3x3
 .EXAMPLE

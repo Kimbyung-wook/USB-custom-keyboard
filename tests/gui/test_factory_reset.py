@@ -254,7 +254,7 @@ def test_client_clear_bonds():
 
 
 def test_disconnected(qapp):
-    board = boards.find("MK6K1N").layout
+    board = boards.find("MK6K1NL").layout
     w = window(qapp, board, filled(board))
     assert not w.reset_btn.isEnabled() and not w.factory_reset()
     close(w)

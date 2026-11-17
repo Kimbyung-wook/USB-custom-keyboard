@@ -10,8 +10,7 @@
 <!-- gen:boards -->
 | 보드 | 칩 | 키 / 노브 / 줄 | LED | 업데이트 진입 | 처음 설치 | 펌웨어 파일 |
 |---|---|---|---|---|---|---|
-| MK6K1N | CH552 | 6 / 1 / 2 | WS2812 (체인 8자리에 같은 색) | 키 D | 키 E를 누른 채 꽂으세요 | `firmware/macro_keyboard/build/macro_keyboard-MK6K1N.hex` |
-| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
+| MK6K1NL | CH552 | 6 / 1 / 2 | 키마다 WS2812 6개 | 키 D | 제조사 펌웨어가 있으면 키 E를 누른 채 꽂으세요. 키로 들어가지 않으면(장입 실패 뒤 등) 칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-1, 2-3) | `firmware/macro_keyboard/build/macro_keyboard-MK6K1NL.hex` |
 | SAYO_3X3 | CH32V203 | 9 / 0 / 3 | 키마다 RGB LED 9개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_3x3 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_3X3.bin` |
 | SAYO_2X4 | CH32V203 | 8 / 0 / 2 | 키마다 RGB LED 8개 (PWM) | 키 5 | `tools\flash.ps1 -Board sayo_2x4 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X4.bin` |
 | SAYO_2X6 | CH32V203 | 12 / 0 / 2 | 키마다 RGB LED 12개 (PWM) | 키 7 | `tools\flash.ps1 -Board sayo_2x6 -Full` | `firmware/macro_keyboard/build/ch32v203/macro_keyboard-SAYO_2X6.bin` |
@@ -20,9 +19,9 @@
 
 - 표는 `tools/gen_docs.py`가 `gui/core/boards.py`에서 만듦
 - 칩: CH552 = CH552G, CH32V203 = CH32V203C8U6
-- 저장 용량(문자열 합계 최대): MK6K1N·MK6K1NL 128바이트(102자), SAYO_3X3 4096바이트(4070자), SAYO_2X4 4096바이트(4072자), SAYO_2X6 4096바이트(4064자), SAYO_2B3 2048바이트(2028자)
+- 저장 용량(문자열 합계 최대): MK6K1NL 128바이트(102자), SAYO_3X3 4096바이트(4070자), SAYO_2X4 4096바이트(4072자), SAYO_2X6 4096바이트(4064자), SAYO_2B3 2048바이트(2028자)
 - RGB 보드의 LED: 색별 음극(캐소드) 묶음 + 키별 양극(애노드)
-- 세부 문서: [MK6K1N](board/BOARD_MK6K1N.md), [MK6K1NL](board/BOARD_MK6K1NL.md), [SAYO_3X3](board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](board/BOARD_SAYO_2X6_RGB.md)(본 펌웨어 확인 중), [SAYO_2B3](board/BOARD_SAYO_2X3B_RGB.md)
+- 세부 문서: [MK6K1NL](board/BOARD_MK6K1NL.md)(옛 이름 MK6K1N), [SAYO_3X3](board/BOARD_SAYO_3X3_RGB.md), [SAYO_2X4](board/BOARD_SAYO_2X4_RGB.md), [SAYO_2X6](board/BOARD_SAYO_2X6_RGB.md)(본 펌웨어 확인 중), [SAYO_2B3](board/BOARD_SAYO_2X3B_RGB.md)
 
 - 노브 없는 보드: 패턴 입력 시작은 **아무 키 2초**, 단계는 키만, 키는 누를 때 입력([REQ-KEY-05](REQUIREMENTS.md#key-입력)) ([MANUAL 10장](MANUAL.md#10-노브-없는-보드에서-다른-점))
 - 패턴 암호·자동 잠금: 모든 보드에 있음
@@ -31,11 +30,11 @@
 
 ### 키 배치 그림
 
-| MK6K1N | MK6K1NL |
+| MK6K1NL | SAYO_3X3 |
 |---|---|
-| ![MK6K1N 키 배치](images/buttons_mk6k1n.svg) | ![MK6K1NL 키 배치](images/buttons_mk6k1nl.svg) |
-| **SAYO_3X3** | **SAYO_2X4** |
-| ![SAYO_3X3 키 배치](images/buttons_sayo_3x3.svg) | ![SAYO_2X4 키 배치](images/buttons_sayo_2x4.svg) |
+| ![MK6K1NL 키 배치](images/buttons_mk6k1nl.svg) | ![SAYO_3X3 키 배치](images/buttons_sayo_3x3.svg) |
+| **SAYO_2X4** | |
+| ![SAYO_2X4 키 배치](images/buttons_sayo_2x4.svg) | |
 
 - 주황 = 부트로더 진입 키. 칩 핀맵 그림(`pinmap_<보드>.svg`)은 각 보드 문서 3절. 그림 다시 그리기: [board/_TEMPLATE.md](board/_TEMPLATE.md#그림-만들기)
 
@@ -60,8 +59,7 @@
 
 | 보드 | 부트로더 | 진입 (누른 채 꽂기) | 처음 설치 (공장 펌웨어) | 장입 도구 | 펌웨어 파일 |
 |---|---|---|---|---|---|
-| **MK6K1N** | WCH ROM (USB `4348:55E0`) | **키 D**(P1.5) | 키 E를 누른 채 꽂기 | GUI(vnproch55x), `flash.ps1 -Hex` | `macro_keyboard-MK6K1N.hex` |
-| **MK6K1NL** | WCH ROM (USB `4348:55E0`) | **키 D**(P1.5) | D+ 풀업: 칩 12번–16번에 1.5~2kΩ | GUI(vnproch55x), `flash.ps1 -Hex` | `macro_keyboard-MK6K1NL.hex` |
+| **MK6K1NL** | WCH ROM (USB `4348:55E0`) | **키 D**(P1.5) | 공장 펌웨어 판에 따라 키 E를 누른 채 꽂기, 안 되면 D+ 풀업: 칩 12번–16번에 1.5~2kΩ | GUI(vnproch55x), `flash.ps1 -Hex` | `macro_keyboard-MK6K1NL.hex` |
 | **SAYO_3X3** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PB2) | BOOT 브리지 + `flash.ps1 -Board sayo_3x3 -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_3x3` | `ch32v203/macro_keyboard-SAYO_3X3.bin` |
 | **SAYO_2X4** | 자체 HID (USB `1209:C55E`) | **키 5**(왼쪽 아래, PA5) | BOOT 브리지 + `flash.ps1 -Board sayo_2x4 -Full` → 키 5 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_2x4` | `ch32v203/macro_keyboard-SAYO_2X4.bin` |
 | **SAYO_2X6** | 자체 HID (USB `1209:C55E`) | **키 7**(왼쪽 아래, PA7) | BOOT 브리지 + `flash.ps1 -Board sayo_2x6 -Full` → 키 7 누른 채 다시 꽂기 | GUI(hidboot), `flash.ps1 -Board sayo_2x6` | `ch32v203/macro_keyboard-SAYO_2X6.bin` |
@@ -82,7 +80,7 @@
    - CH55x: WCHISPTool 칩 목록, 또는 D+ 풀업으로 업데이트 모드에 넣고 업로더 출력의 `Found Device`
    - CH32V203: BOOT 브리지 + `wchisp info` (읽기 보호 상태만 확인)
 2. 시험 펌웨어로 키 핀, 노브 신호, LED 순서·극성 확인
-   - MK6K1N 계열: [test_pinmap](../tests/hw/mk6k1n/test_pinmap/README.md)
+   - MK6K1NL(CH552 6키): [test_pinmap](../tests/hw/mk6k1n/test_pinmap/README.md)
    - LED가 여러 개(CH552): [test_mk6k1nl](../tests/hw/mk6k1nl/test_mk6k1nl/README.md)
    - CH32V203·핀을 전혀 모를 때: [test_ch32v203](../tests/hw/ch32v203/test_ch32v203/README.md). GPIO 전부 감시, LED 핀 탐색
 3. 추가할 것 ([BOARD_INFO 6~7절](BOARD_INFO.md))

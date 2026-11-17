@@ -10,7 +10,7 @@ from gui.core import boards, chips, flasher
 
 ERASE = "\x1b[2K"
 CH552 = chips.find(0x52)
-FW_ID = "MKFW1:MK6K1N:CH552:1.3.0"
+FW_ID = "MKFW1:MK6K1NL:CH552:1.3.0"
 
 
 def make_hex(path: Path, size: int, start: int = 0, fid: str | None = None) -> Path:
@@ -50,7 +50,7 @@ def test_too_big_hex_rejected(tmp_path):
 
 def test_firmware_id_read_from_hex(tmp_path):
     info = flasher.check_hex(make_hex(tmp_path / "id.hex", 8000, fid=FW_ID), CH552)
-    assert info.firmware_id == flasher.FirmwareId("MK6K1N", "CH552", "1.3.0")
+    assert info.firmware_id == flasher.FirmwareId("MK6K1NL", "CH552", "1.3.0")
     assert flasher.check_hex(make_hex(tmp_path / "old.hex", 8000), CH552).firmware_id is None
     assert flasher.firmware_id(b"xxMKFW1:MK6K1N\0") is None        # incomplete
 
@@ -75,19 +75,18 @@ def test_missing_file(tmp_path):
 
 
 def test_command_matches_flash_ps1(tmp_path):
-    spec = boards.find("MK6K1N")
+    spec = boards.find("MK6K1NL")
     cmd = flasher.build_command(Path("up.exe"), tmp_path / "fw.hex", spec.chip.name, spec.boot_config, 30)
     assert cmd == ["up.exe", "-r", "30", "-t", "CH552", "-c", "1", str(tmp_path / "fw.hex")]
 
 
 def test_board_list():
-    spec = boards.find("MK6K1N")
+    spec = boards.find("MK6K1NL")
     assert spec.layout.slot_count == 9 and spec.chip_name == "CH552" and spec.chip.supported
     assert spec.boot_config == boards.BOOT_P15 and spec.boot_hint == "키 D를 누른 채"
-    assert spec.firmware_file == "macro_keyboard-MK6K1N.hex"
-    lit = boards.find("MK6K1NL")
-    assert lit.layout.slot_count == 9 and lit.chip_name == "CH552" and lit.boot_hint == "키 D를 누른 채"
-    assert lit.firmware_file == "macro_keyboard-MK6K1NL.hex"
+    assert spec.firmware_file == "macro_keyboard-MK6K1NL.hex"
+    assert boards.find("MK6K1N") is spec                     # the name before 2026-11-17
+    assert "MK6K1N" not in [b.name for b in boards.ALL_BOARDS]
     assert boards.find("MK9K0N") is None
     assert all(boards.find(b.name).layout.name == b.name for b in boards.BOARDS)
     assert chips.name_of(0x54) == "CH554" and chips.name_of(0x59) == "CH559"
@@ -243,7 +242,7 @@ def test_dialog_refuses_other_chip(qapp, tmp_path):
 
 def test_dialog_shows_firmware_id_and_board(qapp, tmp_path):
     dlg = make_dialog(tmp_path, [chip()])
-    assert "MK6K1N용 (CH552) v1.3.0" in dlg.size_label.text() and "✔" in dlg.size_label.text()
+    assert "MK6K1NL용 (CH552) v1.3.0" in dlg.size_label.text() and "✔" in dlg.size_label.text()
     assert "키 D를 누른 채" in dlg.board_label.text() and "키 D를 누른 채" in dlg.hint.text()
     assert dlg.hex_warning == "" and dlg.start_btn.isEnabled()
 
@@ -271,7 +270,7 @@ def test_dialog_unknown_board_flashes_the_picked_board(qapp, tmp_path):
     from gui.core import protocol as p
     dlg = make_dialog(tmp_path, [chip()], keyboard=p.Board(keys=9, knobs=0, rows=3, name="MK9K0N"))
     assert not dlg.identified and "목록에 없는 보드(MK9K0N)" in dlg.board_label.text()
-    assert dlg.spec.name == "MK6K1N" and dlg.start_btn.isEnabled()
+    assert dlg.spec.name == "MK6K1NL" and dlg.start_btn.isEnabled()
     dlg.answer = False
     assert not dlg.start() and "식별하지 못했습니다" in dlg.asked[0]
 
@@ -282,21 +281,33 @@ def test_dialog_unidentified_keyboard_picks_board(qapp, tmp_path, monkeypatch):
     make_hex(tmp_path / "macro_keyboard-MK6K1NL.hex", 100, fid="MKFW1:MK6K1NL:CH552:1.5.0")
     dlg = make_dialog(tmp_path, [chip()], identified=False)    # factory firmware, 1.2.x, nothing
     dlg.auto_hex = True
-    assert "식별할 수 없습니다" in dlg.board_label.text() and "키 E" in dlg.hint.text()
-    dlg.board_combo.setCurrentIndex([b.name for b in boards.BOARDS].index("MK6K1NL"))
-    assert dlg.spec.name == "MK6K1NL" and "저항" in dlg.hint.text()
+    assert "식별할 수 없습니다" in dlg.board_label.text()
+    names = [b.name for b in boards.BOARDS]
+    dlg.board_combo.setCurrentIndex(names.index("SAYO_3X3"))   # another board, then back
+    dlg.board_combo.setCurrentIndex(names.index("MK6K1NL"))
+    assert dlg.spec.name == "MK6K1NL" and "키 E" in dlg.hint.text() and "저항" in dlg.hint.text()
     assert dlg.path_edit.text().endswith("macro_keyboard-MK6K1NL.hex") and dlg.hex_warning == ""
     dlg.answer = False
     assert not dlg.start() and "MK6K1NL" in dlg.asked[0]       # asks once, then flashes on yes
 
 
 def test_dialog_identified_keyboard_asks_for_another_board(qapp, tmp_path):
-    dlg = make_dialog(tmp_path, [chip()])                       # MK6K1N said so in HELLO
-    assert dlg.identified and dlg.spec.name == "MK6K1N" and not dlg.other_board
-    dlg.board_combo.setCurrentIndex([b.name for b in boards.BOARDS].index("MK6K1NL"))
+    dlg = make_dialog(tmp_path, [chip()])                       # MK6K1NL said so in HELLO
+    assert dlg.identified and dlg.spec.name == "MK6K1NL" and not dlg.other_board
+    dlg.board_combo.setCurrentIndex([b.name for b in boards.BOARDS].index("SAYO_3X3"))
     assert dlg.other_board and "다른 보드를 골랐습니다" in dlg.board_label.text()
-    dlg.answer = False
-    assert not dlg.start() and "MK6K1N인데 MK6K1NL" in dlg.asked[0]
+
+
+def test_dialog_takes_a_keyboard_and_firmware_named_mk6k1n(qapp, tmp_path):
+    """Firmware before 2026-11-17 calls the board MK6K1N (HELLO and the hex ID):
+    the same board as MK6K1NL, no warning; the new hex is the MK6K1NL one."""
+    from gui.core import protocol as p
+    old = p.Board(keys=6, knobs=1, rows=2, name="MK6K1N", chip_id=0x52)
+    dlg = make_dialog(tmp_path, [chip()], keyboard=old, fid="MKFW1:MK6K1N:CH552:1.7.1")
+    assert dlg.identified and dlg.spec.name == "MK6K1NL" and not dlg.other_board
+    assert dlg.spec.firmware_file == "macro_keyboard-MK6K1NL.hex"
+    assert dlg.hex_warning == "" and "MK6K1NL (옛 이름 MK6K1N)용" in dlg.size_label.text()
+    assert dlg.start_btn.isEnabled()
 
 
 def test_dialog_marks_the_keyboard_that_was_connected(qapp, tmp_path):

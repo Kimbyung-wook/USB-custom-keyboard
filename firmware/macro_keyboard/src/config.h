@@ -48,8 +48,6 @@
 // A board file outside src/boards, e.g. tests/host/boards (boards not yet in
 // gui/core/boards.py): -DBOARD_HEADER="\"path\""
 #include BOARD_HEADER
-#elif defined(BOARD_MK6K1N)
-#include "boards/mk6k1n.h"
 #elif defined(BOARD_MK6K1NL)
 #include "boards/mk6k1nl.h"
 #elif defined(BOARD_SAYO_3X3)
@@ -62,7 +60,7 @@
 // Kept beside its HAL (not yet in gui/core/boards.py BOARDS): jl_build_ac6321a.sh
 #include "hal/ac6321a/juzh_3b4.h"
 #else
-#include "boards/mk6k1n.h"
+#include "boards/mk6k1nl.h"
 #endif
 // BOARD_NAME fills HELLO's 8-byte name field: at most 8 characters. A
 // negative array size stops the build. Not under SDCC: there the typedef

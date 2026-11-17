@@ -3,7 +3,7 @@
 - 보드별 문서로 나눔 (2026-11-07)
   - 요약 표: [BOARDS.md](BOARDS.md)
   - 보드마다 2절 버튼 배치와 매핑, 3절 칩 핀맵(그림 + 표)
-  - CH552G 핀, 노브 신호: [BOARD_MK6K1N.md](board/BOARD_MK6K1N.md)
+  - CH552G 핀, 노브 신호: [BOARD_MK6K1NL.md](board/BOARD_MK6K1NL.md)
   - [BOARD_MK6K1NL.md](board/BOARD_MK6K1NL.md), [BOARD_SAYO_3X3_RGB.md](board/BOARD_SAYO_3X3_RGB.md), [BOARD_SAYO_2X4_RGB.md](board/BOARD_SAYO_2X4_RGB.md), [BOARD_SAYO_2X6_RGB.md](board/BOARD_SAYO_2X6_RGB.md)
   - CH32V203C8U6 48핀 칩 핀맵: [SAYO_3X3 3절](board/BOARD_SAYO_3X3_RGB.md#3-칩-핀맵), [SAYO_2X4 3절](board/BOARD_SAYO_2X4_RGB.md#3-칩-핀맵)
   - 준비 중 CH573F QFN28 칩 핀맵: [SAYO_2B3 3절](board/BOARD_SAYO_2X3B_RGB.md#3-칩-핀맵)

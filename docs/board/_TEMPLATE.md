@@ -7,7 +7,7 @@
 
 - 모든 보드 문서는 아래 절 순서·제목·표 열 이름을 그대로 씀. 해당 없는 절은 "해당 없음" 한 줄
 - 본문은 현재 상태만. 날짜·버전별 변경은 **각 절 끝 `**이력**`**에 짧게(따로 "이력" 절을 두지 않음)
-- 다른 보드와 같은 내용은 옮겨 쓰지 않고 링크(예: MK6K1NL → MK6K1N 노브 신호)
+- 다른 보드와 같은 내용은 옮겨 쓰지 않고 링크(예: SAYO_2X4 → SAYO_3X3 부팅 절)
 - 예: [BOARD_SAYO_3X3_RGB.md](BOARD_SAYO_3X3_RGB.md)
 
 ## 절 순서
@@ -69,7 +69,7 @@
 |---|---|---|
 | `buttons_<보드>.svg` 버튼 별 맵핑 | 모든 보드 | CH552: `PINS`(칩 핀), `KEY_PINS`(키 → 칩 핀). CH32V203: `RGB_BOARDS` |
 | `pinmap_<보드>.svg` 칩 핀맵 | 모든 보드 | CH552: `PINS`. CH32V203: `CH32_PINS`(48핀 이름) + `RGB_BOARDS` |
-| `pinmap_ch552g.svg` CH552G 공통 핀맵 | MK6K1N·MK6K1NL | `PINS` |
+| `pinmap_ch552g.svg` CH552G 칩 핀맵 | MK6K1NL | `PINS` |
 | `leds_<보드>.svg` LED 배선 | CH32V203 보드 | `RGB_BOARDS`(키 핀, 양극, 음극 묶음, 진입 키) |
 
 - 값의 근거는 `firmware/macro_keyboard/src/boards/<보드>.h`. 핀이나 연결이 바뀌면 스크립트 값을 고치고 다시 그림

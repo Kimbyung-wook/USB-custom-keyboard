@@ -123,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 
 - 세 줄 구성(배터리 보드는 네 줄)
   1. 상태와 할 일 (`🔒 잠김 - …`, `● 연결됨 - 잠금 풀림`, 연결 안 됨)
-  2. 보드와 용량 (`MK6K1N (키 6 + 노브 1) / 용량 128바이트`)
+  2. 보드와 용량 (`MK6K1NL (키 6 + 노브 1) / 용량 128바이트`)
   3. 펌웨어 버전과 빌드 날짜
   4. 배터리(HELLO 기능 비트 `0x04`가 있는 보드만, 지금 SAYO_2B3): `🔋 배터리 80%`. 케이블 연결 중은 `🔌 충전 중 · 연결 전 62% (5분 전)` 또는 `🔌 충전 중 (약 96%, 참고값)`
      - 연결할 때·[새로고침]·10초마다 BATTERY(`0x07`, [PROTOCOL](../docs/PROTOCOL.md#0x07-battery))를 보냄. 잠겨 있어도 표시, `BAD_CMD`면 표시 안 함
@@ -206,7 +206,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   - 창에 `⚠ 연결된 키보드를 식별할 수 없습니다`와 그 보드의 처음 설치 방법(`factory_boot`, [BOARDS.md](../docs/BOARDS.md)) 표시
   - [장입] 시 고른 보드가 맞는지 한 번 물음. 식별된 키보드와 다른 보드를 골랐을 때도 물음
 - 파일 크기 검사: 칩 용량(CH552 14,336바이트, CH32V203 앱 영역 52,992바이트, CH573 앱 영역 446,464바이트)을 넘으면 올리지 않음
-- **식별 문자열** (예: `MKFW1:MK6K1N:CH552:1.7.0`)
+- **식별 문자열** (예: `MKFW1:MK6K1NL:CH552:1.7.0`)
   - hex 안에서 읽어 어느 보드·칩·버전용인지 표시
   - 칩이 다르면 올리지 않음
   - 보드가 다르거나 식별 문자열이 없으면(옛 펌웨어, 다른 펌웨어)
@@ -220,7 +220,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
   - 잠김 또는 미연결: 보드 목록의 진입 키(`boot_key`)로 "키 D를 누른 채 다시 꽂으세요" 같은 안내 표시, 60초 대기
   - 전원 스위치가 있는 보드(`power_switch`, SAYO_2B3의 SW1): "SW1을 껐다가 키 4를 누른 채 켜세요"처럼 꽂기 대신 스위치로 안내. 부트로더 표시는 `boot_led`(SAYO_2B3: "L5 빨강 LED가 깜빡입니다", 기본: 보라)
 - 업로더 실행
-  - CH55xDuino의 `vnproch55x.exe`를 보드 목록의 옵션으로 실행 (MK6K1N: `-t CH552 -c 1`, 부트로더 진입 핀 P1.5, `tools/flash.ps1`과 같음)
+  - CH55xDuino의 `vnproch55x.exe`를 보드 목록의 옵션으로 실행 (MK6K1NL: `-t CH552 -c 1`, 부트로더 진입 핀 P1.5, `tools/flash.ps1`과 같음)
   - 출력에서 칩 종류, 부트로더 버전, 쓰기/검증 진행률을 읽어 표시
 - CH32V203 보드(SAYO_3X3, SAYO_2X4, SAYO_2X6)·CH573 보드(SAYO_2B3): 업로더 대신 `core/hidboot.py`가 **자체 HID 부트로더**(`1209:C55E`, 드라이버 불필요)에 직접 장입
   - 칩 표에 `CH32V203 · 자체 1.0`(부트로더 버전) 표시
@@ -279,7 +279,7 @@ powershell -ExecutionPolicy Bypass -File tools\build_gui.ps1
 {
   "format": "usb-mini-keyboard-6k1n",
   "version": 1,
-  "board": { "name": "MK6K1N", "keys": 6, "knobs": 1 },
+  "board": { "name": "MK6K1NL", "keys": 6, "knobs": 1 },
   "slots": [
     { "slot": 0, "key": "A",     "label": "키 A",            "macro": "Hello world{ENTER}" },
     { "slot": 1, "key": "B",     "label": "키 B",            "macro": "{CTRL+C}" },
@@ -341,7 +341,7 @@ uv run python tools\capture_screens.py
   - 키보드가 없어 잠금을 풀 수 없음
   - 패턴을 저장해도 "다음에 꽂을 때"가 없어 잠기지 않음
 - 펌웨어 업데이트 대상: **보드 목록(`boards.py`)에 있는 보드**만
-  - 현재: MK6K1N, MK6K1NL, SAYO_3X3, SAYO_2X4 ([docs/BOARDS.md](../docs/BOARDS.md))
+  - 현재: MK6K1NL(별칭 MK6K1N), SAYO_3X3, SAYO_2X4, SAYO_2X6, SAYO_2B3 ([docs/BOARDS.md](../docs/BOARDS.md))
   - 식별되지 않은 키보드는 사용자가 이 목록에서 보드를 골라 장입 ([docs/BOARD_INFO.md](../docs/BOARD_INFO.md) 진행 순서 4)
 - 라이선스: 업로더(`vnproch55x.exe`와 DLL)는 CH55xDuino(LGPL-2.1)에 포함된 것, `CH375DLL.dll`은 WCH의 드라이버 DLL
   - exe를 다른 사람에게 배포할 때는 이 사실과 라이선스를 함께 알릴 것

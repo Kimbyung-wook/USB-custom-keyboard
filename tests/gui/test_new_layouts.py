@@ -127,7 +127,7 @@ def test_switch_between_boards(qapp):
     w = MainWindow(make_mock_connector(MockDevice()), auto_reconnect=False)
     combo = w.board_combo
     assert [combo.itemData(i) for i in range(combo.count())] == [b.name for b in boards.ALL_BOARDS]
-    for name in ("SAYO_2X6", "MK6K1N", "SAYO_2B3", "SAYO_3X3", "SAYO_2X6"):
+    for name in ("SAYO_2X6", "MK6K1NL", "SAYO_2B3", "SAYO_3X3", "SAYO_2X6"):
         i = combo.findData(name)
         w._on_board_picked(i)
         b = boards.find(name).layout

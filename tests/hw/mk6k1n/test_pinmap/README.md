@@ -1,8 +1,8 @@
 # test_pinmap: 하드웨어 확인용 테스트 펌웨어
 
-> 확인한 핀 배치 다이어그램: [docs/board/BOARD_MK6K1N.md](../../../../docs/board/BOARD_MK6K1N.md)
+> 확인한 핀 배치 다이어그램: [docs/board/BOARD_MK6K1NL.md](../../../../docs/board/BOARD_MK6K1NL.md)
 
-- **대상**: 6키 + 노브 1개 CH552G 미니 키보드 **MK6K1N**(눈에 보이는 LED 1개)
+- **대상**: 6키 + 노브 1개 CH552G 미니 키보드 **MK6K1NL**(옛 이름 MK6K1N. 이 시험은 LED 8자리에 같은 색을 보내 LED 1개로 보였으나 실제는 키마다 LED 6개, [BOARD_MK6K1NL 1절](../../../../docs/board/BOARD_MK6K1NL.md#mk6k1n과-mk6k1nl로-나눠-불렀던-까닭-판단-근거))
 - **확인 항목**: 핀 매핑, LED
 - **쓰는 때**: **비슷한 장치를 새로 구했을 때**, 본 펌웨어를 올리기 전에 먼저 확인
 - 키마다 LED가 있는 **MK6K1NL**은 [test_mk6k1nl](../../mk6k1nl/test_mk6k1nl/README.md)로 확인

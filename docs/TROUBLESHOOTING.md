@@ -385,7 +385,7 @@ Arduino15/packages/CH55xDuino/tools/MCS51Tools/2026.07.10/wrapper/sdcc.sh: line 
 
 - 펌웨어 v1.5.0(최종 빌드)부터 한 칸(4단계) 중 **같은 방향으로 2단계 이상** 움직여야 회전으로 셈(`ENC_MIN_STEPS`)
 - 두 보드 모두 적용
-- 노브 신호: [BOARD_MK6K1N 노브 신호](board/BOARD_MK6K1N.md#노브-신호) 참고
+- 노브 신호: [BOARD_MK6K1NL 노브 신호](board/BOARD_MK6K1NL.md#노브-신호) 참고
 
 ### 3-7. MK6K1NL 제조사 펌웨어에서 업데이트 모드로 들어가지 않음
 

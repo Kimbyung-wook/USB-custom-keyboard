@@ -69,7 +69,7 @@ class Board:
     keys: int = 6
     knobs: int = 1
     rows: int = 2
-    name: str = "MK6K1N"
+    name: str = "MK6K1NL"
     chip_id: int = 0x52                  # as the bootloader's Detect reports it
     # what the firmware supports; not part of the layout (==)
     features: int = field(default=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK, compare=False)

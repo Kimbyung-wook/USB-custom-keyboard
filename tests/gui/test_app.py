@@ -356,16 +356,16 @@ def test_board_picker_changes_layout_while_disconnected(win):
 def test_connect_switches_picker_to_recognized_board(win):
     win.board_combo.setCurrentIndex(win.board_combo.findData("SAYO_3X3"))
     win._on_board_picked(win.board_combo.currentIndex())
-    assert win.connect_device()  # the mock reports MK6K1N
-    assert win.board.name == "MK6K1N"
-    assert win.board_combo.currentData() == "MK6K1N"
+    assert win.connect_device()  # the mock reports MK6K1NL
+    assert win.board.name == "MK6K1NL"
+    assert win.board_combo.currentData() == "MK6K1NL"
     assert not win.board_combo.isEnabled()
 
 
 def test_picker_ignored_while_connected(win):
     assert win.connect_device()
     win._on_board_picked(win.board_combo.findData("SAYO_3X3"))
-    assert win.board.name == "MK6K1N"
+    assert win.board.name == "MK6K1NL"
 
 
 def test_board_without_lock_feature_disables_lock_editor(qapp):

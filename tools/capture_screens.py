@@ -85,7 +85,7 @@ def main() -> None:
     w.close()
 
     os.chdir(ROOT)                       # show the hex path relative to the repo
-    hex_path = Path("firmware/macro_keyboard/build") / "macro_keyboard-MK6K1N.hex"
+    hex_path = Path("firmware/macro_keyboard/build") / "macro_keyboard-MK6K1NL.hex"
     dlg = FirmwareDialog(lambda: "", scan_fn=lambda: [ChipInfo(0, 0x52, 0x11, "2.5.0", UID)],
                          auto_scan=False, keyboard=BOARD,
                          hex_path=hex_path if hex_path.is_file() else None)

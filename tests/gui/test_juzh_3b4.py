@@ -222,7 +222,7 @@ def test_picture_knobs_right_with_slot_leds(qapp, tmp_path):
     assert all("블루투스" in led.toolTip() for led in dv.status_leds)
     assert all(isinstance(led, QWidget) and led not in dv.buttons for led in dv.status_leds)
     # other boards keep the knobs side by side, no LEDs, no portrait button
-    w._on_board_picked(w.board_combo.findData("MK6K1N"))
+    w._on_board_picked(w.board_combo.findData("MK6K1NL"))
     assert w.device_view.status_leds == [] and not w.portrait_btn.isVisibleTo(w)
     assert w.device_view._body.layout().itemAt(0).layout() is w.device_view.key_grid
     w.close()

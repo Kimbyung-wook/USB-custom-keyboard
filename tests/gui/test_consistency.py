@@ -211,10 +211,20 @@ def test_board_aliases_only_in_boards_py():
             and not {".git", ".venv", "build", "dist", "__pycache__"} & set(path.relative_to(ROOT).parts)
             and path.relative_to(ROOT).parts[0] != "tests"
             and path != ROOT / "gui" / "core" / "boards.py"]
+    # Whole names only: MK6K1N is a prefix of MK6K1NL (no letter or digit
+    # around it; "_" may touch it, so BOARD_MK6K1N and mk6k1n.h still count)
+    found = [re.compile(rf"(?<![A-Za-z0-9]){re.escape(form)}(?![A-Za-z0-9])")
+             for alias in aliases for form in (alias, alias.lower())]
     for path in code:
         src = text(path)
-        for alias in aliases:
-            assert alias not in src and alias.lower() not in src, f"{alias} in {path.relative_to(ROOT)}"
+        for pattern in found:
+            assert not pattern.search(src), f"{pattern.pattern} in {path.relative_to(ROOT)}"
+
+
+def test_alias_check_takes_whole_names():
+    found = re.compile(r"(?<![A-Za-z0-9])MK6K1N(?![A-Za-z0-9])")
+    assert not found.search('BOARD_NAME "MK6K1NL"') and not found.search("xMK6K1N")
+    assert found.search('"MK6K1N"') and found.search("BOARD_MK6K1N") and found.search("-MK6K1N.hex")
 
 
 # ---- tool paths -------------------------------------------------------------

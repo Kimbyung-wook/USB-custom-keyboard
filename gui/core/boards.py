@@ -117,18 +117,17 @@ def _object(word: str) -> str:
 # AUTO_LOCK added to lock boards, BATTERY / BLE from BOARD_BATTERY / BOARD_BLE
 # (firmware/macro_keyboard/src/core/protocol.c; tests/gui/test_consistency.py)
 BOARDS = (
-    BoardSpec("MK6K1N", "6키 + 노브 1개 (CH552G)",
-              Board(keys=6, knobs=1, rows=2, name="MK6K1N", chip_id=0x52,
-                    features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
-              boot_config=BOOT_P15, boot_key="D",
-              factory_boot="키 E를 누른 채 꽂으세요"),
-    # Same pins as MK6K1N, with an LED under every key (tests/hw/mk6k1nl/test_mk6k1nl)
+    # CH552G, 6 keys + 1 knob, an LED under every key (tests/hw/mk6k1nl/test_mk6k1nl).
+    # PCB ANXIN-K6-VT1-LED-V01. The keyboard called MK6K1N until 2026-11-17 was
+    # this board (UID 7de20fbd): firmware before the rename reports MK6K1N
     BoardSpec("MK6K1NL", "6키 + 노브 1개, 키마다 LED (CH552G)",
               Board(keys=6, knobs=1, rows=2, name="MK6K1NL", chip_id=0x52,
                     features=BOARD_FEATURE_RGB_LED | BOARD_FEATURE_LOCK | BOARD_FEATURE_AUTO_LOCK),
               boot_config=BOOT_P15, boot_key="D",
-              factory_boot="키로는 들어가지 않습니다. 칩 12번(D+)과 16번(3V3) 핀 사이에 "
-                           "1.5~2kΩ 저항을 댄 채 꽂으세요 (docs/TROUBLESHOOTING.md 2-3)"),
+              factory_boot="제조사 펌웨어가 있으면 키 E를 누른 채 꽂으세요. 키로 들어가지 않으면(장입 실패 뒤 등) "
+                           "칩 12번(D+)과 16번(3V3) 핀 사이에 1.5~2kΩ 저항을 댄 채 꽂으세요 "
+                           "(docs/TROUBLESHOOTING.md 2-1, 2-3)",
+              aliases=("MK6K1N",)),   # firmware built before the rename (2026-11-17)
     # CH32V203C8U6, 9 keys, no knob (docs/board/BOARD_SAYO_3X3_RGB.md). Our own HID bootloader
     # (docs/BOOTLOADER_CH32V203.md): key 7 at power-up, or BOOT from the app. It goes
     # on once through the ROM bootloader (BOOT bridge, wchisp: flash_text).

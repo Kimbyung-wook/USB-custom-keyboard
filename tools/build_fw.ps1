@@ -40,8 +40,8 @@
   powershell -ExecutionPolicy Bypass -File tools\build_fw.ps1 -Board sayo_3x3
 #>
 param(
-    [ValidateSet('mk6k1n', 'mk6k1nl', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6', 'sayo_2b3')]
-    [string]$Board = 'mk6k1n',
+    [ValidateSet('mk6k1nl', 'sayo_3x3', 'sayo_2x4', 'sayo_2x6', 'sayo_2b3')]
+    [string]$Board = 'mk6k1nl',
     # CH32V203 and CH573 (gcc); -Sdk is the CH32V203 EVT SDK only
     # environment MK_RISCV_BIN / MK_EVT_SDK first (as the Makefiles), else these defaults
     [string]$GccBin = $(if ($env:MK_RISCV_BIN) { $env:MK_RISCV_BIN } else { 'C:\Users\user\tools\gcc\xpack-riscv-none-elf-gcc-15.2.0-1\bin' }),
@@ -51,7 +51,6 @@ param(
 # The chip of each board file (BOARD_CHIP), and the build options of each
 # chip (the arduino-cli board and its menu settings)
 $boardChips = @{
-    mk6k1n     = 'ch552'
     mk6k1nl    = 'ch552'
     'sayo_3x3' = 'ch32v203'
     'sayo_2x4' = 'ch32v203'

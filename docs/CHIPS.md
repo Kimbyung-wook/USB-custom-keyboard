@@ -24,7 +24,7 @@
 | 설정 저장 | DataFlash 128 B (바이트 단위 재기록) | 플래시 끝 4,096 B (0x0800F000~, 업데이트해도 유지, **코드**) | Data-Flash(EEPROM) 32 KB 따로 있음. 설정은 0~2,047(지우기·쓰기 256 B 단위), 슬롯 상태 0x7000, BLE 짝 정보 0x7C00~0x8000(본딩 4개, **코드**). 앱 업데이트해도 유지 | Data-Flash 32 KB. 연결 장치 기록 0x7000(1 KB), 재꽂기 횟수 0x7800, BLE 짝 정보 0x7E00~(**코드**) |
 | 문자열 합계 최대 | 102자 | 4,064~4,072자 (키 수에 따라: 12키 4,064, 9키 4,070, 8키 4,072, [BOARDS.md](BOARDS.md#구성)) | 2,028자 (SAYO_2B3 6키, 설정 2 KB) | – (설정 없음) |
 | 패키지·핀 수 | SOP16, 16핀 | QFN48, 48핀 (+ 바닥 패드 VSS) | QFN28 ([BOARD_SAYO_2X3B_RGB 3절](board/BOARD_SAYO_2X3B_RGB.md#3-칩-핀맵)) | QFN28, CH573F와 같은 핀 배치(PB22 = 17번, PB11 = 12번, 자료표 CH583DS1) |
-| GPIO 수 | 칩 전체 최대 17(TSSOP20 기준). SOP16에 나온 GPIO는 12개 + RST(USB D+/D− 포함, [MK6K1N 3절](board/BOARD_MK6K1N.md#3-칩-핀맵)) | 37 | 확인 필요 | 확인 필요 |
+| GPIO 수 | 칩 전체 최대 17(TSSOP20 기준). SOP16에 나온 GPIO는 12개 + RST(USB D+/D− 포함, [MK6K1NL 3절](board/BOARD_MK6K1NL.md#3-칩-핀맵)) | 37 | 확인 필요 | 확인 필요 |
 | USB | 장치 전용 풀스피드 1개 (P3.6/P3.7). D+ 1.5 kΩ 풀업 칩 안에 있음(`bUC_DEV_PU_EN`) | USBD(PA11/PA12, 장치 전용) + USBFS(PB6/PB7, 호스트/장치). 우리 펌웨어는 USBFS, 풀업은 칩 안(`USBFS_UC_DEV_PU_EN`) | USB 1개(PB10 UD−/PB11 UD+), 풀스피드 장치로 동작 확인 | USB 2개: USB(PB10/PB11), USB2(PB12/PB13) (**SDK**). 동글이 어느 포트를 쓰는지는 핀 시험으로 확인 필요(`tests/hw/ch582_dongle`) |
 | 무선 | 없음 | 없음 | BLE 내장(**SDK** BLE 라이브러리). 이 기판은 패치 안테나. 우리 펌웨어 1단계는 BLE 안 씀 | BLE 내장(**SDK**). 동글 펌웨어는 central(HOGP 호스트), 송신 +4 dBm(**코드**) |
 | 공급 전압 | VCC 5 V 또는 3.3 V(2.8 V까지). 칩 안 5 V → 3.3 V 레귤레이터(V33 핀). 플래시 쓰기는 5 V 필요 | VDD 2.4~3.6 V (정격 3.3 V) | VDD33 2.3~3.6 V, 절대 최대 4.2 V(자료표, [BOARD_SAYO_2X3B_RGB 5절](board/BOARD_SAYO_2X3B_RGB.md#전원과-배터리)). 칩 전원은 내부 VBAT 채널로 잼(배터리 → 다이오드 → VDD, LDO 없음) | USB 5 V에서 기판 레귤레이터로 받음(추정). 칩 범위 확인 필요 |

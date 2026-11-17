@@ -15,7 +15,7 @@ def test_round_trip(tmp_path):
     doc = json.loads(path.read_text(encoding="utf-8"))
     assert doc["format"] == backup.FORMAT_NAME and len(doc["slots"]) == 9
     assert doc["slots"][6]["label"] == "노브 시계 방향"
-    assert doc["board"] == {"name": "MK6K1N", "keys": 6, "knobs": 1}
+    assert doc["board"] == {"name": "MK6K1NL", "keys": 6, "knobs": 1}
     assert backup.load(path) == (slots, [])
 
 
